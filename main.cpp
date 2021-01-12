@@ -9,7 +9,7 @@ int main() {
         // init matrix val factory in shared_ptr
         std::shared_ptr<value_factory<double>> f = std::make_shared<value_factory<double>>(-20, 20, 2137 + j/2);
         // use value factory in matrix generator
-        sparse_matrix_value_generator gen(5, 5, 25, 2137 + j, f);
+        scylla_blas::sparse_matrix_value_generator gen(5, 5, 25, 2137 + j, f);
         // test
         std::cout << "\nh: " << gen.height() << " w: " << gen.width() << std::endl;
         auto prev_mx_val = gen.next();
