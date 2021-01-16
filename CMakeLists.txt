@@ -28,7 +28,10 @@ add_executable(linear_algebra
         scylla_matrix.cc scylla_matrix.hh)
 target_link_libraries(linear_algebra scylla_modern_cpp_driver fmt::fmt)
 
-add_executable(matrix matrix_test.cc)
+add_executable(matrix matrix_test.cc
+        structure/vector.cc structure/vector.hh
+        scylla_matrix.cc scylla_matrix.hh
+        structure/item_set.cc structure/item_set.hh)
 target_link_libraries(matrix scylla_modern_cpp_driver fmt::fmt)
 
 add_executable(multiply multiply.cc utils/int_math.cc)

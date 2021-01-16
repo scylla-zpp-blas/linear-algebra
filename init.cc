@@ -20,8 +20,14 @@ int main(int argc, char **argv) {
                                  "  'class' : 'SimpleStrategy',"
                                  "  'replication_factor' : 1"
                                  "};";
-
     session.execute(init_namespace);
+
+
+    std::string init_sets = "CREATE TABLE IF NOT EXISTS blas.item_set_meta ( "
+                            "   id bigint PRIMARY KEY, "
+                            "   cnt counter "
+                            ");";
+    session.execute(init_sets);
 
     std::cerr << "Database initialized succesfully!" << std::endl;
     return 0;
