@@ -1,12 +1,11 @@
 #pragma once
 
-#include "../utils/scylla_types.hh"
-#include "vector.hh"
-
-#include "../matrix_value.hh"
-
 #include <map>
 #include <vector>
+
+#include <structure/matrix_value.hh>
+#include <structure/vector.hh>
+#include <utils/scylla_types.hh>
 
 namespace {
 
@@ -25,7 +24,7 @@ LOVE<T> to_list_of_vectors(const LVAL<T> &lval) {
      * by inserting entire rows instead of separate values
      */
     for (auto &val : lval)
-        ret[val.i].emplace_back(val.j, val.val);
+        ret[val.row_index].emplace_back(val.col_index, val.value);
 
     return ret;
 }

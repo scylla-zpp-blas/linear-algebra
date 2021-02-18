@@ -5,11 +5,11 @@
 #include <list>
 #include <memory>
 
-#include "utils/scylla_types.hh"
-#include "structure/matrix_block.hh"
-#include "structure/vector.hh"
+#include <structure/matrix_block.hh>
+#include <structure/matrix_value.hh>
+#include <structure/vector.hh>
+#include <utils/scylla_types.hh>
 
-#include "matrix_value.hh"
 #include "query_result.hh"
 #include "session.hh"
 
@@ -113,7 +113,7 @@ public:
         auto ans_vec = get_vals_for_query(_get_value_prepared, get_block_row(x), get_block_col(y), x, y);
 
         if (!ans_vec.empty()) {
-            return ans_vec[0].val;
+            return ans_vec[0].value;
         } else {
             return 0;
         }
@@ -124,7 +124,7 @@ public:
         vector<T> answer;
 
         for (matrix_value<T> &v : row_full) {
-            answer.emplace_back(v.j, v.val);
+            answer.emplace_back(v.col_index, v.value);
         }
 
         return answer;
@@ -148,8 +148,8 @@ public:
         index_type offset_y = (y - 1) * block_size;
 
         for (auto &val : block_values) {
-            val.i -= offset_x;
-            val.j -= offset_y;
+            val.row_index -= offset_x;
+            val.col_index -= offset_y;
         }
 
         return scylla_blas::matrix_block(block_values, _id, x, y);
@@ -168,7 +168,7 @@ public:
     /* TODO: make a better implementation of the update methods below */
     void update_values(std::vector<matrix_value<T>> values) {
         for (auto &val: values)
-            update_value(val.i, val.j, val.val);
+            update_value(val.row_index, val.col_index, val.value);
     }
 
     void update_row(index_type x, vector<T> row_data) {
@@ -181,7 +181,7 @@ public:
         index_type offset_y = (y - 1) * block_size;
 
         for (auto &val : block.get_values_raw())
-            update_value(x, y, offset_x + val.i, offset_y + val.j, val.val);
+            update_value(x, y, offset_x + val.row_index, offset_y + val.col_index, val.value);
     }
 };
 

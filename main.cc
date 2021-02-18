@@ -15,11 +15,11 @@ int main() {
         auto prev_mx_val = gen.next();
         for (int i = 0; gen.has_next(); i++) {
             auto mx_val = gen.next();
-            if (prev_mx_val.i > mx_val.i || (prev_mx_val.i == mx_val.i && prev_mx_val.j > mx_val.j)) {
+            if (prev_mx_val.row_index > mx_val.row_index || (prev_mx_val.row_index == mx_val.row_index && prev_mx_val.col_index > mx_val.col_index)) {
                 return 1;
             }
             prev_mx_val = mx_val;
-            std::cout << mx_val.val << " " << mx_val.i << " " << mx_val.j <<  std::endl;
+            std::cout << mx_val.value << " " << mx_val.row_index << " " << mx_val.col_index << std::endl;
         }
     }
 

@@ -1,8 +1,10 @@
 #include <iostream>
 #include <memory>
+
 #include "value_factory.hh"
 #include "sparse_matrix_value_generator.hh"
 #include "scylla_blas.hh"
+
 #include "session.hh"
 
 int main(int argc, char **argv) {

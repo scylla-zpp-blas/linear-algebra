@@ -1,6 +1,6 @@
 #pragma once
 
-#include "matrix_value.hh"
+#include <structure/matrix_value.hh>
 
 namespace scylla_blas {
 

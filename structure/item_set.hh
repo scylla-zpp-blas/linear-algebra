@@ -3,11 +3,11 @@
 #include <iostream>
 #include <memory>
 
-#include "../utils/scylla_types.hh"
-#include "../utils/utils.hh"
-
 #include <fmt/format.h>
 #include <session.hh>
+
+#include <utils/scylla_types.hh>
+#include <utils/utils.hh>
 
 namespace scylla_blas {
 

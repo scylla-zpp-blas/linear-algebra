@@ -1,10 +1,12 @@
 #pragma once
 
 #include <bits/exception.h>
-#include "utils/scylla_types.hh"
+
 #include "scylla_matrix.hh"
 #include "matrix_value_generator.hh"
-#include "utils/utils.hh"
+
+#include <utils/scylla_types.hh>
+#include <utils/utils.hh>
 
 namespace {
 
@@ -19,17 +21,17 @@ scylla_blas::scylla_matrix<T> load_matrix_from_generator(std::shared_ptr<scmd::s
     while(gen.has_next()) {
         scylla_blas::matrix_value<T> next_val = gen.next();
 
-        if (prev_val.i != -1 && next_val.i != prev_val.i) {
-            result.update_row(prev_val.i, next_row);
+        if (prev_val.row_index != -1 && next_val.row_index != prev_val.row_index) {
+            result.update_row(prev_val.row_index, next_row);
             next_row.clear();
         }
 
-        next_row.emplace_back(next_val.j, next_val.val);
+        next_row.emplace_back(next_val.col_index, next_val.value);
         prev_val = next_val;
     }
 
-    if (prev_val.i != -1) {
-        result.update_row(prev_val.i, next_row);
+    if (prev_val.row_index != -1) {
+        result.update_row(prev_val.row_index, next_row);
     }
 
     std::cerr << "Loaded a new matrix: " << id << " from a generator" << std::endl;
