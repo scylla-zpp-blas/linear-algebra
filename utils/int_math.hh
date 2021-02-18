@@ -4,8 +4,8 @@
 
 namespace IntMath {
 
-    int floor_div(int a, int b);
+int floor_div(int a, int b);
 
-    size_t floor_div(size_t a, size_t b);
+size_t floor_div(size_t a, size_t b);
 
 }

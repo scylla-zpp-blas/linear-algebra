@@ -4,7 +4,6 @@
 #include <utility>
 #include "scylla_matrix.hh"
 
-
 template <class T>
 class matrix_multiplicator {
 public:
