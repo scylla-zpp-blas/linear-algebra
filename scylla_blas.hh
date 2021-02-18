@@ -1,9 +1,10 @@
 #pragma once
 
 #include <bits/exception.h>
-#include "scylla_types.hh"
+#include "utils/scylla_types.hh"
 #include "scylla_matrix.hh"
 #include "matrix_value_generator.hh"
+#include "utils/utils.hh"
 
 namespace {
 
@@ -41,13 +42,13 @@ namespace scylla_blas {
 
 /** DEBUG **/
 template<class T>
-void print_matrix(scylla_matrix<T> matrix, index_type height, index_type width) {
+void print_matrix(scylla_matrix<T> &matrix, index_type height, index_type width) {
     std::cout << "[" << matrix.get_id() << "]" << std::endl;
     for (index_type i = 1; i <= height; i++) {
         auto vec = matrix.get_row(i);
         auto it = vec.begin();
         for (index_type j = 1; j <= width; j++) {
-            if (it->index == j) {
+            if (it != vec.end() && it->index == j) {
                 std::cout << it->value << "\t";
                 it++;
             } else {
@@ -56,6 +57,7 @@ void print_matrix(scylla_matrix<T> matrix, index_type height, index_type width) 
         }
         std::cout << std::endl;
     }
+    std::cout << std::endl;
 }
 
 template <class T>
@@ -80,7 +82,7 @@ scylla_matrix<T> multiply(std::shared_ptr<scmd::session> session, matrix_value_g
             }
         }
 
-        AB.update_row(i, results);
+        AB.update_row(i, scylla_blas::vector<T>(results));
     }
 
     print_matrix(AB, first.height(), second.width());
@@ -88,4 +90,21 @@ scylla_matrix<T> multiply(std::shared_ptr<scmd::session> session, matrix_value_g
     return AB;
 };
 
+template <class T>
+scylla_matrix<T> easy_multiply(std::shared_ptr<scmd::session> session, matrix_value_generator<T> &first, matrix_value_generator<T> &second) {
+    /* Assume that A, B are small, i.e. their size < block_size */
+    auto A = load_matrix_from_generator(session, first, "A_" + std::to_string(get_timestamp()));
+    auto B = load_matrix_from_generator(session, second, "B_" + std::to_string(get_timestamp()));
+    auto AB = scylla_matrix<T>(session, "AB_" + std::to_string(get_timestamp()), true);
+
+    auto A_block = A.get_block(1, 1);
+    auto B_block = B.get_block(1, 1);
+    auto AB_block = A_block * B_block;
+
+    AB.update_block(1, 1, AB_block);
+
+    print_matrix(AB, first.height(), second.width());
+
+    return AB;
+};
 }

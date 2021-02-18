@@ -5,7 +5,7 @@
 
 /* Use this program once to initialize the database */
 int main(int argc, char **argv) {
-    if (argc > 2) {
+    if (argc > 3) {
         std::cout << "Usage: " << argv[0] << " [IP address] [port]" << std::endl;
         exit(0);
     }

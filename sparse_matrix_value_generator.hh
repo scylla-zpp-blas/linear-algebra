@@ -23,7 +23,7 @@ private:
     std::shared_ptr<value_factory<V>> _matrix_value_factory;
     size_t _last_pos, _next_pos, _currently_generated;
 
-    void _calc_next_pos() {
+    void calc_next_pos() {
         size_t _max_pos = height() * width();
         std::uniform_int_distribution<size_t>
                 _dist(1, 1 + 2 * (_max_pos - _last_pos) / (_suggested_max - _currently_generated));
@@ -41,7 +41,7 @@ public:
         _last_pos = 0;
         _next_pos = 0;
         _currently_generated = 0;
-        _calc_next_pos();
+        calc_next_pos();
     }
 
     bool has_next() {
@@ -55,7 +55,7 @@ public:
         _currently_generated++;
         _last_pos = _next_pos;
         if (has_next()) {
-            _calc_next_pos();
+            calc_next_pos();
         }
         return matrix_value(IntMath::floor_div(_last_pos, width()), 1 + (_last_pos - 1) % width(),
                             _matrix_value_factory->next());

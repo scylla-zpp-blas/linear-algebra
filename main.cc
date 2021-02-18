@@ -7,7 +7,7 @@ int main() {
     // example output of generators
     for (int j = 0; j < 1; j++) {
         // init matrix val factory in shared_ptr
-        std::shared_ptr<value_factory<double>> f = std::make_shared<value_factory<double>>(-20, 20, 2137 + j/2);
+        std::shared_ptr<scylla_blas::value_factory<double>> f = std::make_shared<scylla_blas::value_factory<double>>(-20, 20, 2137 + j/2);
         // use value factory in matrix generator
         scylla_blas::sparse_matrix_value_generator gen(5, 5, 25, 2137 + j, f);
         // test

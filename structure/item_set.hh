@@ -1,23 +1,25 @@
 #pragma once
 
-#include <chrono>
 #include <iostream>
 #include <memory>
 
-#include "../scylla_types.hh"
+#include "../utils/scylla_types.hh"
+#include "../utils/utils.hh"
 
 #include <fmt/format.h>
 #include <session.hh>
 
 namespace scylla_blas {
-    template<class T>
-    class item_set;
 
-    class empty_container_error : public std::runtime_error {
-    public:
-        template<class... Args>
-        empty_container_error(Args... args) : std::runtime_error(args...) {}
-    };
+template<class T>
+class item_set;
+
+class empty_container_error : public std::runtime_error {
+public:
+    template<class... Args>
+    empty_container_error(Args... args) : std::runtime_error(args...) {}
+};
+
 }
 
 
@@ -37,7 +39,7 @@ class scylla_blas::item_set {
 public:
     template<class beginIt, class endIt>
     item_set(std::shared_ptr<scmd::session> session, beginIt begin, endIt end) :
-            _id(std::chrono::high_resolution_clock::now().time_since_epoch().count()),
+            _id(get_timestamp()),
             _session((session->execute(fmt::format(R"(
                 CREATE TABLE blas.item_set_{0} (
                     id bigint PRIMARY KEY,

@@ -5,12 +5,20 @@
 #include <iostream>
 #include <string>
 
-#include "scylla_types.hh"
+#include "utils/scylla_types.hh"
+#include "utils/utils.hh"
 
 namespace scylla_blas {
 
 template <class V>
 struct matrix_value {
+    /* (i, j) = position of the cell containing the value in the matrix.
+     * By default, (1, 1)-based indexing is used.
+     * The first coordinate corresponds to the vertical (Y) axis,
+     * the second – to the horizontal (X) axis.
+     *
+     * This convention corresponds to typical matrix indexing.
+     */
     index_type i, j;
     V val;
 
@@ -30,7 +38,7 @@ struct matrix_value {
 
 template<>
 inline bool matrix_value<float>::operator==(const matrix_value<float> &other) const {
-    return i == other.i && j == other.j && abs(val - other.val < 1e-9);
+    return i == other.i && j == other.j && abs(val - other.val < scylla_blas::epsilon);
 }
 
 template <typename T>

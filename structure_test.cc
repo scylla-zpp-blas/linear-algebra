@@ -24,7 +24,7 @@ void test_vectors() {
     auto vector_1 = scylla_blas::vector<float>();
 
     for (int i = 0; i < 10; i++) {
-        vector_1.push_back({i, 10});
+        vector_1.emplace_back(i, 10);
     }
 
     std::cout << "Vec_1: ";
@@ -35,10 +35,10 @@ void test_vectors() {
 
     auto vector_2 = scylla_blas::vector<float>();
     for (int i = 0; i < 5; i++) {
-        vector_2.push_back({i, M_PI * i * i});
+        vector_2.emplace_back(i, (float)M_PI * i * i);
     }
     for (int i = 15; i < 20; i++) {
-        vector_2.push_back({i, M_PI * i * i});
+        vector_2.emplace_back(i, (float) M_PI * i * i);
     }
 
     std::cout << "Vec_2: ";
@@ -90,11 +90,9 @@ int main(int argc, char **argv) {
 
     auto session = std::make_shared<scmd::session>(ip_address, port);
 
-    /*
+
     test_matrices(session);
     test_vectors();
-*/
-
     test_item_sets(session);
 
     return 0;
