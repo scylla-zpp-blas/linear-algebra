@@ -1,0 +1,6 @@
+[submodule "lib/driver"]
+	path = lib/driver
+	url = git@github.com:scylla-zpp-blas/scylla_modern_cpp_driver.git
+[submodule "lib/fmt"]
+	path = lib/fmt
+	url = git@github.com:fmtlib/fmt.git

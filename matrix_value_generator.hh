@@ -1,6 +1,8 @@
 #pragma once
 
-#include "matrix_value.hh"
+#include <structure/matrix_value.hh>
+
+namespace scylla_blas {
 
 template<class V>
 class matrix_value_generator {
@@ -16,3 +18,5 @@ public:
 
     virtual ~matrix_value_generator() = default;;
 };
+
+}
