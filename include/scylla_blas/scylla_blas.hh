@@ -2,19 +2,18 @@
 
 #include <bits/exception.h>
 
-#include "scylla_matrix.hh"
-#include "matrix_value_generator.hh"
-
-#include <utils/scylla_types.hh>
-#include <utils/utils.hh>
+#include <scylla_blas/matrix.hh>
+#include <scylla_blas/utils/matrix_value_generator.hh>
+#include <scylla_blas/utils/scylla_types.hh>
+#include <scylla_blas/utils/utils.hh>
 
 namespace {
 
 template <class T>
-scylla_blas::scylla_matrix<T> load_matrix_from_generator(std::shared_ptr<scmd::session> session,
-                                                         scylla_blas::matrix_value_generator<T> &gen,
-                                                         std::string id) {
-    scylla_blas::scylla_matrix<T> result(session, id, true);
+scylla_blas::matrix<T> load_matrix_from_generator(std::shared_ptr<scmd::session> session,
+                                                  scylla_blas::matrix_value_generator<T> &gen,
+                                                  std::string id) {
+    scylla_blas::matrix<T> result(session, id, true);
     scylla_blas::vector<T> next_row;
     scylla_blas::matrix_value<T> prev_val (-1, -1, 0);
 
@@ -44,7 +43,7 @@ namespace scylla_blas {
 
 /** DEBUG **/
 template<class T>
-void print_matrix(scylla_matrix<T> &matrix, index_type height, index_type width) {
+void print_matrix(matrix<T> &matrix, index_type height, index_type width) {
     std::cout << "[" << matrix.get_id() << "]" << std::endl;
     for (index_type i = 1; i <= height; i++) {
         auto vec = matrix.get_row(i);
@@ -63,10 +62,10 @@ void print_matrix(scylla_matrix<T> &matrix, index_type height, index_type width)
 }
 
 template <class T>
-scylla_matrix<T> multiply(std::shared_ptr<scmd::session> session, matrix_value_generator<T> &first, matrix_value_generator<T> &second) {
+matrix<T> multiply(std::shared_ptr<scmd::session> session, matrix_value_generator<T> &first, matrix_value_generator<T> &second) {
     auto A = load_matrix_from_generator(session, first, "A");
     auto B = load_matrix_from_generator(session, second, "B");
-    auto AB = scylla_matrix<T>(session, "AB", true);
+    auto AB = matrix<T>(session, "AB", true);
 
     print_matrix(A, first.height(), first.width());
     print_matrix(B, second.height(), second.width());
@@ -93,11 +92,11 @@ scylla_matrix<T> multiply(std::shared_ptr<scmd::session> session, matrix_value_g
 };
 
 template <class T>
-scylla_matrix<T> easy_multiply(std::shared_ptr<scmd::session> session, matrix_value_generator<T> &first, matrix_value_generator<T> &second) {
+matrix<T> easy_multiply(std::shared_ptr<scmd::session> session, matrix_value_generator<T> &first, matrix_value_generator<T> &second) {
     /* Assume that A, B are small, i.e. their size < block_size */
     auto A = load_matrix_from_generator(session, first, "A_" + std::to_string(get_timestamp()));
     auto B = load_matrix_from_generator(session, second, "B_" + std::to_string(get_timestamp()));
-    auto AB = scylla_matrix<T>(session, "AB_" + std::to_string(get_timestamp()), true);
+    auto AB = matrix<T>(session, "AB_" + std::to_string(get_timestamp()), true);
 
     auto A_block = A.get_block(1, 1);
     auto B_block = B.get_block(1, 1);

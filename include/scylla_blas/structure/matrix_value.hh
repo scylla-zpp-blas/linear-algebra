@@ -5,8 +5,8 @@
 #include <iostream>
 #include <string>
 
-#include <utils/scylla_types.hh>
-#include <utils/utils.hh>
+#include <scylla_blas/utils/scylla_types.hh>
+#include <scylla_blas/utils/utils.hh>
 
 namespace scylla_blas {
 

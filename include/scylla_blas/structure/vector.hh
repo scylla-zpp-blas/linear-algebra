@@ -4,7 +4,7 @@
 #include <vector>
 #include <utility>
 
-#include <utils/scylla_types.hh>
+#include <scylla_blas/utils/scylla_types.hh>
 
 namespace scylla_blas {
 

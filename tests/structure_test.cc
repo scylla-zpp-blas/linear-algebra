@@ -1,14 +1,15 @@
 #include <iostream>
 #include <string>
 
-#include "structure/item_set.hh"
-#include "scylla_matrix.hh"
+#include <session.hh>
 
-#include "session.hh"
+#include <scylla_blas/structure/item_set.hh>
+#include <scylla_blas/matrix.hh>
+
 
 void test_matrices(std::shared_ptr<scmd::session> session) {
-    auto matrix = scylla_blas::scylla_matrix<float>(session, "testowa");
-    auto matrix_2 = scylla_blas::scylla_matrix<float>(session, "testowa");
+    auto matrix = scylla_blas::matrix<float>(session, "testowa");
+    auto matrix_2 = scylla_blas::matrix<float>(session, "testowa");
 
     matrix.update_value(1, 0, M_PI);
     matrix.update_value(1, 1, 42);

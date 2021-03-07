@@ -5,13 +5,14 @@
 #include <list>
 #include <memory>
 
-#include <structure/matrix_block.hh>
-#include <structure/matrix_value.hh>
-#include <structure/vector.hh>
-#include <utils/scylla_types.hh>
+#include <query_result.hh>
+#include <session.hh>
 
-#include "query_result.hh"
-#include "session.hh"
+#include <scylla_blas/structure/matrix_block.hh>
+#include <scylla_blas/structure/matrix_value.hh>
+#include <scylla_blas/structure/vector.hh>
+#include <scylla_blas/utils/scylla_types.hh>
+
 
 namespace scylla_blas {
 
@@ -19,7 +20,7 @@ namespace scylla_blas {
 * Matrix class giving access to matrix loaded into Scylla.
 */
 template<class T>
-class scylla_matrix {
+class matrix {
 private:
     static const index_type block_size = (1 << 8);
 
@@ -93,7 +94,7 @@ public:
         return _id;
     }
 
-    scylla_matrix(std::shared_ptr<scmd::session> session, const std::string &id, bool force_new = false) :
+    matrix(std::shared_ptr<scmd::session> session, const std::string &id, bool force_new = false) :
             _id(id),
             _session(prepare_session(session, _id, force_new)),
 #define PREPARE(x, args...) x(_session->prepare(fmt::format(args)))
@@ -137,12 +138,12 @@ public:
          * E.g. if we have a block sized 2x2, then for such a matrix:
          * ---------
          * |1 0 0 0|
-         * |0 1 0 0|
+         * |1 1 0 0|
          * |0 0 1 0|
          * |0 0 1 1|
          * ---------
-         * then both blocks (1, 1) and (2, 2) will have identical coordinates for all values.
-         * This should make further operations on abstract blocks easier by a lot.
+         * both blocks (1, 1) and (2, 2) will have identical sets of coordinates for all values.
+         * This should make further operations on abstract blocks easier by a bit.
          */
         index_type offset_x = (x - 1) * block_size;
         index_type offset_y = (y - 1) * block_size;

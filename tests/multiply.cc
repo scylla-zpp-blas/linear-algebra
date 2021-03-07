@@ -1,11 +1,11 @@
 #include <iostream>
 #include <memory>
 
-#include "value_factory.hh"
-#include "sparse_matrix_value_generator.hh"
-#include "scylla_blas.hh"
+#include <session.hh>
 
-#include "session.hh"
+#include <scylla_blas/utils/value_factory.hh>
+#include <scylla_blas/utils/sparse_matrix_value_generator.hh>
+#include <scylla_blas/scylla_blas.hh>
 
 int main(int argc, char **argv) {
     if (argc > 3) {

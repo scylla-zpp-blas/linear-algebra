@@ -2,9 +2,10 @@
 
 #include <random>
 #include <memory>
+
 #include "matrix_value_generator.hh"
 #include "value_factory.hh"
-#include "utils/int_math.hh"
+#include "int_math.hh"
 
 namespace scylla_blas {
 
