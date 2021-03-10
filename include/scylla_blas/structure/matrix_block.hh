@@ -3,9 +3,9 @@
 #include <map>
 #include <vector>
 
-#include <structure/matrix_value.hh>
-#include <structure/vector.hh>
-#include <utils/scylla_types.hh>
+#include <scylla_blas/structure/matrix_value.hh>
+#include <scylla_blas/structure/vector.hh>
+#include <scylla_blas/utils/scylla_types.hh>
 
 namespace {
 

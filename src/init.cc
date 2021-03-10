@@ -1,7 +1,7 @@
 #include <iostream>
 #include <string>
 
-#include "session.hh"
+#include <session.hh>
 
 /* Use this program once to initialize the database */
 int main(int argc, char **argv) {
