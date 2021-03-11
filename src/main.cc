@@ -1,10 +1,46 @@
+#include <boost/program_options.hpp>
+namespace po = boost::program_options;
+
 #include <iostream>
 #include <string>
 
 #include <session.hh>
 
+struct options {
+    std::string host{};
+    uint16_t port{};
+};
+
+
+void parse_arguments(int ac, char *av[], options *options) {
+    try {
+        po::options_description desc("Usage");
+        desc.add_options()
+            ("help", "Show program help")
+            ("host,H", po::value<std::string>(&options->host)->required(), "Address on which Scylla can be reached")
+            ("port,P", po::value<uint16_t>(&options->port)->required(), "port number on which Scylla can be reached");
+
+        po::variables_map vm;
+        po::store(po::parse_command_line(ac, av, desc), vm);
+        if (vm.count("help")) {
+            std::cout << desc << "\n";
+            std::exit(0);
+        }
+        po::notify(vm);
+    } catch (std::exception &e) {
+        std::cerr << "error: " << e.what() << "\n";
+        std::exit(1);
+    } catch (...) {
+        std::cerr << "Exception of unknown type!\n";
+        std::exit(1);
+    }
+}
+
 /* Use this program once to initialize the database */
 int main(int argc, char **argv) {
+    struct options op;
+    parse_arguments(argc, argv, &op);
+
     if (argc > 3) {
         std::cout << "Usage: " << argv[0] << " [IP address] [port]" << std::endl;
         exit(0);

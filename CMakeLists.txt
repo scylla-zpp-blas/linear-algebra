@@ -36,9 +36,17 @@ set(BLAS_INCLUDE
         ${INCLUDE_DIR}/utils/scylla_types.hh
         ${INCLUDE_DIR}/utils/utils.hh)
 
+find_package(Boost 1.60.0 COMPONENTS system filesystem unit_test_framework program_options REQUIRED )
+
 add_library(scylla_blas SHARED "${BLAS_SRC}" "${BLAS_INCLUDE}")
-target_include_directories(scylla_blas PUBLIC ${CMAKE_SOURCE_DIR}/include)
-target_link_libraries(scylla_blas PUBLIC scylla_modern_cpp_driver fmt::fmt)
+target_include_directories(scylla_blas PUBLIC ${CMAKE_SOURCE_DIR}/include ${Boost_INCLUDE_DIRS})
+target_link_libraries(scylla_blas PUBLIC scylla_modern_cpp_driver fmt::fmt ${Boost_LIBRARIES})
+# Magic needed to make library executable. From: https://unix.stackexchange.com/a/479334
+target_compile_options(scylla_blas PUBLIC "-pie")
+target_link_libraries(scylla_blas PUBLIC "-pie -Wl,-E")
+set_property(TARGET scylla_blas PROPERTY POSITION_INDEPENDENT_CODE 1)
+
+
 
 # We are building as standalone project - build tests
 if (CMAKE_CURRENT_SOURCE_DIR STREQUAL CMAKE_SOURCE_DIR)

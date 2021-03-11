@@ -1,5 +1,3 @@
-find_package(Boost 1.60.0 COMPONENTS system filesystem unit_test_framework REQUIRED )
-
 set(TEST_SRC config.hh fixture.hh main.cc multiply.cc structure_test.cc)
 
 add_executable(scylla_blas_tests "${TEST_SRC}")
