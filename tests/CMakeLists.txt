@@ -1,0 +1,8 @@
+find_package(Boost 1.60.0 COMPONENTS system filesystem unit_test_framework REQUIRED )
+
+set(TEST_SRC config.hh fixture.hh main.cc multiply.cc structure_test.cc)
+
+add_executable(scylla_blas_tests "${TEST_SRC}")
+target_link_libraries(scylla_blas_tests scylla_blas ${Boost_UNIT_TEST_FRAMEWORK_LIBRARY})
+target_compile_definitions(scylla_blas_tests PUBLIC -DBOOST_TEST_DYN_LINK)
+add_test(scylla_blas_tests scylla_blas_tests)

@@ -22,7 +22,6 @@ public:
 
 }
 
-
 template<class T>
 class scylla_blas::item_set {
     int64_t _id;

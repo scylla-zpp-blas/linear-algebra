@@ -25,7 +25,7 @@ int main(int argc, char **argv) {
 
     std::string init_sets = "CREATE TABLE IF NOT EXISTS blas.item_set_meta ( "
                             "   id bigint PRIMARY KEY, "
-                            "   cnt counter "
+                            "   cnt COUNTER "
                             ");";
     session.execute(init_sets);
 
