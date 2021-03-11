@@ -16,7 +16,8 @@ set(BLAS_SRC
         ${SRC_DIR}/structure/vector.cc
 
         ${SRC_DIR}/utils/int_math.cc
-        src/main.cc)
+        src/main.cc
+        )
 
 set(INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/include/scylla_blas)
 set(BLAS_INCLUDE
