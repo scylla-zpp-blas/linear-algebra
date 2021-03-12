@@ -5,6 +5,7 @@
 #include <list>
 #include <memory>
 
+#include <fmt/format.h>
 #include <query_result.hh>
 #include <session.hh>
 

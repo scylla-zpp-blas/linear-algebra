@@ -3,7 +3,7 @@
 #include "fixture.hh"
 
 #include <session.hh>
-#include <scylla_blas/queue/item_set.hh>
+#include <scylla_blas/queue/scylla_queue.hh>
 #include <scylla_blas/matrix.hh>
 
 BOOST_FIXTURE_TEST_SUITE(structure_tests, scylla_fixture)
@@ -67,19 +67,26 @@ BOOST_AUTO_TEST_CASE(vectors)
     std::cout << std::endl;
 }
 
-BOOST_AUTO_TEST_CASE(item_set)
+BOOST_AUTO_TEST_CASE(scylla_queue)
 {
-    srand(time(NULL));
-    std::vector<int> values = {0, 42, 1410, 1, 1999, 2021, 1000 * 1000 * 1000 + 7, 406};
-    scylla_blas::item_set<int> s(session, values.begin(), values.end());
+    scylla_blas::scylla_queue::deinit_meta(session);
+    scylla_blas::scylla_queue::delete_queue(session, 1337);
+    scylla_blas::scylla_queue::init_meta(session);
+    scylla_blas::scylla_queue::create_queue(session, 1337);
+    BOOST_REQUIRE(scylla_blas::scylla_queue::queue_exists(session, 1337));
+    auto queue = scylla_blas::scylla_queue(session, 1337);
 
-    try {
-        for (int i = 0; ; i++) {
-            int next_val = s.get_next();
-            std::cout << i << ": " << next_val << std::endl;
-        }
-    } catch (const scylla_blas::empty_container_error &e) {
-        return; // end of set
+    std::vector<int64_t> values = {0, 42, 1410, 1, 1999, 2021, 1000 * 1000 * 1000 + 7, 406};
+    for(auto val : values) {
+        struct scylla_blas::task task {
+            .data = val
+        };
+        queue.produce(task);
+    }
+
+    for(auto val : values) {
+        struct scylla_blas::task task = queue.consume();
+        BOOST_REQUIRE_EQUAL(val, task.data);
     }
 }
 

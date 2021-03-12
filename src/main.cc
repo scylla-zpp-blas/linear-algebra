@@ -1,17 +1,18 @@
-#include <boost/program_options.hpp>
-namespace po = boost::program_options;
-
 #include <iostream>
 #include <string>
 
+#include <boost/program_options.hpp>
+namespace po = boost::program_options;
 #include <fmt/format.h>
+
 #include <session.hh>
+#include "scylla_blas/queue/scylla_queue.hh"
 
 struct options {
     std::string host{};
     uint16_t port{};
-    bool is_worker;
-    bool is_init;
+    bool is_worker = false;
+    bool is_init = false;
 };
 
 template<typename ...T>
@@ -63,19 +64,14 @@ void parse_arguments(int ac, char *av[], options &options) {
 void init(const struct options& op) {
     std::cerr << "Connecting to " << op.host << ":" << op.port << "..." << std::endl;
 
-    scmd::session session{op.host, std::to_string(op.port)};
+    auto session = std::make_shared<scmd::session>(op.host, std::to_string(op.port));
     std::string init_namespace = "CREATE KEYSPACE IF NOT EXISTS blas WITH REPLICATION = {"
                                  "  'class' : 'SimpleStrategy',"
                                  "  'replication_factor' : 1"
                                  "};";
-    session.execute(init_namespace);
+    session->execute(init_namespace);
 
-
-    std::string init_sets = "CREATE TABLE IF NOT EXISTS blas.item_set_meta ( "
-                            "   id bigint PRIMARY KEY, "
-                            "   cnt COUNTER "
-                            ");";
-    session.execute(init_sets);
+    scylla_blas::scylla_queue::init_meta(session);
 
     std::cerr << "Database initialized succesfully!" << std::endl;
 }
