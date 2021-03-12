@@ -67,9 +67,9 @@ public:
                 id bigint PRIMARY KEY,
                 value BLOB
             );)", id));
-        session->execute<int64_t, bool, bool>(R"(
-            INSERT INTO blas.queue_meta (id, multi_producer, multi_consumer, cnt_new, cnt_used) VALUES (?, ?, ?, 0, 0);"
-            )", id, multi_producer, multi_consumer);
+        session->execute(
+                R"(INSERT INTO blas.queue_meta (id, multi_producer, multi_consumer, cnt_new, cnt_used)
+                          VALUES (?, ?, ?, 0, 0); )", id, multi_producer, multi_consumer);
     }
 
     static void delete_queue(const std::shared_ptr<scmd::session>& session, int64_t id) {
