@@ -1,5 +1,7 @@
 #pragma once
 
+#include "scylla_blas/config.hh"
+
 class global_config {
 public:
     static inline int argc = 0;
@@ -14,6 +16,6 @@ public:
             throw std::runtime_error("You need to specify ip in the command line: ./tests -- scylla_ip");
         }
         scylla_ip = argv[1];
-        scylla_port = argc > 2 ? argv[2] : "9042";
+        scylla_port = argc > 2 ? argv[2] : std::to_string(SCYLLA_DEFAULT_PORT);
     }
 };
