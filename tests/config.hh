@@ -10,8 +10,10 @@ public:
     static void init() {
         argc = boost::unit_test::framework::master_test_suite().argc;
         argv = boost::unit_test::framework::master_test_suite().argv;
-
-        scylla_ip = argc > 1 ? argv[1] : "172.17.0.2";
+        if (argc <= 1) {
+            throw std::runtime_error("You need to specify ip in the command line: ./tests -- scylla_ip");
+        }
+        scylla_ip = argv[1];
         scylla_port = argc > 2 ? argv[2] : "9042";
     }
 };
