@@ -1,6 +1,16 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
+  <component name="GithubSharedProjectSettings">
+    <option name="branchProtectionPatterns">
+      <list>
+        <option value="master" />
+      </list>
+    </option>
+  </component>
   <component name="VcsDirectoryMappings">
     <mapping directory="$PROJECT_DIR$" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/lib/driver" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/lib/driver/lib/cpp-driver" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/lib/fmt" vcs="Git" />
   </component>
 </project>

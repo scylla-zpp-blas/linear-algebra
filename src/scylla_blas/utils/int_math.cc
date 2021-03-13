@@ -1,4 +1,4 @@
-#include <scylla_blas/utils/int_math.hh>
+#include "scylla_blas/utils/int_math.hh"
 
 int IntMath::floor_div(int a, int b) {
     return (a + b - 1) / b;

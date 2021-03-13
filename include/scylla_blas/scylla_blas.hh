@@ -1,18 +1,16 @@
 #pragma once
 
-#include <bits/exception.h>
-
-#include <scylla_blas/matrix.hh>
-#include <scylla_blas/utils/matrix_value_generator.hh>
-#include <scylla_blas/utils/scylla_types.hh>
-#include <scylla_blas/utils/utils.hh>
+#include "scylla_blas/matrix.hh"
+#include "scylla_blas/utils/matrix_value_generator.hh"
+#include "scylla_blas/utils/scylla_types.hh"
+#include "scylla_blas/utils/utils.hh"
 
 namespace {
 
 template <class T>
-scylla_blas::matrix<T> load_matrix_from_generator(std::shared_ptr<scmd::session> session,
+scylla_blas::matrix<T> load_matrix_from_generator(const std::shared_ptr<scmd::session> &session,
                                                   scylla_blas::matrix_value_generator<T> &gen,
-                                                  std::string id) {
+                                                  const std::string &id) {
     scylla_blas::matrix<T> result(session, id, true);
     scylla_blas::vector<T> next_row;
     scylla_blas::matrix_value<T> prev_val (-1, -1, 0);

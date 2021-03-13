@@ -1,11 +1,12 @@
 #pragma once
 
 #include <map>
+#include <utility>
 #include <vector>
 
-#include <scylla_blas/structure/matrix_value.hh>
-#include <scylla_blas/structure/vector.hh>
-#include <scylla_blas/utils/scylla_types.hh>
+#include "scylla_blas/structure/matrix_value.hh"
+#include "scylla_blas/structure/vector.hh"
+#include "scylla_blas/utils/scylla_types.hh"
 
 namespace {
 
@@ -67,8 +68,8 @@ public:
     const index_type i;
     const index_type j;
 
-    matrix_block(val_t values, const std::string &matrix_id, index_type i, index_type j) :
-        _values(values), matrix_id(matrix_id), i(i), j(j) {}
+    matrix_block(val_t values, std::string matrix_id, index_type i, index_type j) :
+        _values(values), matrix_id(std::move(matrix_id)), i(i), j(j) {}
 
     matrix_block operator*=(const matrix_block &other) {
         _values = (*this * other)._values;

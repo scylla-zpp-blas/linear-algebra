@@ -5,8 +5,8 @@
 #include <iostream>
 #include <string>
 
-#include <scylla_blas/utils/scylla_types.hh>
-#include <scylla_blas/utils/utils.hh>
+#include "scylla_blas/utils/scylla_types.hh"
+#include "scylla_blas/utils/utils.hh"
 
 namespace scylla_blas {
 
@@ -32,7 +32,7 @@ struct matrix_value {
 
 template<>
 inline bool matrix_value<float>::operator==(const matrix_value<float> &other) const {
-    return row_index == other.row_index && col_index == other.col_index && abs(value - other.value < scylla_blas::epsilon);
+    return row_index == other.row_index && col_index == other.col_index && std::abs(value - other.value) < scylla_blas::epsilon;
 }
 
 template <typename T>

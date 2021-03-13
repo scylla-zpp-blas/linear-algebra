@@ -1,13 +1,16 @@
-#include <iostream>
-#include <string>
+#include <queue>
 
-#include <session.hh>
+#include <boost/test/unit_test.hpp>
+#include <scmd.hh>
 
-#include <scylla_blas/structure/item_set.hh>
-#include <scylla_blas/matrix.hh>
+#include "scylla_blas/queue/scylla_queue.hh"
+#include "scylla_blas/matrix.hh"
+#include "fixture.hh"
 
+BOOST_FIXTURE_TEST_SUITE(structure_tests, scylla_fixture)
 
-void test_matrices(std::shared_ptr<scmd::session> session) {
+BOOST_AUTO_TEST_CASE(matrices)
+{
     auto matrix = scylla_blas::matrix<float>(session, "testowa");
     auto matrix_2 = scylla_blas::matrix<float>(session, "testowa");
 
@@ -21,7 +24,9 @@ void test_matrices(std::shared_ptr<scmd::session> session) {
     std::cout << "(1, 1): " << matrix.get_value(1, 1) << std::endl;
 }
 
-void test_vectors() {
+
+BOOST_AUTO_TEST_CASE(vectors)
+{
     auto vector_1 = scylla_blas::vector<float>();
 
     for (int i = 0; i < 10; i++) {
@@ -63,39 +68,105 @@ void test_vectors() {
     std::cout << std::endl;
 }
 
-void test_item_sets(std::shared_ptr<scmd::session> session) {
-    srand(time(NULL));
-    std::vector<int> values = {0, 42, 1410, 1, 1999, 2021, 1000 * 1000 * 1000 + 7, 406};
-    scylla_blas::item_set<int> s(session, values.begin(), values.end());
+BOOST_AUTO_TEST_CASE(scylla_queue_sp_mc)
+{
+    scylla_blas::scylla_queue::delete_queue(session, 1337);
+    scylla_blas::scylla_queue::create_queue(session, 1337);
+    BOOST_REQUIRE(scylla_blas::scylla_queue::queue_exists(session, 1337));
+    auto queue = scylla_blas::scylla_queue(session, 1337);
 
-    try {
-        for (int i = 0; ; i++) {
-            int next_val = s.get_next();
-            std::cout << i << ": " << next_val << std::endl;
-        }
-    } catch (const scylla_blas::empty_container_error &e) {
-        return; // end of set
+    std::vector<int64_t> values = {0, 42, 1410, 1, 1999, 2021, 1000 * 1000 * 1000 + 7, 406};
+    std::queue<int64_t> task_ids = {};
+    for(auto val : values) {
+        struct scylla_blas::task task {
+                .data = val
+        };
+        task_ids.push(queue.produce(task));
+    }
+
+    for(auto val : values) {
+        auto [id, task] = queue.consume();
+        BOOST_REQUIRE_EQUAL(val, task.data);
+        queue.mark_as_finished(id);
+        BOOST_REQUIRE(queue.is_finished(task_ids.front()));
+        task_ids.pop();
     }
 }
 
-int main(int argc, char **argv) {
-    if (argc > 2) {
-        std::cout << "Usage: " << argv[0] << " [IP address] [port]" << std::endl;
-        exit(0);
+BOOST_AUTO_TEST_CASE(scylla_queue_mp_sc)
+{
+    scylla_blas::scylla_queue::delete_queue(session, 1337);
+    scylla_blas::scylla_queue::create_queue(session, 1337, true, false);
+    BOOST_REQUIRE(scylla_blas::scylla_queue::queue_exists(session, 1337));
+    auto queue = scylla_blas::scylla_queue(session, 1337);
+
+    std::vector<int64_t> values = {0, 42, 1410, 1, 1999, 2021, 1000 * 1000 * 1000 + 7, 406};
+    std::queue<int64_t> task_ids = {};
+    for(auto val : values) {
+        struct scylla_blas::task task {
+                .data = val
+        };
+        task_ids.push(queue.produce(task));
     }
 
-    std::string ip_address = argc > 1 ? argv[1] : "172.17.0.2"; // docker address = default
-    std::string port = argc > 2 ? argv[2] : "9042";
-
-    std::cerr << "Connecting to " << ip_address << ":" << port << "..." << std::endl;
-
-    auto session = std::make_shared<scmd::session>(ip_address, port);
-
-
-    test_matrices(session);
-    test_vectors();
-    test_item_sets(session);
-
-    return 0;
+    for(auto val : values) {
+        auto [id, task] = queue.consume();
+        BOOST_REQUIRE_EQUAL(val, task.data);
+        queue.mark_as_finished(id);
+        BOOST_REQUIRE(queue.is_finished(task_ids.front()));
+        task_ids.pop();
+    }
 }
+
+BOOST_AUTO_TEST_CASE(scylla_queue_sp_sc)
+{
+    scylla_blas::scylla_queue::delete_queue(session, 1337);
+    scylla_blas::scylla_queue::create_queue(session, 1337, false, false);
+    BOOST_REQUIRE(scylla_blas::scylla_queue::queue_exists(session, 1337));
+    auto queue = scylla_blas::scylla_queue(session, 1337);
+
+    std::vector<int64_t> values = {0, 42, 1410, 1, 1999, 2021, 1000 * 1000 * 1000 + 7, 406};
+    std::queue<int64_t> task_ids = {};
+    for(auto val : values) {
+        struct scylla_blas::task task {
+                .data = val
+        };
+        task_ids.push(queue.produce(task));
+    }
+
+    for(auto val : values) {
+        auto [id, task] = queue.consume();
+        BOOST_REQUIRE_EQUAL(val, task.data);
+        queue.mark_as_finished(id);
+        BOOST_REQUIRE(queue.is_finished(task_ids.front()));
+        task_ids.pop();
+    }
+}
+
+BOOST_AUTO_TEST_CASE(scylla_queue_mp_mc)
+{
+    scylla_blas::scylla_queue::delete_queue(session, 1337);
+    scylla_blas::scylla_queue::create_queue(session, 1337, true, true);
+    BOOST_REQUIRE(scylla_blas::scylla_queue::queue_exists(session, 1337));
+    auto queue = scylla_blas::scylla_queue(session, 1337);
+
+    std::vector<int64_t> values = {0, 42, 1410, 1, 1999, 2021, 1000 * 1000 * 1000 + 7, 406};
+    std::queue<int64_t> task_ids = {};
+    for(auto val : values) {
+        struct scylla_blas::task task {
+                .data = val
+        };
+        task_ids.push(queue.produce(task));
+    }
+
+    for(auto val : values) {
+        auto [id, task] = queue.consume();
+        BOOST_REQUIRE_EQUAL(val, task.data);
+        queue.mark_as_finished(id);
+        BOOST_REQUIRE(queue.is_finished(task_ids.front()));
+        task_ids.pop();
+    }
+}
+
+BOOST_AUTO_TEST_SUITE_END();
 
