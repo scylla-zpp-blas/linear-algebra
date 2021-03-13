@@ -3,9 +3,9 @@
 #include <random>
 #include <memory>
 
-#include "matrix_value_generator.hh"
+#include "scylla_blas/utils/matrix_value_generator.hh"
+#include "scylla_blas/utils/int_math.hh"
 #include "value_factory.hh"
-#include "int_math.hh"
 
 namespace scylla_blas {
 

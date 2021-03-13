@@ -1,7 +1,8 @@
 #pragma once
 
-#include <boost/core/demangle.hpp>
 #include <cstdint>
+
+#include <boost/core/demangle.hpp>
 
 namespace scylla_blas {
 

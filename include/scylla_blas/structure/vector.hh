@@ -1,10 +1,10 @@
 #pragma once
 
-#include <cstdarg>
 #include <vector>
 #include <utility>
+#include <algorithm>
 
-#include <scylla_blas/utils/scylla_types.hh>
+#include "scylla_blas/utils/scylla_types.hh"
 
 namespace scylla_blas {
 
@@ -30,7 +30,7 @@ public:
     }
 
     template<typename... U>
-    vector (U... args) : std::vector<scylla_blas::vector_value<T>>(args...) { }
+    explicit vector (U... args) : std::vector<scylla_blas::vector_value<T>>(args...) { }
 
     vector operator+=(const vector &other) {
         size_t initial_size = this->size();

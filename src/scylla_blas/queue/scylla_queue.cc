@@ -1,4 +1,4 @@
-#include <scylla_blas/queue/scylla_queue.hh>
+#include "scylla_blas/queue/scylla_queue.hh"
 
 void scylla_blas::scylla_queue::init_meta(const std::shared_ptr<scmd::session> &session) {
     std::string init_meta = "CREATE TABLE blas.queue_meta ( "
@@ -7,16 +7,16 @@ void scylla_blas::scylla_queue::init_meta(const std::shared_ptr<scmd::session> &
                             "   multi_consumer BOOLEAN, "
                             "   cnt_new BIGINT, "
                             "   cnt_used BIGINT"
-                            ");";
+                            ")";
     session->execute(init_meta);
 }
 
 [[maybe_unused]] void scylla_blas::scylla_queue::deinit_meta(const std::shared_ptr<scmd::session> &session) {
-    session->execute("DROP TABLE IF EXISTS blas.queue_meta;");
+    session->execute("DROP TABLE IF EXISTS blas.queue_meta");
 }
 
 bool scylla_blas::scylla_queue::queue_exists(const std::shared_ptr<scmd::session> &session, int64_t id) {
-    auto result = session->execute(fmt::format("SELECT * FROM blas.queue_meta WHERE id = {};", id));
+    auto result = session->execute(fmt::format("SELECT * FROM blas.queue_meta WHERE id = {}", id));
     return result.row_count() == 1;
 }
 
@@ -28,15 +28,15 @@ scylla_blas::scylla_queue::create_queue(const std::shared_ptr<scmd::session> &se
                 id bigint PRIMARY KEY,
                 is_finished BOOLEAN,
                 value BLOB
-            );)", id));
+            ))", id));
     session->execute(
             R"(INSERT INTO blas.queue_meta (id, multi_producer, multi_consumer, cnt_new, cnt_used)
-                          VALUES (?, ?, ?, 0, 0); )", id, multi_producer, multi_consumer);
+                          VALUES (?, ?, ?, 0, 0))", id, multi_producer, multi_consumer);
 }
 
 void scylla_blas::scylla_queue::delete_queue(const std::shared_ptr<scmd::session> &session, int64_t id) {
-    auto future_1 = session->execute_async(fmt::format("DROP TABLE IF EXISTS blas.queue_{0};", id));
-    auto future_2 = session->execute_async("DELETE FROM blas.queue_meta WHERE id = ?;", id);
+    auto future_1 = session->execute_async(fmt::format("DROP TABLE IF EXISTS blas.queue_{0}", id));
+    auto future_2 = session->execute_async("DELETE FROM blas.queue_meta WHERE id = ?", id);
     future_1.wait();
     future_2.wait();
 }
@@ -46,23 +46,27 @@ scylla_blas::scylla_queue::scylla_queue(const std::shared_ptr<scmd::session> &se
         _session(session),
 #define PREPARE(x, args...) x(_session->prepare(fmt::format(args)))
         PREPARE(update_new_counter_prepared,
-                "UPDATE blas.queue_meta SET cnt_new = ? WHERE id = {};", _id),
+                "UPDATE blas.queue_meta SET cnt_new = ? WHERE id = {}", _id),
         PREPARE(update_new_counter_trans_prepared,
-                "UPDATE blas.queue_meta SET cnt_new = ? WHERE id = {} IF cnt_new = ?;", _id),
+                "UPDATE blas.queue_meta SET cnt_new = ? WHERE id = {} IF cnt_new = ?", _id),
         fetch_counters_stmt(fmt::format(
-                "SELECT cnt_new, cnt_used FROM blas.queue_meta WHERE id = {};", _id)),
+                "SELECT cnt_new, cnt_used FROM blas.queue_meta WHERE id = {}", _id)),
         PREPARE(update_used_counter_prepared,
-                "UPDATE blas.queue_meta SET cnt_used = ? WHERE id = {};", _id),
+                "UPDATE blas.queue_meta SET cnt_used = ? WHERE id = {}", _id),
         // cnt_new >= ? will always be true, it is there to give us current value of cnt_new
         PREPARE(update_used_counter_trans_prepared,
-                "UPDATE blas.queue_meta SET cnt_used = ? WHERE id = {} IF cnt_used = ? AND cnt_new >= ?;", _id),
+                "UPDATE blas.queue_meta SET cnt_used = ? WHERE id = {} IF cnt_used = ? AND cnt_new >= ?", _id),
         PREPARE(fetch_task_by_id_prepared,
-                "SELECT value FROM blas.queue_{} WHERE id = ?;", _id),
+                "SELECT value FROM blas.queue_{} WHERE id = ?", _id),
         PREPARE(insert_task_prepared,
-                "INSERT INTO blas.queue_{} (id, is_finished, value) VALUES (?, False, ?)", _id)
+                "INSERT INTO blas.queue_{} (id, is_finished, value) VALUES (?, False, ?)", _id),
+        PREPARE(mark_task_finished_prepared,
+                "UPDATE blas.queue_{} SET is_finished = True WHERE id = ?", _id),
+        PREPARE(check_task_finished_prepared,
+                "SELECT is_finished FROM blas.queue_{} WHERE id = ?", _id)
 #undef PREPARE
 {
-    auto result = session->execute("SELECT * FROM blas.queue_meta WHERE id = ?;", _id);
+    auto result = session->execute("SELECT * FROM blas.queue_meta WHERE id = ?", _id);
     if (result.row_count() != 1) {
         throw std::runtime_error(fmt::format("Tried to connect to non-existing queue (row count: {})", result.row_count()));
     }
@@ -88,6 +92,23 @@ scylla_blas::task scylla_blas::scylla_queue::consume() {
         return consume_simple();
     }
 }
+
+void scylla_blas::scylla_queue::mark_as_finished(int64_t id) {
+    _session->execute(mark_task_finished_prepared, id);
+}
+
+bool scylla_blas::scylla_queue::is_finished(int64_t id) {
+    auto result = _session->execute(check_task_finished_prepared, id);
+    if(!result.next_row()) {
+        throw std::runtime_error("No task with given id");
+    }
+    return result.get_column<bool>("is_finished");
+}
+
+
+
+// =========== PRIVATE METHODS ===========
+
 
 void scylla_blas::scylla_queue::update_counters() {
     auto result = _session->execute(fetch_counters_stmt);

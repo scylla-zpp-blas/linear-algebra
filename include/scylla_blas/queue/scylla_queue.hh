@@ -4,10 +4,10 @@
 #include <memory>
 
 #include <fmt/format.h>
-#include <session.hh>
+#include <scmd.hh>
 
-#include <scylla_blas/utils/scylla_types.hh>
-#include <scylla_blas/utils/utils.hh>
+#include "scylla_blas/utils/scylla_types.hh"
+#include "scylla_blas/utils/utils.hh"
 
 namespace scylla_blas {
 class empty_container_error : public std::runtime_error {
@@ -40,6 +40,9 @@ class scylla_queue {
     scmd::prepared_query fetch_task_by_id_prepared;
     scmd::prepared_query insert_task_prepared;
 
+    scmd::prepared_query mark_task_finished_prepared;
+    scmd::prepared_query check_task_finished_prepared;
+
 public:
     static void init_meta(const std::shared_ptr<scmd::session>& session);
 
@@ -57,6 +60,10 @@ public:
 
     struct task consume();
 
+    void mark_as_finished(int64_t id);
+
+    bool is_finished(int64_t id);
+
 private:
     void update_counters();
 
@@ -73,7 +80,5 @@ private:
     struct task consume_simple();
 
     struct task consume_multi();
-
-
 };
 }

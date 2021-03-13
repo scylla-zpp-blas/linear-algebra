@@ -1,6 +1,7 @@
 #pragma once
 
-#include <session.hh>
+#include <scmd.hh>
+
 #include "config.hh"
 
 class scylla_fixture {

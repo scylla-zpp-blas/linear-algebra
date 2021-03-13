@@ -4,8 +4,8 @@
 #include <boost/program_options.hpp>
 namespace po = boost::program_options;
 #include <fmt/format.h>
+#include <scmd.hh>
 
-#include <session.hh>
 #include "scylla_blas/queue/scylla_queue.hh"
 
 struct options {

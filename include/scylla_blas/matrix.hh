@@ -2,17 +2,16 @@
 
 #include <cstddef>
 #include <iostream>
-#include <list>
 #include <memory>
+#include <utility>
 
 #include <fmt/format.h>
-#include <query_result.hh>
-#include <session.hh>
+#include <scmd.hh>
 
-#include <scylla_blas/structure/matrix_block.hh>
-#include <scylla_blas/structure/matrix_value.hh>
-#include <scylla_blas/structure/vector.hh>
-#include <scylla_blas/utils/scylla_types.hh>
+#include "scylla_blas/structure/matrix_block.hh"
+#include "scylla_blas/structure/matrix_value.hh"
+#include "scylla_blas/structure/vector.hh"
+#include "scylla_blas/utils/scylla_types.hh"
 
 
 namespace scylla_blas {
@@ -95,7 +94,7 @@ public:
         return _id;
     }
 
-    matrix(std::shared_ptr<scmd::session> session, const std::string &id, bool force_new = false) :
+    matrix(const std::shared_ptr<scmd::session>& session, const std::string &id, bool force_new = false) :
             _id(id),
             _session(prepare_session(session, _id, force_new)),
 #define PREPARE(x, args...) x(_session->prepare(fmt::format(args)))
