@@ -22,16 +22,13 @@ set(BLAS_INCLUDE
         ${INCLUDE_DIR}/matrix.hh
         ${INCLUDE_DIR}/scylla_blas.hh
 
-        ${INCLUDE_DIR}/utils/value_factory.hh
-        ${INCLUDE_DIR}/utils/matrix_value_generator.hh
-        ${INCLUDE_DIR}/utils/sparse_matrix_value_generator.hh
-
         ${INCLUDE_DIR}/queue/scylla_queue.hh
 
         ${INCLUDE_DIR}/structure/vector.hh
         ${INCLUDE_DIR}/structure/matrix_block.hh
         ${INCLUDE_DIR}/structure/matrix_value.hh
 
+        ${INCLUDE_DIR}/utils/matrix_value_generator.hh
         ${INCLUDE_DIR}/utils/int_math.hh
         ${INCLUDE_DIR}/utils/scylla_types.hh
         ${INCLUDE_DIR}/utils/utils.hh)

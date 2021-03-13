@@ -4,8 +4,8 @@ class global_config {
 public:
     static inline int argc = 0;
     static inline char** argv = nullptr;
-    static inline std::string scylla_ip = "";
-    static inline std::string scylla_port = "";
+    static inline std::string scylla_ip;
+    static inline std::string scylla_port;
 
     static void init() {
         argc = boost::unit_test::framework::master_test_suite().argc;

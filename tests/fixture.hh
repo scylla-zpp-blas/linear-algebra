@@ -16,7 +16,7 @@ public:
     ~scylla_fixture() {
     }
 
-    void connect(std::string ip = global_config::scylla_ip, std::string port = global_config::scylla_port) {
+    void connect(const std::string& ip = global_config::scylla_ip, const std::string& port = global_config::scylla_port) {
         this->session = std::make_shared<scmd::session>(ip, port);
     }
 };
