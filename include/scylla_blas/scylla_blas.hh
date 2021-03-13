@@ -8,9 +8,9 @@
 namespace {
 
 template <class T>
-scylla_blas::matrix<T> load_matrix_from_generator(const std::shared_ptr<scmd::session>& session,
+scylla_blas::matrix<T> load_matrix_from_generator(const std::shared_ptr<scmd::session> &session,
                                                   scylla_blas::matrix_value_generator<T> &gen,
-                                                  const std::string& id) {
+                                                  const std::string &id) {
     scylla_blas::matrix<T> result(session, id, true);
     scylla_blas::vector<T> next_row;
     scylla_blas::matrix_value<T> prev_val (-1, -1, 0);

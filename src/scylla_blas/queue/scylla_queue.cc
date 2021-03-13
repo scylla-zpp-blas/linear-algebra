@@ -20,9 +20,8 @@ bool scylla_blas::scylla_queue::queue_exists(const std::shared_ptr<scmd::session
     return result.row_count() == 1;
 }
 
-void
-scylla_blas::scylla_queue::create_queue(const std::shared_ptr<scmd::session> &session, int64_t id, bool multi_producer,
-                                        bool multi_consumer) {
+void scylla_blas::scylla_queue::create_queue(const std::shared_ptr<scmd::session> &session,
+                                             int64_t id, bool multi_producer, bool multi_consumer) {
     session->execute(fmt::format(R"(
             CREATE TABLE blas.queue_{0} (
                 id bigint PRIMARY KEY,
@@ -85,7 +84,7 @@ int64_t scylla_blas::scylla_queue::produce(const scylla_blas::task &task) {
     }
 }
 
-scylla_blas::task scylla_blas::scylla_queue::consume() {
+std::pair<int64_t, scylla_blas::task> scylla_blas::scylla_queue::consume() {
     if(multi_consumer) {
         return consume_multi();
     } else {
@@ -182,7 +181,7 @@ scylla_blas::task scylla_blas::scylla_queue::fetch_task_loop(int64_t task_id) {
     }
 }
 
-scylla_blas::task scylla_blas::scylla_queue::consume_simple() {
+std::pair<int64_t, scylla_blas::task> scylla_blas::scylla_queue::consume_simple() {
     // First we need to check if there is task to fetch
     // There is, if used counter is less than new counter
     update_counters();
@@ -195,10 +194,10 @@ scylla_blas::task scylla_blas::scylla_queue::consume_simple() {
     auto future_2 = _session->execute_async(update_used_counter_prepared, cnt_used);
     future_2.wait();
 
-    return fetch_task_loop(cnt_used - 1);
+    return {cnt_used - 1, fetch_task_loop(cnt_used - 1)};
 }
 
-scylla_blas::task scylla_blas::scylla_queue::consume_multi() {
+std::pair<int64_t, scylla_blas::task> scylla_blas::scylla_queue::consume_multi() {
     // First we need to check if there is task to fetch
     // There is, if used counter is less than new counter
     update_counters();
@@ -215,7 +214,8 @@ scylla_blas::task scylla_blas::scylla_queue::consume_multi() {
         cnt_used = result.get_column<int64_t>("cnt_used");
         if(result.get_column<bool>("[applied]")) {
             // We claimed a task
-            return fetch_task_loop(cnt_used++);
+            cnt_used++;
+            return {cnt_used-1, fetch_task_loop(cnt_used-1)};
         }
     }
 }

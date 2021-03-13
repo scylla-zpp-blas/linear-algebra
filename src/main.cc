@@ -34,7 +34,7 @@ void parse_arguments(int ac, char *av[], options &options) {
             ("init", "Initialize Scylla keyspace and tables")
             ("worker", "Connect to Scylla and process incoming requests")
             ("host,H", po::value<std::string>(&options.host)->required(), "Address on which Scylla can be reached")
-            ("port,P", po::value<uint16_t>(&options.port)->required(), "port number on which Scylla can be reached");
+            ("port,P", po::value<uint16_t>(&options.port)->default_value(9042), "port number on which Scylla can be reached");
     desc.add(opt);
     try {
         auto parsed = po::command_line_parser(ac, av)

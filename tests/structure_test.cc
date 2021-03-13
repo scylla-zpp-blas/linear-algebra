@@ -79,15 +79,15 @@ BOOST_AUTO_TEST_CASE(scylla_queue_sp_mc)
     std::queue<int64_t> task_ids = {};
     for(auto val : values) {
         struct scylla_blas::task task {
-            .data = val
+                .data = val
         };
         task_ids.push(queue.produce(task));
     }
 
     for(auto val : values) {
-        struct scylla_blas::task task = queue.consume();
+        auto [id, task] = queue.consume();
         BOOST_REQUIRE_EQUAL(val, task.data);
-        queue.mark_as_finished(task_ids.front());
+        queue.mark_as_finished(id);
         BOOST_REQUIRE(queue.is_finished(task_ids.front()));
         task_ids.pop();
     }
@@ -110,9 +110,9 @@ BOOST_AUTO_TEST_CASE(scylla_queue_mp_sc)
     }
 
     for(auto val : values) {
-        struct scylla_blas::task task = queue.consume();
+        auto [id, task] = queue.consume();
         BOOST_REQUIRE_EQUAL(val, task.data);
-        queue.mark_as_finished(task_ids.front());
+        queue.mark_as_finished(id);
         BOOST_REQUIRE(queue.is_finished(task_ids.front()));
         task_ids.pop();
     }
@@ -135,9 +135,9 @@ BOOST_AUTO_TEST_CASE(scylla_queue_sp_sc)
     }
 
     for(auto val : values) {
-        struct scylla_blas::task task = queue.consume();
+        auto [id, task] = queue.consume();
         BOOST_REQUIRE_EQUAL(val, task.data);
-        queue.mark_as_finished(task_ids.front());
+        queue.mark_as_finished(id);
         BOOST_REQUIRE(queue.is_finished(task_ids.front()));
         task_ids.pop();
     }
@@ -160,9 +160,9 @@ BOOST_AUTO_TEST_CASE(scylla_queue_mp_mc)
     }
 
     for(auto val : values) {
-        struct scylla_blas::task task = queue.consume();
+        auto [id, task] = queue.consume();
         BOOST_REQUIRE_EQUAL(val, task.data);
-        queue.mark_as_finished(task_ids.front());
+        queue.mark_as_finished(id);
         BOOST_REQUIRE(queue.is_finished(task_ids.front()));
         task_ids.pop();
     }
