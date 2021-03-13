@@ -31,7 +31,7 @@ set(BLAS_INCLUDE
         ${INCLUDE_DIR}/utils/matrix_value_generator.hh
         ${INCLUDE_DIR}/utils/int_math.hh
         ${INCLUDE_DIR}/utils/scylla_types.hh
-        ${INCLUDE_DIR}/utils/utils.hh)
+        ${INCLUDE_DIR}/utils/utils.hh include/scylla_blas/config.hh)
 
 add_library(scylla_blas SHARED "${BLAS_SRC}" "${BLAS_INCLUDE}")
 target_include_directories(scylla_blas PUBLIC ${CMAKE_SOURCE_DIR}/include)

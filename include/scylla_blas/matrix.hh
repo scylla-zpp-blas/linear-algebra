@@ -12,7 +12,7 @@
 #include "scylla_blas/structure/matrix_value.hh"
 #include "scylla_blas/structure/vector.hh"
 #include "scylla_blas/utils/scylla_types.hh"
-
+#include "config.hh"
 
 namespace scylla_blas {
 
@@ -22,14 +22,12 @@ namespace scylla_blas {
 template<class T>
 class matrix {
 private:
-    static const index_type block_size = (1 << 8);
-
     static constexpr index_type get_block_col(index_type j) {
-        return (j - 1) / block_size + 1;
+        return (j - 1) / MATRIX_BLOCK_SIZE + 1;
     }
 
     static constexpr index_type get_block_row(index_type i) {
-        return (i - 1) / block_size + 1;
+        return (i - 1) / MATRIX_BLOCK_SIZE + 1;
     }
 
     static std::shared_ptr<scmd::session>
@@ -145,8 +143,8 @@ public:
          * both blocks (1, 1) and (2, 2) will have identical sets of coordinates for all values.
          * This should make further operations on abstract blocks easier by a bit.
          */
-        index_type offset_x = (x - 1) * block_size;
-        index_type offset_y = (y - 1) * block_size;
+        index_type offset_x = (x - 1) * MATRIX_BLOCK_SIZE;
+        index_type offset_y = (y - 1) * MATRIX_BLOCK_SIZE;
 
         for (auto &val : block_values) {
             val.row_index -= offset_x;
@@ -178,8 +176,8 @@ public:
     }
 
     void update_block(index_type x, index_type y, const matrix_block<T> &block) {
-        index_type offset_x = (x - 1) * block_size;
-        index_type offset_y = (y - 1) * block_size;
+        index_type offset_x = (x - 1) * MATRIX_BLOCK_SIZE;
+        index_type offset_y = (y - 1) * MATRIX_BLOCK_SIZE;
 
         for (auto &val : block.get_values_raw())
             update_value(x, y, offset_x + val.row_index, offset_y + val.col_index, val.value);
