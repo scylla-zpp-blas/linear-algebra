@@ -23,7 +23,7 @@ struct matrix_value {
     }
 
     bool operator!=(const matrix_value<V> &other) const {
-        return *this != other;
+        return !(*this == other);
     }
 
     template <typename T>
