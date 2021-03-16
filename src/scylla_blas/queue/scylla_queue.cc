@@ -1,7 +1,7 @@
 #include "scylla_blas/queue/scylla_queue.hh"
 
 void scylla_blas::scylla_queue::init_meta(const std::shared_ptr<scmd::session> &session) {
-    std::string init_meta = "CREATE TABLE blas.queue_meta ( "
+    std::string init_meta = "CREATE TABLE IF NOT EXISTS blas.queue_meta ( "
                             "   id bigint PRIMARY KEY, "
                             "   multi_producer BOOLEAN, "
                             "   multi_consumer BOOLEAN, "
@@ -22,15 +22,21 @@ bool scylla_blas::scylla_queue::queue_exists(const std::shared_ptr<scmd::session
 
 void scylla_blas::scylla_queue::create_queue(const std::shared_ptr<scmd::session> &session,
                                              int64_t id, bool multi_producer, bool multi_consumer) {
-    session->execute(fmt::format(R"(
+    scmd::statement create_table(fmt::format(R"(
             CREATE TABLE blas.queue_{0} (
                 id bigint PRIMARY KEY,
                 is_finished BOOLEAN,
                 value BLOB
             ))", id));
-    session->execute(
-            R"(INSERT INTO blas.queue_meta (id, multi_producer, multi_consumer, cnt_new, cnt_used)
-                          VALUES (?, ?, ?, 0, 0))", id, multi_producer, multi_consumer);
+
+    create_table.set_timeout(0);
+    session->execute(create_table);
+
+    scmd::prepared_query register_table = session->prepare(R"(
+            INSERT INTO blas.queue_meta (id, multi_producer, multi_consumer, cnt_new, cnt_used)
+            VALUES (?, ?, ?, 0, 0))");
+    register_table.get_statement().set_timeout(0);
+    session->execute(register_table, id, multi_producer, multi_consumer);
 }
 
 void scylla_blas::scylla_queue::delete_queue(const std::shared_ptr<scmd::session> &session, int64_t id) {
@@ -155,11 +161,11 @@ int64_t scylla_blas::scylla_queue::produce_multi(const scylla_blas::task &task) 
 }
 
 scylla_blas::task scylla_blas::scylla_queue::task_from_value(const CassValue *v) {
-    struct task ret{};
+    task ret{};
     const cass_byte_t *out_data;
     size_t out_size;
     cass_value_get_bytes(v, &out_data, &out_size);
-    if(out_size != sizeof(struct task)) {
+    if(out_size != sizeof(task)) {
         throw std::runtime_error("Invalid data in queue");
     }
     memcpy(&ret, out_data, out_size);

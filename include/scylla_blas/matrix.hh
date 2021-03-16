@@ -35,9 +35,7 @@ private:
         if (force_new) {
             /* Maybe truncate instead? */
             scmd::statement drop_table(fmt::format("DROP TABLE IF EXISTS blas.matrix_{0};", id));
-
-            /* FIXME: Same problem as with creation; look below */
-            cass_statement_set_request_timeout((CassStatement *)drop_table.get_statement(), 0);
+            drop_table.set_timeout(0);
             session->execute(drop_table);
         }
 
@@ -51,13 +49,7 @@ private:
                     value {1},
                     PRIMARY KEY (block_x, id_x, id_y));
             )", id, get_type_name<T>()));
-
-        /* FIXME: HACK!!!
-         * We use this to avoid timeout errors.
-         * Note the casting used to get rid of the const qualifier.
-         * TODO: Implement this as a cass_statement method in the driver
-         */
-        cass_statement_set_request_timeout((CassStatement *)create_table.get_statement(), 0);
+        create_table.set_timeout(0);
         session->execute(create_table);
 
         return session;

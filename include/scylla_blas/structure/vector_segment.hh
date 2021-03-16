@@ -26,6 +26,7 @@ public:
     vector_segment operator+=(const vector_segment &other) {
         size_t initial_size = this->size();
 
+        std::vector<scylla_blas::vector_value<T>> skipped_vals;
         auto it_1 = this->begin();
         auto it_2 = other.begin();
 
@@ -36,7 +37,7 @@ public:
             if (it_1->index < it_2->index) {
                 it_1++;
             } else if (it_1->index > it_2->index) {
-                this->push_back(*it_2);
+                skipped_vals.push_back(*it_2);
                 it_2++;
             } else {
                 it_1->value += it_2->value;
@@ -45,24 +46,24 @@ public:
             }
         }
 
+        std::copy(skipped_vals.begin(), skipped_vals.end(), std::back_inserter(*this));
+
         /* Semantics is too specific here to overload the comparison operator. */
         std::inplace_merge(this->begin(), this->begin() + initial_size, this->end(),
                            [](const auto &a, const auto &b) {
                                return a.index < b.index;
                            });
 
-        /* Doing this only after merge saves a little time */
+        /* Doing this part only after merge saves a little time */
         std::copy(it_2, other.end(), std::back_inserter(*this));
 
         return *this;
     }
 
     const vector_segment operator+(const vector_segment &other) const {
-        vector_segment<T> result;
+        vector_segment<T> result = *this;
 
-        result += *this;
         result += other;
-
         return result;
     }
 

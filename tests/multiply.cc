@@ -10,22 +10,24 @@
 
 BOOST_FIXTURE_TEST_SUITE(multiply_tests, scylla_fixture)
 
-BOOST_AUTO_TEST_CASE(multiply)
+BOOST_AUTO_TEST_CASE(naive_multiply)
 {
-    std::shared_ptr<scylla_blas::value_factory<float>> f = std::make_shared<scylla_blas::value_factory<float>>(0, 9,
-                                                                                                               1410);
-    scylla_blas::sparse_matrix_value_generator<float> gen1(5, 5, 10, 11121, f);
-    scylla_blas::sparse_matrix_value_generator<float> gen2(5, 5, 10, 22222, f);
-    auto result = scylla_blas::multiply(session, gen1, gen2);
+    std::shared_ptr<scylla_blas::value_factory<float>> f =
+            std::make_shared<scylla_blas::value_factory<float>>(0, 9,1111);
+
+    scylla_blas::sparse_matrix_value_generator<float> gen1(5, 5, 10, 42, f);
+    scylla_blas::sparse_matrix_value_generator<float> gen2(5, 5, 10, 44, f);
+    auto result = scylla_blas::naive_multiply(session, gen1, gen2);
 }
 
-BOOST_AUTO_TEST_CASE(easy_multiply)
+BOOST_AUTO_TEST_CASE(parallel_multiply)
 {
-    std::shared_ptr<scylla_blas::value_factory<float>> f = std::make_shared<scylla_blas::value_factory<float>>(0, 9,
-                                                                                                               1410);
-    scylla_blas::sparse_matrix_value_generator<float> gen1(5, 5, 10, 11121, f);
-    scylla_blas::sparse_matrix_value_generator<float> gen2(5, 5, 10, 22222, f);
-    auto result = scylla_blas::easy_multiply(session, gen1, gen2);
+    std::shared_ptr <scylla_blas::value_factory<float>> f =
+            std::make_shared < scylla_blas::value_factory < float >> (0, 9, 1111);
+
+    scylla_blas::sparse_matrix_value_generator<float> gen1(5, 5, 10, 42, f);
+    scylla_blas::sparse_matrix_value_generator<float> gen2(5, 5, 10, 44, f);
+    auto result = scylla_blas::parallel_multiply(session, gen1, gen2);
 }
 
 BOOST_AUTO_TEST_SUITE_END();

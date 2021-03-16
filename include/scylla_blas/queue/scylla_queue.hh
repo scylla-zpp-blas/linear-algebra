@@ -25,10 +25,25 @@ public:
 // The "data" member is there because tests are using it,
 // there is no problem with changing/removing it,
 // but tests must be modified accordingly.
-struct task {
+union task {
+
+struct {
     int64_t data;
+} simple_task;
+
+struct {
+    int64_t task_queue_id;
+    int64_t A_id;
+    int64_t B_id;
+    int64_t C_id;
+} multiplication_order;
+
+struct {
+    index_type block_row;
+    index_type block_column;
+} compute_block;
+
 };
-using task = struct task;
 
 class scylla_queue {
     int64_t _id;
@@ -81,7 +96,7 @@ public:
     // e.g. queue was deleted.
     // It can potentially throw std::runtime_error or scmd::exception in those cases.
     // After successful execution returns id of the inserted task.
-    int64_t produce(const struct task &task);
+    int64_t produce(const task &task);
 
     // Tries to fetch first item from queue, deserializes and returns it.
     // Will throw empty_container_error if there are no tasks waiting.
@@ -89,7 +104,7 @@ public:
     // Returns id of fetched task (the same that produce returned for this task),
     // and deserialized task struct.
     // Returned id can be used to mark the task as finished.
-    std::pair<int64_t, struct task> consume();
+    std::pair<int64_t, task> consume();
 
     void mark_as_finished(int64_t id);
 
@@ -98,18 +113,18 @@ public:
 private:
     void update_counters();
 
-    scmd::future insert_task(int64_t task_id, const struct task &task);
+    scmd::future insert_task(int64_t task_id, const task &task);
 
-    int64_t produce_simple(const struct task &task);
+    int64_t produce_simple(const task &task);
 
-    int64_t produce_multi(const struct task &task);
+    int64_t produce_multi(const task &task);
 
-    static struct task task_from_value(const CassValue *v);
+    static task task_from_value(const CassValue *v);
 
-    struct task fetch_task_loop(int64_t task_id);
+    task fetch_task_loop(int64_t task_id);
 
-    std::pair<int64_t, struct task> consume_simple();
+    std::pair<int64_t, task> consume_simple();
 
-    std::pair<int64_t, struct task> consume_multi();
+    std::pair<int64_t, task> consume_multi();
 };
 }

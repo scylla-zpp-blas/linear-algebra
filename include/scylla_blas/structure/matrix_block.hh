@@ -71,41 +71,47 @@ public:
         _values(values), matrix_id(matrix_id), i(i), j(j) {}
 
     matrix_block operator*=(const matrix_block &other) {
-        _values = (*this * other)._values;
+        auto list_of_vectors = to_list_of_vectors(_values);
+        auto transposed_other = transpose(to_list_of_vectors(other._values));
+
+        _values.clear();
+
+        for (auto &left : list_of_vectors)
+            for (auto &right : transposed_other)
+                _values.emplace_back(left.first, right.first, left.second.prod(right.second));
 
         return *this;
     }
 
     /* Returned block has undefined values of matrix_id, i, j */
     const matrix_block operator*(const matrix_block &other) const {
-        auto list_of_vectors = to_list_of_vectors(_values);
-        auto transposed_other = transpose(to_list_of_vectors(other._values));
+        matrix_block result = *this;
+        result *= other;
 
-        LVAL<T> result;
-
-        for (auto &left : list_of_vectors)
-            for (auto &right : transposed_other)
-                result.emplace_back(left.first, right.first, left.second.prod(right.second));
-
-        return matrix_block(result);
+        return result;
     }
 
     matrix_block operator+=(const matrix_block &other) {
-        _values = (*this + other)._values;
+        auto this_LOVE = to_list_of_vectors(_values);
+        auto other_LOVE = to_list_of_vectors(other._values);
+
+        _values.clear();
+
+        for (auto &[row_id, row_values] : other_LOVE) {
+            this_LOVE[row_id] += row_values;
+        }
+
+        _values = to_list(this_LOVE);
 
         return *this;
     }
 
     /* Returned block has undefined values of matrix_id, i, j */
     const matrix_block operator+(const matrix_block &other) const {
-        auto this_LOVE = to_list_of_vectors(_values);
-        auto other_LOVE = to_list_of_vectors(other._values);
+        matrix_block result = *this;
+        result += other;
 
-        for (auto &[row_id, row_values] : other_LOVE) {
-            this_LOVE[row_id] += row_values;
-        }
-
-        return matrix_block(to_list(this_LOVE));
+        return result;
     }
 
     const LVAL<T> &get_values_raw() const {
