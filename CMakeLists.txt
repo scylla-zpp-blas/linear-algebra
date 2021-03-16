@@ -19,6 +19,7 @@ set(INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/include/scylla_blas)
 set(BLAS_INCLUDE
         ${INCLUDE_DIR}/config.hh
         ${INCLUDE_DIR}/matrix.hh
+        ${INCLUDE_DIR}/routines.hh
         ${INCLUDE_DIR}/scylla_blas.hh
         ${INCLUDE_DIR}/vector.hh
 
