@@ -10,7 +10,7 @@
 
 #include "scylla_blas/structure/matrix_block.hh"
 #include "scylla_blas/structure/matrix_value.hh"
-#include "scylla_blas/structure/vector.hh"
+#include "scylla_blas/structure/vector_segment.hh"
 #include "scylla_blas/utils/scylla_types.hh"
 #include "config.hh"
 
@@ -23,15 +23,15 @@ template<class T>
 class matrix {
 private:
     static constexpr index_type get_block_col(index_type j) {
-        return (j - 1) / MATRIX_BLOCK_SIZE + 1;
+        return (j - 1) / BLOCK_SIZE + 1;
     }
 
     static constexpr index_type get_block_row(index_type i) {
-        return (i - 1) / MATRIX_BLOCK_SIZE + 1;
+        return (i - 1) / BLOCK_SIZE + 1;
     }
 
     static std::shared_ptr<scmd::session>
-    prepare_session(std::shared_ptr<scmd::session> session, const std::string &id, bool force_new) {
+    prepare_session(std::shared_ptr<scmd::session> session, int64_t id, bool force_new) {
         if (force_new) {
             /* Maybe truncate instead? */
             scmd::statement drop_table(fmt::format("DROP TABLE IF EXISTS blas.matrix_{0};", id));
@@ -63,7 +63,7 @@ private:
         return session;
     }
 
-    std::string _id;
+    int64_t _id;
     std::shared_ptr<scmd::session> _session;
 
     scmd::prepared_query _get_value_prepared;
@@ -88,11 +88,11 @@ private:
     }
 
 public:
-    std::string get_id() {
+    int64_t get_id() {
         return _id;
     }
 
-    matrix(const std::shared_ptr<scmd::session>& session, const std::string &id, bool force_new = false) :
+    matrix(const std::shared_ptr<scmd::session>& session, int64_t id, bool force_new = false) :
             _id(id),
             _session(prepare_session(session, _id, force_new)),
 #define PREPARE(x, args...) x(_session->prepare(fmt::format(args)))
@@ -118,9 +118,9 @@ public:
         }
     }
 
-    vector<T> get_row(index_type x) {
+    vector_segment<T> get_row(index_type x) {
         auto row_full = get_vals_for_query(_get_row_prepared, get_block_row(x), x);
-        vector<T> answer;
+        vector_segment<T> answer;
 
         for (matrix_value<T> &v : row_full) {
             answer.emplace_back(v.col_index, v.value);
@@ -143,8 +143,8 @@ public:
          * both blocks (1, 1) and (2, 2) will have identical sets of coordinates for all values.
          * This should make further operations on abstract blocks easier by a bit.
          */
-        index_type offset_x = (x - 1) * MATRIX_BLOCK_SIZE;
-        index_type offset_y = (y - 1) * MATRIX_BLOCK_SIZE;
+        index_type offset_x = (x - 1) * BLOCK_SIZE;
+        index_type offset_y = (y - 1) * BLOCK_SIZE;
 
         for (auto &val : block_values) {
             val.row_index -= offset_x;
@@ -170,14 +170,14 @@ public:
             update_value(val.row_index, val.col_index, val.value);
     }
 
-    void update_row(index_type x, vector<T> row_data) {
+    void update_row(index_type x, vector_segment<T> row_data) {
         for (auto &val : row_data)
             update_value(x, val.index, val.value);
     }
 
     void update_block(index_type x, index_type y, const matrix_block<T> &block) {
-        index_type offset_x = (x - 1) * MATRIX_BLOCK_SIZE;
-        index_type offset_y = (y - 1) * MATRIX_BLOCK_SIZE;
+        index_type offset_x = (x - 1) * BLOCK_SIZE;
+        index_type offset_y = (y - 1) * BLOCK_SIZE;
 
         for (auto &val : block.get_values_raw())
             update_value(x, y, offset_x + val.row_index, offset_y + val.col_index, val.value);

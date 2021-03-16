@@ -4,24 +4,15 @@
 #include <utility>
 #include <algorithm>
 
+#include "scylla_blas/structure/vector_value.hh"
 #include "scylla_blas/utils/scylla_types.hh"
 
 namespace scylla_blas {
 
 template<class T>
-class vector_value {
+class vector_segment : public std::vector<scylla_blas::vector_value<T>> { // maybe inherit from std::unordered_map instead?
 public:
-    index_type index;
-    T value;
-
-    constexpr vector_value(const index_type index, const T value) : index(index), value(value) { }
-    constexpr explicit vector_value(const std::pair<index_type, T>& p) : index(p.first), value(p.second) { }
-};
-
-template<class T>
-class vector : public std::vector<scylla_blas::vector_value<T>> { // maybe inherit from std::unordered_map instead?
-public:
-    explicit vector (const std::vector<T>& other) {
+    explicit vector_segment (const std::vector<T>& other) {
         for (int i = 1; i < other.size(); i++) {
             if (other[i] != 0) {
                 this->emplace_back(i, other[i]);
@@ -30,9 +21,9 @@ public:
     }
 
     template<typename... U>
-    explicit vector (U... args) : std::vector<scylla_blas::vector_value<T>>(args...) { }
+    explicit vector_segment (U... args) : std::vector<scylla_blas::vector_value<T>>(args...) { }
 
-    vector operator+=(const vector &other) {
+    vector_segment operator+=(const vector_segment &other) {
         size_t initial_size = this->size();
 
         auto it_1 = this->begin();
@@ -66,8 +57,8 @@ public:
         return *this;
     }
 
-    const vector operator+(const vector &other) const {
-        vector<T> result;
+    const vector_segment operator+(const vector_segment &other) const {
+        vector_segment<T> result;
 
         result += *this;
         result += other;
@@ -75,7 +66,7 @@ public:
         return result;
     }
 
-    vector operator*=(T factor) {
+    vector_segment operator*=(T factor) {
         for (auto &entry : *this) {
             entry.value *= factor;
         }
@@ -83,14 +74,14 @@ public:
         return *this;
     }
 
-    const vector operator*(T factor) const {
-        vector result = *this; // Our vectors are shallow, so no need for deep copies; or should we take special care of that?
+    const vector_segment operator*(T factor) const {
+        vector_segment result = *this; // Our vectors are shallow, so no need for deep copies; or should we take special care of that?
 
         result *= factor;
         return result;
     }
 
-    const T prod(const vector &other) {
+    const T prod(const vector_segment &other) {
         T ret = 0;
 
         auto it_1 = this->begin();

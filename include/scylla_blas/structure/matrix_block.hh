@@ -5,14 +5,14 @@
 #include <vector>
 
 #include "scylla_blas/structure/matrix_value.hh"
-#include "scylla_blas/structure/vector.hh"
+#include "scylla_blas/structure/vector_segment.hh"
 #include "scylla_blas/utils/scylla_types.hh"
 
 namespace {
 
 /* TODO: subclass an abstract REPR<T> class in matrix_block? In scylla_blas? */
 template<class T>
-using LOVE = std::map<scylla_blas::index_type, scylla_blas::vector<T>>;
+using LOVE = std::map<scylla_blas::index_type, scylla_blas::vector_segment<T>>;
 
 template<class T>
 using LVAL = std::vector<scylla_blas::matrix_value<T>>;
@@ -58,21 +58,22 @@ namespace scylla_blas {
 
 template<class T>
 class matrix_block {
-    using val_t = std::vector<matrix_value<T>>;
-    val_t _values;
+    LVAL<T> _values;
 
-    explicit matrix_block(val_t values) :
+    explicit matrix_block(LVAL<T> values) :
             _values(values), i(-1), j(-1) {}
 public:
-    const std::string matrix_id;
+    const int64_t matrix_id = 0;
     const index_type i;
     const index_type j;
 
-    matrix_block(val_t values, std::string matrix_id, index_type i, index_type j) :
-        _values(values), matrix_id(std::move(matrix_id)), i(i), j(j) {}
+    matrix_block(std::vector<scylla_blas::matrix_value<T>> values, int64_t matrix_id, index_type i, index_type j) :
+        _values(values), matrix_id(matrix_id), i(i), j(j) {}
 
     matrix_block operator*=(const matrix_block &other) {
         _values = (*this * other)._values;
+
+        return *this;
     }
 
     /* Returned block has undefined values of matrix_id, i, j */
@@ -80,7 +81,7 @@ public:
         auto list_of_vectors = to_list_of_vectors(_values);
         auto transposed_other = transpose(to_list_of_vectors(other._values));
 
-        val_t result;
+        LVAL<T> result;
 
         for (auto &left : list_of_vectors)
             for (auto &right : transposed_other)
@@ -89,7 +90,25 @@ public:
         return matrix_block(result);
     }
 
-    const val_t &get_values_raw() const {
+    matrix_block operator+=(const matrix_block &other) {
+        _values = (*this + other)._values;
+
+        return *this;
+    }
+
+    /* Returned block has undefined values of matrix_id, i, j */
+    const matrix_block operator+(const matrix_block &other) const {
+        auto this_LOVE = to_list_of_vectors(_values);
+        auto other_LOVE = to_list_of_vectors(other._values);
+
+        for (auto &[row_id, row_values] : other_LOVE) {
+            this_LOVE[row_id] += row_values;
+        }
+
+        return matrix_block(to_list(this_LOVE));
+    }
+
+    const LVAL<T> &get_values_raw() const {
         return _values;
     }
 };
