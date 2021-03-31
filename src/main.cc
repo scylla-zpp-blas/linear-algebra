@@ -2,7 +2,6 @@
 #include <string>
 
 #include <boost/program_options.hpp>
-#include <boost/thread/thread.hpp>
 
 namespace po = boost::program_options;
 #include <fmt/format.h>

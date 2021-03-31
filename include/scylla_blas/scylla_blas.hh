@@ -10,7 +10,7 @@ namespace {
 template <class T>
 scylla_blas::matrix<T> load_matrix_from_generator(const std::shared_ptr<scmd::session> &session,
                                                   scylla_blas::matrix_value_generator<T> &gen, int64_t id) {
-    scylla_blas::matrix<T> result(session, id, false);
+    scylla_blas::matrix<T> result = scylla_blas::matrix<T>::init_and_return(session, id);
     scylla_blas::vector_segment<T> next_row;
     scylla_blas::matrix_value<T> prev_val (-1, -1, 0);
 
@@ -72,7 +72,7 @@ matrix<T> naive_multiply(std::shared_ptr<scmd::session> session,
 
     auto A = load_matrix_from_generator(session, first, A_id);
     auto B = load_matrix_from_generator(session, second, B_id);
-    auto AB = matrix<T>(session, AB_id, true);
+    auto AB = matrix<T>::init_and_return(session, AB_id);
 
     print_matrix(A, first.height(), first.width());
     print_matrix(B, second.height(), second.width());

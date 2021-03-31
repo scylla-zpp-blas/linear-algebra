@@ -30,31 +30,6 @@ private:
         return (i - 1) / BLOCK_SIZE + 1;
     }
 
-    static std::shared_ptr<scmd::session>
-    prepare_session(std::shared_ptr<scmd::session> session, int64_t id, bool force_new) {
-        if (force_new) {
-            /* Maybe truncate instead? */
-            scmd::statement drop_table(fmt::format("DROP TABLE IF EXISTS blas.matrix_{0};", id));
-            drop_table.set_timeout(0);
-            session->execute(drop_table);
-        }
-
-        /* TODO: consider a better key */
-        scmd::statement create_table(fmt::format(R"(
-        CREATE TABLE IF NOT EXISTS blas.matrix_{0} (
-                    block_x bigint,
-                    block_y bigint,
-                    id_x bigint,
-                    id_y bigint,
-                    value {1},
-                    PRIMARY KEY (block_x, id_x, id_y));
-            )", id, get_type_name<T>()));
-        create_table.set_timeout(0);
-        session->execute(create_table);
-
-        return session;
-    }
-
     int64_t _id;
     std::shared_ptr<scmd::session> _session;
 
@@ -80,9 +55,38 @@ private:
     }
 
 public:
-    matrix(const std::shared_ptr<scmd::session>& session, int64_t id, bool force_new = false) :
+    /* We don't want to implicitly initialize a handle (somewhat costly)
+     * if it is discarded by the user. Instead, let's have a version of init
+     * that does it explicitly and a version that doesn't do it at all.
+     * TODO: Can we do this with one function and e.g. attributes for the compiler?
+     */
+    static void init(const std::shared_ptr<scmd::session>& session, int64_t id, bool force_new = true) {
+        if (force_new) {
+            /* Maybe truncate instead? */
+            scmd::statement drop_table(fmt::format("DROP TABLE IF EXISTS blas.matrix_{0};", id));
+            session->execute(drop_table.set_timeout(0));
+        }
+
+        scmd::statement create_table(fmt::format(R"(
+        CREATE TABLE IF NOT EXISTS blas.matrix_{0} (
+                    block_x bigint,
+                    block_y bigint,
+                    id_x bigint,
+                    id_y bigint,
+                    value {1},
+                    PRIMARY KEY (block_x, id_x, id_y));
+            )", id, get_type_name<T>()));
+        session->execute(create_table.set_timeout(0));
+    }
+
+    static matrix<T> init_and_return(const std::shared_ptr<scmd::session>& session, int64_t id, bool force_new = true) {
+        init(session, id, force_new);
+        return matrix<T>(session, id);
+    }
+
+    matrix(const std::shared_ptr<scmd::session>& session, int64_t id) :
             _id(id),
-            _session(prepare_session(session, _id, force_new)),
+            _session(session),
 #define PREPARE(x, args...) x(_session->prepare(fmt::format(args)))
             PREPARE(_get_value_prepared,
                     "SELECT * FROM blas.matrix_{} WHERE block_x = ? AND block_y = ? AND id_x = ? AND id_y = ? ALLOW FILTERING;",
@@ -94,7 +98,7 @@ public:
             PREPARE(_update_value_prepared,
                     "INSERT INTO blas.matrix_{} (block_x, block_y, id_x, id_y, value) VALUES (?, ?, ?, ?, ?);", _id)
 #undef PREPARE
-    { std::cerr << "Initialized matrix " << id << std::endl; }
+    { std::cerr << "A handle created to matrix " << id << std::endl; }
 
     int64_t get_id() const {
         return _id;

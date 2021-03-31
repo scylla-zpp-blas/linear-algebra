@@ -10,8 +10,10 @@ BOOST_FIXTURE_TEST_SUITE(structure_tests, scylla_fixture)
 
 BOOST_AUTO_TEST_CASE(matrices)
 {
-    auto matrix = scylla_blas::matrix<float>(session, 0, true);
-    auto matrix_2 = scylla_blas::matrix<float>(session, 0, false);
+    scylla_blas::matrix<float>::init(session, 0, true);
+
+    auto matrix = scylla_blas::matrix<float>(session, 0);
+    auto matrix_2 = scylla_blas::matrix<float>(session, 0);
 
     matrix.update_value(1, 0, M_PI);
     matrix.update_value(1, 1, 42);
