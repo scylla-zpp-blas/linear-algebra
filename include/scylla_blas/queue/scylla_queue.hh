@@ -6,6 +6,7 @@
 #include <fmt/format.h>
 #include <scmd.hh>
 
+#include "proto.hh"
 #include "scylla_blas/utils/scylla_types.hh"
 #include "scylla_blas/utils/utils.hh"
 
@@ -15,37 +16,9 @@ public:
     using std::runtime_error::runtime_error;
 };
 
-// This is the struct that will be sent trough the queue.
-// We can freely modify it, to represent tasks.
-// Instance of this struct will be simply cast to char array,
-// stored as binary blob in the database,
-// then "de-serialized" at the other end.
-// This means it should not contain pointers or other data
-// that can't survive such brutal transportation.
-// The "data" member is there because tests are using it,
-// there is no problem with changing/removing it,
-// but tests must be modified accordingly.
-union task {
-
-struct {
-    int64_t data;
-} simple_task;
-
-struct {
-    int64_t task_queue_id;
-    int64_t A_id;
-    int64_t B_id;
-    int64_t C_id;
-} multiplication_order;
-
-struct {
-    index_type block_row;
-    index_type block_column;
-} compute_block;
-
-};
-
 class scylla_queue {
+    using task = proto::task;
+
     int64_t _id;
     std::shared_ptr<scmd::session> _session;
     bool multi_producer;

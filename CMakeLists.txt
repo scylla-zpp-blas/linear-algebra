@@ -23,7 +23,9 @@ set(BLAS_INCLUDE
         ${INCLUDE_DIR}/scylla_blas.hh
         ${INCLUDE_DIR}/vector.hh
 
+        ${INCLUDE_DIR}/queue/proto.hh
         ${INCLUDE_DIR}/queue/scylla_queue.hh
+        ${INCLUDE_DIR}/queue/worker_proc.hh
 
         ${INCLUDE_DIR}/structure/vector_segment.hh
         ${INCLUDE_DIR}/structure/vector_value.hh

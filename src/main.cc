@@ -8,7 +8,9 @@ namespace po = boost::program_options;
 #include <fmt/format.h>
 #include <scmd.hh>
 
+#include "scylla_blas/queue/worker_proc.hh"
 #include "scylla_blas/queue/scylla_queue.hh"
+
 #include "scylla_blas/config.hh"
 #include "scylla_blas/matrix.hh"
 #include "scylla_blas/structure/matrix_block.hh"
@@ -101,40 +103,6 @@ void deinit(const struct options& op) {
     std::cerr << "Database deinitialized succesfully!" << std::endl;
 }
 
-template<typename T>
-void multiply_matrices(const std::shared_ptr<scmd::session> &session, scylla_blas::task task) {
-    auto [task_queue_id, A_id, B_id, C_id] = task.multiplication_order;
-
-    scylla_blas::matrix<T> A(session, A_id, false);
-    scylla_blas::matrix<T> B(session, B_id, false);
-    scylla_blas::matrix<T> C(session, C_id, false);
-    auto task_queue = scylla_blas::scylla_queue(session, task_queue_id);
-    std::cerr << "Linked to queue " << task_queue_id << std::endl;
-
-    while (true) {
-        try {
-            auto [task_id, block_computation_task] = task_queue.consume();
-            std::cerr << "New secondary task obtained; id = " << task_id << std::endl;
-
-            auto [result_row, result_column] = block_computation_task.compute_block;
-
-            scylla_blas::matrix_block<T> result_block({}, C_id, result_row, result_column);
-
-            for (scylla_blas::index_type i = 1; i <= MATRIX_BLOCK_WIDTH; i++) {
-                auto block_A = A.get_block(result_row, i);
-                auto block_B = B.get_block(i, result_column);
-
-                result_block += block_A * block_B;
-            }
-
-            C.update_block(result_row, result_column, result_block);
-        } catch (const scylla_blas::empty_container_error& e) {
-            // The task queue is empty – nothing left to do.
-           break;
-        }
-    }
-}
-
 void worker(const struct options& op) {
     std::cerr << "Worker connecting to " << op.host << ":" << op.port << "..." << std::endl;
     auto session = std::make_shared<scmd::session>(op.host, std::to_string(op.port));
@@ -145,7 +113,7 @@ void worker(const struct options& op) {
     std::cerr << "Starting worker loop...\n";
     for (;;) {
         try {
-            auto [task_id, multiplication_task] = base_queue.consume();
+            auto [task_id, task_data] = base_queue.consume();
             std::cerr << "A new task received! task_id: " << task_id  << std::endl;
 
             int64_t attempts;
@@ -153,11 +121,8 @@ void worker(const struct options& op) {
                 /* Keep trying until the task is finished – otherwise it will be lost and never marked as finished */
                 /* TODO: scylla_queue.mark_as_failed()? */
                 try {
-                    /* TODO: deduce the type from the matrix data in the database
-                     * instead of specifying it in advance. Worst-case scenario:
-                     * indicate the type with an enum in the task description.
-                     */
-                    multiply_matrices<float>(session, multiplication_task);
+                    auto proc = scylla_blas::worker::get_procedure_for_task(task_data);
+                    proc(session, task_data);
                     base_queue.mark_as_finished(task_id);
                     break;
                 } catch (const std::exception &e) {

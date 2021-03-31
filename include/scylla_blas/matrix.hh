@@ -64,7 +64,7 @@ private:
     scmd::prepared_query _update_value_prepared;
 
     template<class... Args>
-    std::vector<matrix_value<T>> get_vals_for_query(scmd::prepared_query &query, Args... args) {
+    std::vector<matrix_value<T>> get_vals_for_query(const scmd::prepared_query &query, Args... args) const {
         scmd::query_result result = _session->execute(query.get_statement().bind(args...));
 
         std::vector<matrix_value<T>> result_vector;
@@ -100,7 +100,7 @@ public:
 #undef PREPARE
     { std::cerr << "Initialized matrix " << id << std::endl; }
 
-    T get_value(index_type x, index_type y) {
+    T get_value(index_type x, index_type y) const {
         auto ans_vec = get_vals_for_query(_get_value_prepared, get_block_row(x), get_block_col(y), x, y);
 
         if (!ans_vec.empty()) {
@@ -110,7 +110,7 @@ public:
         }
     }
 
-    vector_segment<T> get_row(index_type x) {
+    vector_segment<T> get_row(index_type x) const {
         auto row_full = get_vals_for_query(_get_row_prepared, get_block_row(x), x);
         vector_segment<T> answer;
 
@@ -121,7 +121,7 @@ public:
         return answer;
     }
 
-    matrix_block<T> get_block(index_type x, index_type y) {
+    matrix_block<T> get_block(index_type x, index_type y) const {
         auto block_values = get_vals_for_query(_get_block_prepared, x, y);
 
         /* Move by offset – a block is an independent unit.

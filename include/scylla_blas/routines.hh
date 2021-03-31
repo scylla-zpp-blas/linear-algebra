@@ -133,10 +133,10 @@ public:
     void zdscal(const double alpha, vector <zdouble> &X);
 
 /*
-* ===========================================================================
-* Prototypes for level 2 BLAS
-* ===========================================================================
-*/
+ * ===========================================================================
+ * Prototypes for level 2 BLAS
+ * ===========================================================================
+ */
 
     /* Routines with standard 4 prefixes (S, D, C, Z) */
     vector<float> sgemv(const enum ORDER order, const enum TRANSPOSE TransA,

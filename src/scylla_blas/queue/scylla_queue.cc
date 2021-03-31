@@ -82,7 +82,7 @@ scylla_blas::scylla_queue::scylla_queue(const std::shared_ptr<scmd::session> &se
     cnt_used = result.get_column<int64_t>("cnt_used");
 }
 
-int64_t scylla_blas::scylla_queue::produce(const scylla_blas::task &task) {
+int64_t scylla_blas::scylla_queue::produce(const scylla_blas::scylla_queue::task &task) {
     if(multi_producer) {
         return produce_multi(task);
     } else {
@@ -90,7 +90,7 @@ int64_t scylla_blas::scylla_queue::produce(const scylla_blas::task &task) {
     }
 }
 
-std::pair<int64_t, scylla_blas::task> scylla_blas::scylla_queue::consume() {
+std::pair<int64_t, scylla_blas::scylla_queue::task> scylla_blas::scylla_queue::consume() {
     if(multi_consumer) {
         return consume_multi();
     } else {
@@ -124,7 +124,7 @@ void scylla_blas::scylla_queue::update_counters() {
     cnt_used = result.get_column<int64_t>("cnt_used");
 }
 
-scmd::future scylla_blas::scylla_queue::insert_task(int64_t task_id, const scylla_blas::task &task) {
+scmd::future scylla_blas::scylla_queue::insert_task(int64_t task_id, const scylla_blas::scylla_queue::task &task) {
     scmd::statement insert_task = insert_task_prepared.get_statement();
     insert_task.bind(task_id);
     // TODO: implement binding/retrieving bytes in driver and get rid of this ugliness.
@@ -133,7 +133,7 @@ scmd::future scylla_blas::scylla_queue::insert_task(int64_t task_id, const scyll
     return _session->execute_async(insert_task);
 }
 
-int64_t scylla_blas::scylla_queue::produce_simple(const scylla_blas::task &task) {
+int64_t scylla_blas::scylla_queue::produce_simple(const scylla_blas::scylla_queue::task &task) {
     auto future_1 = insert_task(cnt_new, task);
     cnt_new++;
     auto future_2 = _session->execute_async(update_new_counter_prepared, cnt_new);
@@ -144,7 +144,7 @@ int64_t scylla_blas::scylla_queue::produce_simple(const scylla_blas::task &task)
     return cnt_new - 1;
 }
 
-int64_t scylla_blas::scylla_queue::produce_multi(const scylla_blas::task &task) {
+int64_t scylla_blas::scylla_queue::produce_multi(const scylla_blas::scylla_queue::task &task) {
     update_counters();
     while(true) {
         auto result = _session->execute(update_new_counter_trans_prepared, cnt_new + 1, cnt_new);
@@ -160,7 +160,7 @@ int64_t scylla_blas::scylla_queue::produce_multi(const scylla_blas::task &task) 
     }
 }
 
-scylla_blas::task scylla_blas::scylla_queue::task_from_value(const CassValue *v) {
+scylla_blas::scylla_queue::task scylla_blas::scylla_queue::task_from_value(const CassValue *v) {
     task ret{};
     const cass_byte_t *out_data;
     size_t out_size;
@@ -172,7 +172,7 @@ scylla_blas::task scylla_blas::scylla_queue::task_from_value(const CassValue *v)
     return ret;
 }
 
-scylla_blas::task scylla_blas::scylla_queue::fetch_task_loop(int64_t task_id) {
+scylla_blas::scylla_queue::task scylla_blas::scylla_queue::fetch_task_loop(int64_t task_id) {
     // Now we need to fetch task data - it may not be there yet, but it should be rare.
     while(true) {
         auto task_result = _session->execute(fetch_task_by_id_prepared, task_id);
@@ -187,7 +187,7 @@ scylla_blas::task scylla_blas::scylla_queue::fetch_task_loop(int64_t task_id) {
     }
 }
 
-std::pair<int64_t, scylla_blas::task> scylla_blas::scylla_queue::consume_simple() {
+std::pair<int64_t, scylla_blas::scylla_queue::task> scylla_blas::scylla_queue::consume_simple() {
     // First we need to check if there is task to fetch
     // There is, if used counter is less than new counter
     update_counters();
@@ -203,7 +203,7 @@ std::pair<int64_t, scylla_blas::task> scylla_blas::scylla_queue::consume_simple(
     return {cnt_used - 1, fetch_task_loop(cnt_used - 1)};
 }
 
-std::pair<int64_t, scylla_blas::task> scylla_blas::scylla_queue::consume_multi() {
+std::pair<int64_t, scylla_blas::scylla_queue::task> scylla_blas::scylla_queue::consume_multi() {
     // First we need to check if there is task to fetch
     // There is, if used counter is less than new counter
     update_counters();

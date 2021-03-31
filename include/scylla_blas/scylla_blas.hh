@@ -2,6 +2,7 @@
 #include <boost/thread/thread.hpp>
 #include "scylla_blas/matrix.hh"
 #include "scylla_blas/queue/scylla_queue.hh"
+#include "scylla_blas/queue/worker_proc.hh"
 #include "scylla_blas/utils/matrix_value_generator.hh"
 #include "scylla_blas/utils/scylla_types.hh"
 #include "scylla_blas/utils/utils.hh"
@@ -126,10 +127,11 @@ matrix<T> parallel_multiply(std::shared_ptr<scmd::session> session,
     for (scylla_blas::index_type i = 1; i <= MATRIX_BLOCK_HEIGHT; i++) {
         for (scylla_blas::index_type j = 1; j <= MATRIX_BLOCK_WIDTH; j++) {
             multiplication_queue.produce({
-                 .compute_block {
-                     .block_row = i,
-                     .block_column = j
-                 }});
+                .type = scylla_blas::proto::NONE,
+                .coord {
+                    .block_row = i,
+                    .block_column = j
+                }});
         }
     }
 
@@ -139,7 +141,8 @@ matrix<T> parallel_multiply(std::shared_ptr<scmd::session> session,
     std::cerr << "Ordering multiplication to the workers" << std::endl;
     for (index_type i = 0; i < LIMIT_WORKER_CONCURRENCY; i++) {
         task_ids.push_back(main_worker_queue.produce({
-             .multiplication_order {
+             .type = scylla_blas::worker::get_task_type_for_procedure(scylla_blas::worker::gemv<T>),
+             .blas_binary {
                  .task_queue_id = multiplication_queue_id,
                  .A_id = A_id,
                  .B_id = B_id,
