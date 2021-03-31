@@ -137,8 +137,7 @@ void worker(const struct options& op) {
                 std::cerr << "Abandoned task " << task_id << " due to too many failures." << std::endl;
             }
         } catch (const scylla_blas::empty_container_error& e) {
-            std::cerr << "Waiting for a task..." << std::endl;
-            boost::this_thread::sleep(boost::posix_time::seconds(WORKER_SLEEP_TIME_SECONDS));
+            scylla_blas::wait_seconds(WORKER_SLEEP_TIME_SECONDS);
         }
     }
 }

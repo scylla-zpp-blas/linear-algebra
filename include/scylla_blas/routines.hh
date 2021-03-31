@@ -2,8 +2,11 @@
 
 /* BASED ON cblas.h */
 
-#include <matrix.hh>
-#include <vector.hh>
+#include <complex>
+#include <scmd.hh>
+
+#include "matrix.hh"
+#include "vector.hh"
 
 namespace scylla_blas {
 
@@ -35,10 +38,15 @@ class routine_factory {
     using cfloat = std::complex<float>;
     using zdouble = std::complex<double>;
 
+    template<class T>
+    matrix<T> gemm(const enum scylla_blas::ORDER Order,
+                   const enum scylla_blas::TRANSPOSE TransA,
+                   const enum scylla_blas::TRANSPOSE TransB,
+                   const T alpha, const scylla_blas::matrix<T> &A,
+                   const scylla_blas::matrix<T> &B, const T beta);
 public:
-    routine_factory(const std::shared_ptr <scmd::session> &session)
-
-    _session(session) {}
+    routine_factory(const std::shared_ptr <scmd::session> &session) :
+        _session(session) {}
 
 // TODO: shouldn't we ignore N, incX, incY? Maybe skip them altogether for the sake of simplification?
 
@@ -92,8 +100,8 @@ public:
 */
 
     /* Routines with standard 4 prefixes (s, d, c, z) */
-    void sswap(vector<float> &X vector<float> &Y);
-    void scopy(const vector<float> &X vector<float> &Y);
+    void sswap(vector<float> &X, vector<float> &Y);
+    void scopy(const vector<float> &X, vector<float> &Y);
     void saxpy(const float alpha, const vector<float> &X, vector<float> &Y);
 
     void dswap(vector<double> &X, vector<double> &Y);
@@ -195,7 +203,7 @@ public:
 
     vector<double> dtrsv(const enum ORDER order, const enum UPLO Uplo,
                          const enum TRANSPOSE TransA, const enum DIAG Diag,
-                         const matrix<double> &A, vector<double> &X;
+                         const matrix<double> &A, vector<double> &X);
 
     vector<double> dtbsv(const enum ORDER order, const enum UPLO Uplo,
                          const enum TRANSPOSE TransA, const enum DIAG Diag,
@@ -262,7 +270,7 @@ public:
 
     vector <zdouble> ztrsv(const enum ORDER order, const enum UPLO Uplo,
                            const enum TRANSPOSE TransA, const enum DIAG Diag,
-                           const matrix <zdouble> &A, vector <zdouble> &X;
+                           const matrix <zdouble> &A, vector <zdouble> &X);
 
     vector <zdouble> ztbsv(const enum ORDER order, const enum UPLO Uplo,
                            const enum TRANSPOSE TransA, const enum DIAG Diag,
@@ -297,7 +305,7 @@ public:
     matrix<float> ssyr2(const enum ORDER order, const enum UPLO Uplo,
                         const float alpha, const vector<float> &X, const vector<float> &Y);
 
-    matrix<double> dspr2(const enum ORDER order, const enum UPLO Uplo,
+    matrix<double> sspr2(const enum ORDER order, const enum UPLO Uplo,
                          const double alpha, const vector<double> &X, const vector<double> &Y);
 
     vector<double> dsymv(const enum ORDER order, const enum UPLO Uplo,
@@ -354,7 +362,7 @@ public:
     matrix <cfloat> csyr2(const enum ORDER order, const enum UPLO Uplo,
                           const cfloat alpha, const vector <cfloat> &X, const vector <cfloat> &Y);
 
-    matrix <zdouble> zspr2(const enum ORDER order, const enum UPLO Uplo,
+    matrix <zdouble> cspr2(const enum ORDER order, const enum UPLO Uplo,
                            const zdouble alpha, const vector <zdouble> &X, const vector <zdouble> &Y);
 
     vector <zdouble> zsymv(const enum ORDER order, const enum UPLO Uplo,

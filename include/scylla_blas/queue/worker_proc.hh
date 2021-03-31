@@ -64,13 +64,13 @@ namespace scylla_blas::worker {
 using procedure_t = void(const std::shared_ptr<scmd::session>&, const proto::task&);
 
 template<class T>
-void gemv(const std::shared_ptr<scmd::session> &session, const proto::task &task) {
+void gemm(const std::shared_ptr<scmd::session> &session, const proto::task &task) {
     consume_binary(session, task, &compute_product_block<T>);
 }
 
 constexpr std::array<std::pair<proto::task_type, const procedure_t&>, 2> task_to_procedure = {{
-        { proto::SGEMV, gemv<float> },
-        { proto::DGEMV, gemv<double> }
+        { proto::SGEMM, gemm<float> },
+        { proto::DGEMM, gemm<double> }
 }};
 
 constexpr procedure_t& get_procedure_for_task(proto::task t) {

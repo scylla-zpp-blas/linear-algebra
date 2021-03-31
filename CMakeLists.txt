@@ -11,6 +11,7 @@ add_subdirectory(lib/fmt EXCLUDE_FROM_ALL)
 
 set(SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src/scylla_blas)
 set(BLAS_SRC
+        ${SRC_DIR}/blas_level_3.cc
         ${SRC_DIR}/queue/scylla_queue.cc
         ${SRC_DIR}/utils/int_math.cc
         )

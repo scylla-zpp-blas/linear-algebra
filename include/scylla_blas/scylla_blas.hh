@@ -1,8 +1,6 @@
 #pragma once
-#include <boost/thread/thread.hpp>
 #include "scylla_blas/matrix.hh"
-#include "scylla_blas/queue/scylla_queue.hh"
-#include "scylla_blas/queue/worker_proc.hh"
+#include "scylla_blas/routines.hh"
 #include "scylla_blas/utils/matrix_value_generator.hh"
 #include "scylla_blas/utils/scylla_types.hh"
 #include "scylla_blas/utils/utils.hh"
@@ -100,63 +98,38 @@ matrix<T> naive_multiply(std::shared_ptr<scmd::session> session,
     return AB;
 };
 
+template<class T>
+matrix<T> blas_multiply(std::shared_ptr<scmd::session> session,
+                        const matrix<T> &A, const matrix<T> &B);
+
+template<>
+matrix<float> blas_multiply(std::shared_ptr<scmd::session> session,
+                            const matrix<float> &A, const matrix<float> &B) {
+    return routine_factory(session).sgemm(RowMajor, NoTrans, NoTrans, 1, A, B, 1);
+}
+
+template<>
+matrix<double> blas_multiply(std::shared_ptr<scmd::session> session,
+                             const matrix<double> &A, const matrix<double> &B) {
+    return routine_factory(session).dgemm(RowMajor, NoTrans, NoTrans, 1, A, B, 1);
+}
+
 /* 'Cannon' algorithm (actually little to do with the actual Cannon's algorithm) */
 template <class T>
 matrix<T> parallel_multiply(std::shared_ptr<scmd::session> session,
                             matrix_value_generator<T> &first,
                             matrix_value_generator<T> &second) {
     int64_t base_id = get_timestamp();
-
     int64_t A_id = base_id;
     int64_t B_id = base_id + 1;
-    int64_t AB_id = base_id + 2;
-
-    int64_t multiplication_queue_id = base_id;
 
     auto A = load_matrix_from_generator(session, first, A_id);
     auto B = load_matrix_from_generator(session, second, B_id);
-    auto AB = scylla_blas::matrix<T>(session, AB_id, false);
 
-    scylla_blas::scylla_queue::create_queue(session, multiplication_queue_id, false, true);
-    scylla_blas::scylla_queue multiplication_queue(session, multiplication_queue_id);
+    auto AB = blas_multiply<T>(session, A, B);
 
     print_matrix(A, first.height(), second.width());
     print_matrix(B, first.height(), second.width());
-    std::cerr << "Preparing multiplication task..." << std::endl;
-
-    for (scylla_blas::index_type i = 1; i <= MATRIX_BLOCK_HEIGHT; i++) {
-        for (scylla_blas::index_type j = 1; j <= MATRIX_BLOCK_WIDTH; j++) {
-            multiplication_queue.produce({
-                .type = scylla_blas::proto::NONE,
-                .coord {
-                    .block_row = i,
-                    .block_column = j
-                }});
-        }
-    }
-
-    scylla_blas::scylla_queue main_worker_queue(session, DEFAULT_WORKER_QUEUE_ID);
-    std::vector<int64_t> task_ids;
-
-    std::cerr << "Ordering multiplication to the workers" << std::endl;
-    for (index_type i = 0; i < LIMIT_WORKER_CONCURRENCY; i++) {
-        task_ids.push_back(main_worker_queue.produce({
-             .type = scylla_blas::worker::get_task_type_for_procedure(scylla_blas::worker::gemv<T>),
-             .blas_binary {
-                 .task_queue_id = multiplication_queue_id,
-                 .A_id = A_id,
-                 .B_id = B_id,
-                 .C_id = AB_id
-             }}));
-    }
-
-    std::cerr << "Waiting for workers to complete the order..." << std::endl;
-    for (int64_t id : task_ids) {
-        while (!main_worker_queue.is_finished(id)) {
-            boost::this_thread::sleep(boost::posix_time::seconds(WORKER_SLEEP_TIME_SECONDS));
-        }
-    }
-
     print_matrix(AB, first.height(), second.width());
 
     return AB;

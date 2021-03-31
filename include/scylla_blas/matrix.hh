@@ -80,10 +80,6 @@ private:
     }
 
 public:
-    int64_t get_id() {
-        return _id;
-    }
-
     matrix(const std::shared_ptr<scmd::session>& session, int64_t id, bool force_new = false) :
             _id(id),
             _session(prepare_session(session, _id, force_new)),
@@ -99,6 +95,10 @@ public:
                     "INSERT INTO blas.matrix_{} (block_x, block_y, id_x, id_y, value) VALUES (?, ?, ?, ?, ?);", _id)
 #undef PREPARE
     { std::cerr << "Initialized matrix " << id << std::endl; }
+
+    int64_t get_id() const {
+        return _id;
+    }
 
     T get_value(index_type x, index_type y) const {
         auto ans_vec = get_vals_for_query(_get_value_prepared, get_block_row(x), get_block_col(y), x, y);
