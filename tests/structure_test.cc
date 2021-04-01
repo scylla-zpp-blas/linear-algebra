@@ -10,7 +10,7 @@ BOOST_FIXTURE_TEST_SUITE(structure_tests, scylla_fixture)
 
 BOOST_AUTO_TEST_CASE(matrices)
 {
-    scylla_blas::matrix<float>::init(session, 0, true);
+    scylla_blas::matrix<float>::init(session, 0, 5, 4, true);
 
     auto matrix = scylla_blas::matrix<float>(session, 0);
     auto matrix_2 = scylla_blas::matrix<float>(session, 0);
@@ -26,6 +26,12 @@ BOOST_AUTO_TEST_CASE(matrices)
     matrix.update_value(1, 1, 100);
     BOOST_REQUIRE_EQUAL(std::ceil(matrix.get_value(1, 0) * 10000), std::ceil(M_PI * 10000));
     BOOST_REQUIRE_EQUAL(matrix.get_value(1, 1), 100);
+
+    BOOST_REQUIRE_EQUAL(matrix.rows, 5);
+    BOOST_REQUIRE_EQUAL(matrix.columns, 4);
+
+    BOOST_REQUIRE_EQUAL(matrix.rows, matrix_2.rows);
+    BOOST_REQUIRE_EQUAL(matrix.columns, matrix_2.columns);
 }
 
 

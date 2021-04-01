@@ -12,8 +12,8 @@ add_subdirectory(lib/fmt EXCLUDE_FROM_ALL)
 set(SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src/scylla_blas)
 set(BLAS_SRC
         ${SRC_DIR}/blas_level_3.cc
+        ${SRC_DIR}/matrix.cc
         ${SRC_DIR}/queue/scylla_queue.cc
-        ${SRC_DIR}/utils/int_math.cc
         )
 
 set(INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/include/scylla_blas)
@@ -34,7 +34,6 @@ set(BLAS_INCLUDE
         ${INCLUDE_DIR}/structure/matrix_value.hh
 
         ${INCLUDE_DIR}/utils/matrix_value_generator.hh
-        ${INCLUDE_DIR}/utils/int_math.hh
         ${INCLUDE_DIR}/utils/scylla_types.hh
         ${INCLUDE_DIR}/utils/utils.hh
         )

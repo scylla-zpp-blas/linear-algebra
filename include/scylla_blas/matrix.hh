@@ -16,21 +16,16 @@
 
 namespace scylla_blas {
 
-/*
-* Matrix class giving access to matrix loaded into Scylla.
-*/
-template<class T>
-class matrix {
-private:
-    static constexpr index_type get_block_col(index_type j) {
-        return (j - 1) / BLOCK_SIZE + 1;
-    }
+/* Matrix classes giving access to a matrix loaded into Scylla.
+ * base_matrix: generic matrix operations
+ * matrix<T>: matrix operations templated by matrix value type
+ */
+class basic_matrix {
+protected:
+    inline static constexpr index_type ceil_div (index_type a, index_type b) { return 1 + (a - 1) / b; }
+    inline static constexpr index_type get_block_col(index_type j) { return ceil_div(j, BLOCK_SIZE); }
+    inline static constexpr index_type get_block_row(index_type i) { return ceil_div(i, BLOCK_SIZE); }
 
-    static constexpr index_type get_block_row(index_type i) {
-        return (i - 1) / BLOCK_SIZE + 1;
-    }
-
-    int64_t _id;
     std::shared_ptr<scmd::session> _session;
 
     scmd::prepared_query _get_value_prepared;
@@ -38,6 +33,27 @@ private:
     scmd::prepared_query _get_block_prepared;
     scmd::prepared_query _update_value_prepared;
 
+    static std::pair<index_type, index_type> get_dimensions(const std::shared_ptr<scmd::session> &session, int64_t id);
+
+public:
+    // Should we make these private, with accessors?
+    const index_type id;
+    const index_type rows;
+    const index_type columns;
+
+    /* Height/width measured in blocks is equal to the block index of terminal blocks.
+     * E.g. in a matrix that is 2 blocks wide the rightmost column belongs to the block number 2.
+     */
+    index_type get_blocks_width() const { return get_block_col(columns); }
+    index_type get_blocks_height() const { return get_block_row(rows); }
+
+    static void init_meta(const std::shared_ptr<scmd::session> &session);
+
+    basic_matrix(const std::shared_ptr<scmd::session> &session, int64_t id);
+};
+
+template<class T>
+class matrix : public basic_matrix {
     template<class... Args>
     std::vector<matrix_value<T>> get_vals_for_query(const scmd::prepared_query &query, Args... args) const {
         scmd::query_result result = _session->execute(query.get_statement().bind(args...));
@@ -45,63 +61,60 @@ private:
         std::vector<matrix_value<T>> result_vector;
         while (result.next_row()) {
             result_vector.emplace_back(
-                    result.get_column<int64_t>("id_x"),
-                    result.get_column<int64_t>("id_y"),
+                    result.get_column<index_type>("id_x"),
+                    result.get_column<index_type>("id_y"),
                     result.get_column<T>("value")
             );
         }
 
         return result_vector;
     }
-
 public:
-    /* We don't want to implicitly initialize a handle (somewhat costly)
-     * if it is discarded by the user. Instead, let's have a version of init
-     * that does it explicitly and a version that doesn't do it at all.
-     * TODO: Can we do this with one function and e.g. attributes for the compiler?
+    matrix(const std::shared_ptr<scmd::session> &session, int64_t id) : basic_matrix(session, id)
+        { std::cerr << "A handle created to matrix " << id << std::endl; }
+
+    /* We don't want to implicitly initialize a handle (somewhat costly) if it is discarded by the user.
+     * Instead, let's have a version of init that does it explicitly, and a version that doesn't do it at all.
+     * TODO: Can we do the same with one function and attributes for the compiler?
      */
-    static void init(const std::shared_ptr<scmd::session>& session, int64_t id, bool force_new = true) {
-        if (force_new) {
-            /* Maybe truncate instead? */
-            scmd::statement drop_table(fmt::format("DROP TABLE IF EXISTS blas.matrix_{0};", id));
-            session->execute(drop_table.set_timeout(0));
-        }
+    static void init(const std::shared_ptr<scmd::session>& session,
+                     int64_t id, index_type rows, index_type columns, bool force_new = true) {
+        std::cerr << "initializing matrix " << id << "..." << std::endl;
 
         scmd::statement create_table(fmt::format(R"(
-        CREATE TABLE IF NOT EXISTS blas.matrix_{0} (
-                    block_x bigint,
-                    block_y bigint,
-                    id_x bigint,
-                    id_y bigint,
-                    value {1},
-                    PRIMARY KEY (block_x, id_x, id_y));
-            )", id, get_type_name<T>()));
+            CREATE TABLE IF NOT EXISTS blas.matrix_{0} (
+                block_x BIGINT,
+                block_y BIGINT,
+                id_x    BIGINT,
+                id_y    BIGINT,
+                value   {1},
+                PRIMARY KEY (block_x, id_x, id_y));
+        )", id, get_type_name<T>()));
+
         session->execute(create_table.set_timeout(0));
+        std::cerr << "created matrix table for id = " << id << "..." << std::endl;
+
+        if (force_new) {
+            std::cerr << "Truncating..." << std::endl;
+            scmd::statement drop_table(fmt::format("TRUNCATE blas.matrix_{0};", id));
+            session->execute(drop_table.set_timeout(0));
+            std::cerr << "Truncated!" << std::endl;
+        }
+
+        session->execute(fmt::format(R"(
+            UPDATE blas.matrix_meta
+            SET     rows    = {1},
+                    columns = {2}
+            WHERE   id      = {0};
+        )", id, rows, columns));
+
+        std::cerr << "initialized matrix " << id << std::endl;
     }
 
-    static matrix<T> init_and_return(const std::shared_ptr<scmd::session>& session, int64_t id, bool force_new = true) {
-        init(session, id, force_new);
+    static matrix init_and_return(const std::shared_ptr<scmd::session>& session,
+                                  int64_t id, index_type rows, index_type columns, bool force_new = true) {
+        init(session, id, rows, columns, force_new);
         return matrix<T>(session, id);
-    }
-
-    matrix(const std::shared_ptr<scmd::session>& session, int64_t id) :
-            _id(id),
-            _session(session),
-#define PREPARE(x, args...) x(_session->prepare(fmt::format(args)))
-            PREPARE(_get_value_prepared,
-                    "SELECT * FROM blas.matrix_{} WHERE block_x = ? AND block_y = ? AND id_x = ? AND id_y = ? ALLOW FILTERING;",
-                    _id),
-            PREPARE(_get_row_prepared,
-                    "SELECT * FROM blas.matrix_{} WHERE block_x = ? AND id_x = ?;", _id),
-            PREPARE(_get_block_prepared,
-                    "SELECT * FROM blas.matrix_{} WHERE block_x = ? AND block_y = ? ALLOW FILTERING;", _id),
-            PREPARE(_update_value_prepared,
-                    "INSERT INTO blas.matrix_{} (block_x, block_y, id_x, id_y, value) VALUES (?, ?, ?, ?, ?);", _id)
-#undef PREPARE
-    { std::cerr << "A handle created to matrix " << id << std::endl; }
-
-    int64_t get_id() const {
-        return _id;
     }
 
     T get_value(index_type x, index_type y) const {
@@ -147,7 +160,7 @@ public:
             val.col_index -= offset_y;
         }
 
-        return scylla_blas::matrix_block(block_values, _id, x, y);
+        return scylla_blas::matrix_block(block_values, id, x, y);
     }
 
     void update_value(index_type x, index_type y, T value) {

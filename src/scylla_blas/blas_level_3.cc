@@ -12,19 +12,25 @@ scylla_blas::routine_factory::gemm(const enum scylla_blas::ORDER Order,
                                    const enum scylla_blas::TRANSPOSE TransB,
                                    const T alpha, const scylla_blas::matrix<T> &A,
                                    const scylla_blas::matrix<T> &B, const T beta) {
+    if (A.columns != B.rows) {
+        throw std::runtime_error(
+                fmt::format("Incompatible matrices {} of size {}x{} and {} of size {}x{}: multiplication impossible!",
+                            A.id, A.rows, A.columns, B.id, B.rows, B.columns));
+    }
+
     int64_t base_id = get_timestamp();
     int64_t C_id = base_id;
     int64_t multiplication_queue_id = base_id;
 
-    matrix<T> C = matrix<T>::init_and_return(this->_session, C_id);
+    matrix<T> C = matrix<T>::init_and_return(this->_session, C_id, A.rows, B.columns);
 
     scylla_queue::create_queue(this->_session, multiplication_queue_id, false, true);
     scylla_queue multiplication_queue(this->_session, multiplication_queue_id);
 
     std::cerr << "Preparing multiplication task..." << std::endl;
 
-    for (index_type i = 1; i <= MATRIX_BLOCK_HEIGHT; i++) {
-        for (index_type j = 1; j <= MATRIX_BLOCK_WIDTH; j++) {
+    for (index_type i = 1; i <= C.get_blocks_height(); i++) {
+        for (index_type j = 1; j <= C.get_blocks_width(); j++) {
             multiplication_queue.produce({
                  .type = proto::NONE,
                  .coord {
@@ -43,8 +49,8 @@ scylla_blas::routine_factory::gemm(const enum scylla_blas::ORDER Order,
              .type = worker::get_task_type_for_procedure(worker::gemm<T>),
              .blas_binary {
                  .task_queue_id = multiplication_queue_id,
-                 .A_id = A.get_id(),
-                 .B_id = B.get_id(),
+                 .A_id = A.id,
+                 .B_id = B.id,
                  .C_id = C_id
              }}));
     }

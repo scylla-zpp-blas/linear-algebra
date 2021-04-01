@@ -19,10 +19,10 @@ template<class T>
 void compute_product_block(const proto::task &task_info,
                            const matrix<T> &A, const matrix<T> &B, matrix<T> &C) {
     auto [row, column] = task_info.coord;
+    index_type blocks_to_multiply = A.get_blocks_width();
+    matrix_block<T> result_block({}, C.id, row, column);
 
-    matrix_block<T> result_block({}, C.get_id(), row, column);
-
-    for (index_type i = 1; i <= MATRIX_BLOCK_WIDTH; i++) {
+    for (index_type i = 1; i <= blocks_to_multiply; i++) {
         matrix_block block_A = A.get_block(row, i);
         matrix_block block_B = B.get_block(i, column);
 

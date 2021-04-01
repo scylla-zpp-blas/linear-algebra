@@ -84,6 +84,9 @@ void init(const struct options& op) {
     std::cerr << "Initializing meta-queue..." << std::endl;
     scylla_blas::scylla_queue::init_meta(session);
 
+    std::cerr << "Initializing matrix database..." << std::endl;
+    scylla_blas::basic_matrix::init_meta(session);
+
     std::cerr << "Creating main task queue..." << std::endl;
     scylla_blas::scylla_queue::create_queue(session, DEFAULT_WORKER_QUEUE_ID, true, true);
 
