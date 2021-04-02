@@ -83,7 +83,7 @@ scylla_blas::scylla_queue::scylla_queue(const std::shared_ptr<scmd::session> &se
 }
 
 int64_t scylla_blas::scylla_queue::produce(const scylla_blas::scylla_queue::task &task) {
-    if(multi_producer) {
+    if (multi_producer) {
         return produce_multi(task);
     } else {
         return produce_simple(task);
@@ -91,7 +91,7 @@ int64_t scylla_blas::scylla_queue::produce(const scylla_blas::scylla_queue::task
 }
 
 std::pair<int64_t, scylla_blas::scylla_queue::task> scylla_blas::scylla_queue::consume() {
-    if(multi_consumer) {
+    if (multi_consumer) {
         return consume_multi();
     } else {
         return consume_simple();
@@ -104,7 +104,7 @@ void scylla_blas::scylla_queue::mark_as_finished(int64_t id) {
 
 bool scylla_blas::scylla_queue::is_finished(int64_t id) {
     auto result = _session->execute(check_task_finished_prepared, id);
-    if(!result.next_row()) {
+    if (!result.next_row()) {
         throw std::runtime_error("No task with given id");
     }
     return result.get_column<bool>("is_finished");
@@ -117,7 +117,7 @@ bool scylla_blas::scylla_queue::is_finished(int64_t id) {
 
 void scylla_blas::scylla_queue::update_counters() {
     auto result = _session->execute(fetch_counters_stmt);
-    if(!result.next_row()) {
+    if (!result.next_row()) {
         throw std::runtime_error("Queue deleted while working?");
     }
     cnt_new = result.get_column<int64_t>("cnt_new");
@@ -148,10 +148,10 @@ int64_t scylla_blas::scylla_queue::produce_multi(const scylla_blas::scylla_queue
     update_counters();
     while(true) {
         auto result = _session->execute(update_new_counter_trans_prepared, cnt_new + 1, cnt_new);
-        if(!result.next_row()) {
+        if (!result.next_row()) {
             throw std::runtime_error("Queue deleted while working?");
         }
-        if(result.get_column<bool>("[applied]")) {
+        if (result.get_column<bool>("[applied]")) {
             insert_task(cnt_new, task).wait();
             return cnt_new++;
         } else {
@@ -165,7 +165,7 @@ scylla_blas::scylla_queue::task scylla_blas::scylla_queue::task_from_value(const
     const cass_byte_t *out_data;
     size_t out_size;
     cass_value_get_bytes(v, &out_data, &out_size);
-    if(out_size != sizeof(task)) {
+    if (out_size != sizeof(task)) {
         throw std::runtime_error("Invalid data in queue");
     }
     memcpy(&ret, out_data, out_size);
@@ -176,7 +176,7 @@ scylla_blas::scylla_queue::task scylla_blas::scylla_queue::fetch_task_loop(int64
     // Now we need to fetch task data - it may not be there yet, but it should be rare.
     while(true) {
         auto task_result = _session->execute(fetch_task_by_id_prepared, task_id);
-        if(!task_result.next_row()) {
+        if (!task_result.next_row()) {
             // Task was not inserted yet, we need to wait.
             // It shouldn't happen too often, requires a race condition.
             // Maybe some sleep here?
@@ -213,12 +213,12 @@ std::pair<int64_t, scylla_blas::scylla_queue::task> scylla_blas::scylla_queue::c
             throw empty_container_error("No tasks to fetch right now");
         }
         auto result = _session->execute(update_used_counter_trans_prepared, cnt_used + 1, cnt_used, cnt_new);
-        if(!result.next_row()) {
+        if (!result.next_row()) {
             throw std::runtime_error("Queue deleted while working?");
         }
         cnt_new = result.get_column<int64_t>("cnt_new");
         cnt_used = result.get_column<int64_t>("cnt_used");
-        if(result.get_column<bool>("[applied]")) {
+        if (result.get_column<bool>("[applied]")) {
             // We claimed a task
             cnt_used++;
             return {cnt_used-1, fetch_task_loop(cnt_used-1)};

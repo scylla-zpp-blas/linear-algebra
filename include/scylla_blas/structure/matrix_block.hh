@@ -10,44 +10,51 @@
 
 namespace {
 
-/* TODO: subclass an abstract REPR<T> class in matrix_block? In scylla_blas? */
 template<class T>
-using LOVE = std::map<scylla_blas::index_type, scylla_blas::vector_segment<T>>;
+using list_of_vectors = std::map<scylla_blas::index_type, scylla_blas::vector_segment<T>>;
 
 template<class T>
-using LVAL = std::vector<scylla_blas::matrix_value<T>>;
+using fast_list_of_vectors = std::unordered_map<scylla_blas::index_type, scylla_blas::vector_segment<T>>;
 
 template<class T>
-LOVE<T> to_list_of_vectors(const LVAL<T> &lval) {
-    LOVE<T> ret;
+using list_of_values = std::vector<scylla_blas::matrix_value<T>>;
 
-    /* TODO : optimize to linear complexity
-     * by inserting entire rows instead of separate values
-     */
+/* TODO: this may be worth optimising by direct vector construction from values. */
+template<class T>
+list_of_vectors<T> values_to_vectors (const list_of_values<T> &lval) {
+    fast_list_of_vectors<T> helper;
     for (auto &val : lval)
-        ret[val.row_index].emplace_back(val.col_index, val.value);
+        helper[val.row_index].emplace_back(val.col_index, val.value);
+
+    list_of_vectors<T> ret;
+    for (auto &val : helper)
+        ret.insert({val.first, std::move(val.second)});
+
+    return ret;
+}
+
+/* TODO: std::vector instead of std::unordered map? */
+template<class T>
+list_of_vectors<T> transpose(const list_of_vectors<T> &love) {
+    fast_list_of_vectors<T> helper;
+    for (auto &entry : love)
+        for (auto &val : entry.second)
+            helper[val.index].emplace_back(entry.first, val.value);
+
+    list_of_vectors<T> ret;
+    for (auto &val : helper)
+        ret.insert({val.first, std::move(val.second)});
 
     return ret;
 }
 
 template<class T>
-LVAL<T> to_list(const LOVE<T> &love) {
-    LVAL<T> ret;
+list_of_values<T> vectors_to_values(const list_of_vectors<T> &love) {
+    list_of_values<T> ret;
 
     for (auto &entry : love)
         for (auto &val : entry.second)
             ret.emplace_back(entry.first, val.index, val.value);
-
-    return ret;
-}
-
-template<class T>
-LOVE<T> transpose(const LOVE<T> &love) {
-    LOVE<T> ret;
-
-    for (auto &entry : love)
-        for (auto &val : entry.second)
-            ret[val.index].emplace_back(entry.first, val.value);
 
     return ret;
 }
@@ -58,9 +65,9 @@ namespace scylla_blas {
 
 template<class T>
 class matrix_block {
-    LVAL<T> _values;
+    list_of_values<T> _values;
 
-    explicit matrix_block(LVAL<T> values) :
+    explicit matrix_block(list_of_values<T> values) :
             _values(values), i(-1), j(-1) {}
 public:
     const int64_t matrix_id = 0;
@@ -71,8 +78,8 @@ public:
         _values(values), matrix_id(matrix_id), i(i), j(j) {}
 
     matrix_block operator*=(const matrix_block &other) {
-        auto list_of_vectors = to_list_of_vectors(_values);
-        auto transposed_other = transpose(to_list_of_vectors(other._values));
+        auto list_of_vectors = values_to_vectors(_values);
+        auto transposed_other = transpose(values_to_vectors(other._values));
 
         _values.clear();
 
@@ -92,16 +99,16 @@ public:
     }
 
     matrix_block operator+=(const matrix_block &other) {
-        auto this_LOVE = to_list_of_vectors(_values);
-        auto other_LOVE = to_list_of_vectors(other._values);
+        auto this_ListVec = values_to_vectors(_values);
+        auto other_ListVec = values_to_vectors(other._values);
 
         _values.clear();
 
-        for (auto &[row_id, row_values] : other_LOVE) {
-            this_LOVE[row_id] += row_values;
+        for (auto &[row_id, row_values] : other_ListVec) {
+            this_ListVec[row_id] += row_values;
         }
 
-        _values = to_list(this_LOVE);
+        _values = vectors_to_values(this_ListVec);
 
         return *this;
     }
@@ -114,7 +121,7 @@ public:
         return result;
     }
 
-    const LVAL<T> &get_values_raw() const {
+    const list_of_values<T> &get_values_raw() const {
         return _values;
     }
 };

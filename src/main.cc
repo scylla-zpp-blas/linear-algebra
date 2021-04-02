@@ -27,7 +27,7 @@ void exactly_one_of(const boost::program_options::variables_map & vm,
                          const T &...op)
 {
     const std::vector<std::string> args = { op... };
-    if(std::count_if(args.begin(), args.end(), [&](const std::string& s){ return vm.count(s); }) != 1)
+    if (std::count_if (args.begin(), args.end(), [&](const std::string& s){ return vm.count(s); }) != 1)
     {
         throw std::logic_error(std::string("Need exactly one of mutually exclusive options"));
     }
@@ -56,9 +56,9 @@ void parse_arguments(int ac, char *av[], options &options) {
         }
 
         exactly_one_of(vm, "init", "deinit","worker");
-        if(vm.count("init")) options.is_init = true;
-        if(vm.count("deinit")) options.is_deinit = true;
-        if(vm.count("worker")) options.is_worker = true;
+        if (vm.count("init")) options.is_init = true;
+        if (vm.count("deinit")) options.is_deinit = true;
+        if (vm.count("worker")) options.is_worker = true;
 
         po::notify(vm);
     } catch (std::exception &e) {
@@ -148,9 +148,9 @@ void worker(const struct options& op) {
 int main(int argc, char **argv) {
     struct options op;
     parse_arguments(argc, argv, op);
-    if(op.is_init) {
+    if (op.is_init) {
         init(op);
-    } else if(op.is_deinit) {
+    } else if (op.is_deinit) {
         deinit(op);
     } else if (op.is_worker) {
         worker(op);

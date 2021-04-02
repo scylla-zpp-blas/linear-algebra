@@ -100,7 +100,7 @@ BOOST_AUTO_TEST_CASE(multiply_float_mm)
     test_multiply_with_routine<float>(
             session, 1000, 1001,
             [](const auto &session, const auto &A, const auto &B) {
-                return routine_factory(session).sgemm(RowMajor,NoTrans,NoTrans,1, A, B, 1);
+                return routine_factory(session).sgemm(RowMajor, NoTrans, NoTrans, 1, A, B, 1);
             }
     );
 }
@@ -111,7 +111,7 @@ BOOST_AUTO_TEST_CASE(multiply_double_mm)
     test_multiply_with_routine<double>(
             session, 2000, 2001,
             [](const auto &session, const auto &A, const auto &B) {
-                return routine_factory(session).dgemm(RowMajor,NoTrans,NoTrans,1, A, B, 1);
+                return routine_factory(session).dgemm(RowMajor, NoTrans, NoTrans, 1, A, B, 1);
             }
     );
 }
