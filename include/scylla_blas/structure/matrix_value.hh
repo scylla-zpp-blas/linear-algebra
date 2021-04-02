@@ -5,6 +5,7 @@
 #include <iostream>
 #include <string>
 
+#include "scylla_blas/config.hh"
 #include "scylla_blas/utils/scylla_types.hh"
 #include "scylla_blas/utils/utils.hh"
 
@@ -19,7 +20,7 @@ struct matrix_value {
     matrix_value(index_type i, index_type j, T val) : row_index(i), col_index(j), value(val) {}
 
     bool operator==(const matrix_value &other) const {
-        return row_index == other.row_index && col_index == other.col_index && value == other.value;
+        return row_index == other.row_index && col_index == other.col_index && (std::abs(value - other.value) < EPSILON);
     }
 
     bool operator!=(const matrix_value &other) const {
@@ -29,16 +30,5 @@ struct matrix_value {
     template <class U>
     friend std::ostream& operator<<(std::ostream& out, const matrix_value<U>& value);
 };
-
-template<>
-inline bool matrix_value<float>::operator==(const matrix_value<float> &other) const {
-    return row_index == other.row_index && col_index == other.col_index && std::abs(value - other.value) < scylla_blas::epsilon;
-}
-
-template <class U>
-inline std::ostream& operator<<(std::ostream& out, const matrix_value<U>& value) {
-    out << std::string("(") << value.row_index << ", " << value.col_index << ") -> " << value.value;
-    return out;
-}
 
 }

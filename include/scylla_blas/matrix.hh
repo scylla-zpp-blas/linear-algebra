@@ -31,7 +31,7 @@ protected:
     scmd::prepared_query _get_value_prepared;
     scmd::prepared_query _get_row_prepared;
     scmd::prepared_query _get_block_prepared;
-    scmd::prepared_query _update_value_prepared;
+    scmd::prepared_query _insert_value_prepared;
 
     static std::pair<index_type, index_type> get_dimensions(const std::shared_ptr<scmd::session> &session, int64_t id);
 
@@ -92,23 +92,21 @@ public:
         )", id, get_type_name<T>()));
 
         session->execute(create_table.set_timeout(0));
-        std::cerr << "created matrix table for id = " << id << "..." << std::endl;
 
         if (force_new) {
-            std::cerr << "Truncating..." << std::endl;
+            std::cerr << "Clearing matrix contents..." << std::endl;
             scmd::statement drop_table(fmt::format("TRUNCATE blas.matrix_{0};", id));
             session->execute(drop_table.set_timeout(0));
-            std::cerr << "Truncated!" << std::endl;
         }
 
         session->execute(fmt::format(R"(
             UPDATE blas.matrix_meta
-            SET     rows    = {1},
-                    columns = {2}
-            WHERE   id      = {0};
+                SET     rows    = {1},
+                        columns = {2}
+                WHERE   id      = {0};
         )", id, rows, columns));
 
-        std::cerr << "initialized matrix " << id << std::endl;
+        std::cerr << "Initialized matrix " << id << std::endl;
     }
 
     static matrix init_and_return(const std::shared_ptr<scmd::session>& session,
@@ -163,33 +161,58 @@ public:
         return scylla_blas::matrix_block(block_values, id, x, y);
     }
 
-    void update_value(index_type x, index_type y, T value) {
-        _session->execute(_update_value_prepared.get_statement()
+    void insert_value(index_type x, index_type y, T value) {
+        if (std::abs(value) < EPSILON) return;
+
+        _session->execute(_insert_value_prepared.get_statement()
                                   .bind(get_block_row(x), get_block_col(y), x, y, value));
     }
 
-    void update_value(index_type block_x, index_type block_y, index_type x, index_type y, T value) {
-        _session->execute(_update_value_prepared.get_statement()
+    void insert_value(index_type block_x, index_type block_y, index_type x, index_type y, T value) {
+        if (std::abs(value) < EPSILON) return;
+
+        _session->execute(_insert_value_prepared.get_statement()
                                   .bind(block_x, block_y, x, y, value));
     }
 
-    /* TODO: make a better implementation of the update methods below */
-    void update_values(std::vector<matrix_value<T>> values) {
-        for (auto &val: values)
-            update_value(val.row_index, val.col_index, val.value);
+    void insert_values(const std::vector<matrix_value<T>> &values) {
+        std::string inserts = "";
+
+        for (auto &val: values) {
+            if (std::abs(val.value) < EPSILON) continue;
+
+            inserts += fmt::format(
+                    "INSERT INTO blas.matrix_{} (block_x, block_y, id_x, id_y, value) VALUES ({}, {}, {}, {}, {}); ",
+                    id, get_block_row(val.row_index), get_block_col(val.col_index),
+                    val.row_index, val.col_index, val.value);
+        }
+
+        /* Don't send a query if there's no need to do so. */
+        if (inserts == "") return;
+
+        _session->execute("BEGIN BATCH " + inserts + "APPLY BATCH;");
     }
 
-    void update_row(index_type x, vector_segment<T> row_data) {
+    void insert_row(index_type x, const vector_segment<T> &row_data) {
+        std::vector<matrix_value<T>> values;
+
         for (auto &val : row_data)
-            update_value(x, val.index, val.value);
+            values.emplace_back(x, val.index, val.value);
+
+        insert_values(values);
     }
 
-    void update_block(index_type x, index_type y, const matrix_block<T> &block) {
-        index_type offset_x = (x - 1) * BLOCK_SIZE;
-        index_type offset_y = (y - 1) * BLOCK_SIZE;
+    void insert_block(index_type row, index_type column, const matrix_block<T> &block) {
+        std::vector<matrix_value<T>> values = block.get_values_raw();
+        index_type offset_row = (row - 1) * BLOCK_SIZE;
+        index_type offset_column = (column - 1) * BLOCK_SIZE;
 
-        for (auto &val : block.get_values_raw())
-            update_value(x, y, offset_x + val.row_index, offset_y + val.col_index, val.value);
+        for (auto &val : values) {
+            val.row_index += offset_row;
+            val.col_index += offset_column;
+        }
+
+        insert_values(values);
     }
 };
 

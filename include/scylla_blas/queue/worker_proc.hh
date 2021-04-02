@@ -29,7 +29,7 @@ void compute_product_block(const proto::task &task_info,
         result_block += block_A * block_B;
     }
 
-    C.update_block(row, column, result_block);
+    C.insert_block(row, column, result_block);
 }
 
 template<class T>

@@ -18,7 +18,7 @@ scylla_blas::matrix<T> load_matrix_from_generator(const std::shared_ptr<scmd::se
         scylla_blas::matrix_value<T> next_val = gen.next();
 
         if (prev_val.row_index != -1 && next_val.row_index != prev_val.row_index) {
-            result.update_row(prev_val.row_index, next_row);
+            result.insert_row(prev_val.row_index, next_row);
             next_row.clear();
         }
 
@@ -27,7 +27,7 @@ scylla_blas::matrix<T> load_matrix_from_generator(const std::shared_ptr<scmd::se
     }
 
     if (prev_val.row_index != -1) {
-        result.update_row(prev_val.row_index, next_row);
+        result.insert_row(prev_val.row_index, next_row);
     }
 
     std::cerr << "Loaded a new matrix: " << id << " from a generator" << std::endl;

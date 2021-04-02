@@ -15,15 +15,15 @@ BOOST_AUTO_TEST_CASE(matrices)
     auto matrix = scylla_blas::matrix<float>(session, 0);
     auto matrix_2 = scylla_blas::matrix<float>(session, 0);
 
-    matrix.update_value(1, 0, M_PI);
-    matrix.update_value(1, 1, 42);
+    matrix.insert_value(1, 0, M_PI);
+    matrix.insert_value(1, 1, 42);
     BOOST_REQUIRE_EQUAL(std::ceil(matrix.get_value(1, 0) * 10000), std::ceil(M_PI * 10000));
     BOOST_REQUIRE_EQUAL(matrix.get_value(1, 1), 42);
 
-    matrix.update_value(1, 0, M_PI);
+    matrix.insert_value(1, 0, M_PI);
     BOOST_REQUIRE_EQUAL(std::ceil(matrix.get_value(1, 0) * 10000), std::ceil(M_PI * 10000));
 
-    matrix.update_value(1, 1, 100);
+    matrix.insert_value(1, 1, 100);
     BOOST_REQUIRE_EQUAL(std::ceil(matrix.get_value(1, 0) * 10000), std::ceil(M_PI * 10000));
     BOOST_REQUIRE_EQUAL(matrix.get_value(1, 1), 100);
 

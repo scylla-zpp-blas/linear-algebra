@@ -31,7 +31,7 @@ scylla_blas::basic_matrix::basic_matrix(const std::shared_ptr<scmd::session>& se
                 "SELECT * FROM blas.matrix_{} WHERE block_x = ? AND id_x = ?;", id),
         PREPARE(_get_block_prepared,
                 "SELECT * FROM blas.matrix_{} WHERE block_x = ? AND block_y = ? ALLOW FILTERING;", id),
-        PREPARE(_update_value_prepared,
+        PREPARE(_insert_value_prepared,
                 "INSERT INTO blas.matrix_{} (block_x, block_y, id_x, id_y, value) VALUES (?, ?, ?, ?, ?);", id)
 #undef PREPARE
 { }

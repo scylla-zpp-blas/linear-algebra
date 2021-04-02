@@ -31,7 +31,7 @@ scylla_blas::matrix<T> naive_multiply(const std::shared_ptr<scmd::session> &sess
             }
         }
 
-        AB.update_row(i, scylla_blas::vector_segment<T>(results));
+        AB.insert_row(i, scylla_blas::vector_segment<T>(results));
     }
 
     return AB;
@@ -40,8 +40,8 @@ scylla_blas::matrix<T> naive_multiply(const std::shared_ptr<scmd::session> &sess
 template<class T>
 void test_multiply_with_routine(const std::shared_ptr<scmd::session> &session,
                                 scylla_blas::index_type A_id, scylla_blas::index_type B_id, auto fun) {
-    std::shared_ptr <scylla_blas::value_factory<T>> f =
-            std::make_shared < scylla_blas::value_factory <T>> (0, 9, 1111);
+    std::shared_ptr<scylla_blas::value_factory<T>> f =
+            std::make_shared<scylla_blas::value_factory<T>>(0, 9, 1111);
 
     scylla_blas::sparse_matrix_value_generator<T> gen1(4, 6, 10, 42, f);
     scylla_blas::sparse_matrix_value_generator<T> gen2(6, 8, 10, 44, f);
@@ -62,6 +62,34 @@ void test_multiply_with_routine(const std::shared_ptr<scmd::session> &session,
 
     BOOST_REQUIRE_EQUAL(C_2.rows, A.rows);
     BOOST_REQUIRE_EQUAL(C_2.columns, B.columns);
+
+    /* Map to tuples – we don't want to implement operators for matrix/vector values */
+    std::vector<scylla_blas::matrix_value<T>> naive_tuples;
+    for (scylla_blas::index_type i = 1; i <= C_1.rows; i++) {
+        auto naive_vals = C_1.get_row(i);
+        for (auto &val : naive_vals)
+            naive_tuples.emplace_back(i, val.index, val.value);
+    }
+
+    std::vector<scylla_blas::matrix_value<T>> blas_tuples;
+    for (scylla_blas::index_type i = 1; i <= C_2.rows; i++) {
+        auto blas_vals = C_2.get_row(i);
+        for (auto &val : blas_vals)
+            blas_tuples.emplace_back(i, val.index, val.value);
+    }
+
+    /* TODO: Use boost macros? */
+    auto it_1 = naive_tuples.begin();
+    auto it_2 = blas_tuples.begin();
+    for (int i = 0; it_1 != naive_tuples.end() && it_2 != blas_tuples.end(); i++, it_1++, it_2++) {
+        if (*it_1 != *it_2) {
+            std::cerr << "Value mismatch at position " << i << "!" << std::endl;
+            std::cerr << "(" << it_1->row_index << ", " << it_1->col_index << ") -> " << it_1->value << " != " <<
+                         "(" << it_2->row_index << ", " << it_2->col_index << ") -> " << it_2->value << std::endl;
+            std::cerr << "Aborting...";
+            BOOST_CHECK(false);
+        }
+    }
 }
 
 BOOST_FIXTURE_TEST_SUITE(multiply_tests, scylla_fixture)
