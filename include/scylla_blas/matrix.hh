@@ -17,7 +17,7 @@
 namespace scylla_blas {
 
 /* Matrix classes giving access to a matrix loaded into Scylla.
- * base_matrix: generic matrix operations
+ * basic_matrix: generic matrix operations
  * matrix<T>: matrix operations templated by matrix value type
  */
 class basic_matrix {
@@ -28,24 +28,25 @@ protected:
 
     std::shared_ptr<scmd::session> _session;
 
+    scmd::prepared_query _get_meta_prepared;
     scmd::prepared_query _get_value_prepared;
     scmd::prepared_query _get_row_prepared;
     scmd::prepared_query _get_block_prepared;
     scmd::prepared_query _insert_value_prepared;
 
-    static std::pair<index_type, index_type> get_dimensions(const std::shared_ptr<scmd::session> &session, int64_t id);
+    std::pair<index_type, index_type> get_dimensions() const;
 
 public:
     // Should we make these private, with accessors?
     const index_type id;
-    const index_type rows;
-    const index_type columns;
+    const index_type row_count;
+    const index_type column_count;
 
     /* Height/width measured in blocks is equal to the block index of terminal blocks.
      * E.g. in a matrix that is 2 blocks wide the rightmost column belongs to the block number 2.
      */
-    index_type get_blocks_width() const { return get_block_col(columns); }
-    index_type get_blocks_height() const { return get_block_row(rows); }
+    index_type get_blocks_width() const { return get_block_col(column_count); }
+    index_type get_blocks_height() const { return get_block_row(row_count); }
 
     static void init_meta(const std::shared_ptr<scmd::session> &session);
 
@@ -77,8 +78,8 @@ public:
      * Instead, let's have a version of init that does it explicitly, and a version that doesn't do it at all.
      * TODO: Can we do the same with one function and attributes for the compiler?
      */
-    static void init(const std::shared_ptr<scmd::session>& session,
-                     int64_t id, index_type rows, index_type columns, bool force_new = true) {
+    static void init(const std::shared_ptr<scmd::session> &session,
+                     int64_t id, index_type row_count, index_type column_count, bool force_new = true) {
         std::cerr << "initializing matrix " << id << "..." << std::endl;
 
         scmd::statement create_table(fmt::format(R"(
@@ -101,17 +102,17 @@ public:
 
         session->execute(fmt::format(R"(
             UPDATE blas.matrix_meta
-                SET     rows    = {1},
-                        columns = {2}
-                WHERE   id      = {0};
-        )", id, rows, columns));
+                SET     row_count      = {1},
+                        column_count   = {2}
+                WHERE   id             = {0};
+        )", id, row_count, column_count));
 
         std::cerr << "Initialized matrix " << id << std::endl;
     }
 
-    static matrix init_and_return(const std::shared_ptr<scmd::session>& session,
-                                  int64_t id, index_type rows, index_type columns, bool force_new = true) {
-        init(session, id, rows, columns, force_new);
+    static matrix init_and_return(const std::shared_ptr<scmd::session> &session,
+                                  int64_t id, index_type row_count, index_type column_count, bool force_new = true) {
+        init(session, id, row_count, column_count, force_new);
         return matrix<T>(session, id);
     }
 

@@ -5,6 +5,7 @@
 #include <complex>
 #include <scmd.hh>
 
+#include "queue/scylla_queue.hh"
 #include "matrix.hh"
 #include "vector.hh"
 
@@ -33,7 +34,7 @@ enum SIDE {
  * However, we will likely prefer to simplify by reducing
  * the number of arguments and returning results the C++ way.
  */
-class routine_factory {
+class routine_scheduler {
     std::shared_ptr <scmd::session> _session;
     using cfloat = std::complex<float>;
     using zdouble = std::complex<double>;
@@ -44,9 +45,23 @@ class routine_factory {
                    const enum scylla_blas::TRANSPOSE TransB,
                    const T alpha, const scylla_blas::matrix<T> &A,
                    const scylla_blas::matrix<T> &B, const T beta);
+
+    const int64_t _subtask_queue_id;
+    scylla_queue _subtask_queue;
+    scylla_queue _main_worker_queue;
+
+    scylla_queue prepare_queue() const {
+        scylla_queue::create_queue(_session, _subtask_queue_id, false, true);
+        return scylla_queue(_session, _subtask_queue_id);
+    }
 public:
-    routine_factory(const std::shared_ptr <scmd::session> &session) :
-        _session(session) {}
+    /* The queue used for subroutines requested in methods */
+    routine_scheduler(const std::shared_ptr <scmd::session> &session) :
+        _session(session),
+        _subtask_queue_id(get_timestamp()),
+        _subtask_queue(prepare_queue()),
+        _main_worker_queue(_session, DEFAULT_WORKER_QUEUE_ID)
+    {}
 
 // TODO: shouldn't we ignore N, incX, incY? Maybe skip them altogether for the sake of simplification?
 

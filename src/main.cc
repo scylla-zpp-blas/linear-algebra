@@ -27,7 +27,7 @@ void exactly_one_of(const boost::program_options::variables_map & vm,
                          const T &...op)
 {
     const std::vector<std::string> args = { op... };
-    if (std::count_if (args.begin(), args.end(), [&](const std::string& s){ return vm.count(s); }) != 1)
+    if (std::count_if(args.begin(), args.end(), [&](const std::string& s){ return vm.count(s); }) != 1)
     {
         throw std::logic_error(std::string("Need exactly one of mutually exclusive options"));
     }

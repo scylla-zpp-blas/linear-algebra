@@ -27,11 +27,11 @@ BOOST_AUTO_TEST_CASE(matrices)
     BOOST_REQUIRE_EQUAL(std::ceil(matrix.get_value(1, 0) * 10000), std::ceil(M_PI * 10000));
     BOOST_REQUIRE_EQUAL(matrix.get_value(1, 1), 100);
 
-    BOOST_REQUIRE_EQUAL(matrix.rows, 5);
-    BOOST_REQUIRE_EQUAL(matrix.columns, 4);
+    BOOST_REQUIRE_EQUAL(matrix.row_count, 5);
+    BOOST_REQUIRE_EQUAL(matrix.column_count, 4);
 
-    BOOST_REQUIRE_EQUAL(matrix.rows, matrix_2.rows);
-    BOOST_REQUIRE_EQUAL(matrix.columns, matrix_2.columns);
+    BOOST_REQUIRE_EQUAL(matrix.row_count, matrix_2.row_count);
+    BOOST_REQUIRE_EQUAL(matrix.column_count, matrix_2.column_count);
 }
 
 

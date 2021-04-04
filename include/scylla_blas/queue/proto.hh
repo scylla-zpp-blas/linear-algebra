@@ -2,8 +2,19 @@
 
 #include "scylla_blas/utils/scylla_types.hh"
 
+/* This header defines tasks types that can be requested from,
+ * read and performed by worker instances.
+ */
+
 namespace scylla_blas::proto {
 
+/* TODO: narrow the list down. It includes all BLAS task ids,
+ * but it is likely we won't need most of them – if anything,
+ * because we will want workers to know of and perform only
+ * very simple tasks such as multiplication or addition.
+ * The more complex ones could be left for the supervisor layer
+ * to plan and distribute.
+ */
 enum task_type {
     NONE,
 
@@ -167,13 +178,13 @@ enum task_type {
     ZTRSM
 };
 
-// This is the struct that will be sent trough the queue.
-// We can freely modify it, to add different kinds of tasks.
-// Instance of this struct will be cast to char array,
-// stored as binary blob in the database,
-// then "de-serialized" at the other end.
-// This means it probably should not contain data pertaining to local memory,
-// as storing such data is nearly useless.
+/* This is the struct that will be sent trough the queue.
+ * We can freely modify it, to add different kinds of tasks.
+ * Instance of this struct will be cast to char array,
+ * stored as binary blob in the database, then "de-serialized" at the other end.
+ * This means it probably should not contain data pertaining to local memory,
+ * as there is little point in storing such data.
+ */
 struct task {
 
     task_type type;

@@ -38,10 +38,10 @@ scylla_blas::matrix<T> load_matrix_from_generator(const std::shared_ptr<scmd::se
 template<class T>
 void print_matrix(scylla_blas::matrix<T> &matrix) {
     std::cout << "[" << matrix.id << "]" << std::endl;
-    for (scylla_blas::index_type i = 1; i <= matrix.rows; i++) {
+    for (scylla_blas::index_type i = 1; i <= matrix.row_count; i++) {
         auto vec = matrix.get_row(i);
         auto it = vec.begin();
-        for (scylla_blas::index_type j = 1; j <= matrix.columns; j++) {
+        for (scylla_blas::index_type j = 1; j <= matrix.column_count; j++) {
             if (it != vec.end() && it->index == j) {
                 std::cout << it->value << " ";
                 it++;
