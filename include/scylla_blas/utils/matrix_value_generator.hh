@@ -16,7 +16,7 @@ public:
 
     virtual size_t width() = 0;
 
-    virtual ~matrix_value_generator() = default;;
+    virtual ~matrix_value_generator() = default;
 };
 
 }

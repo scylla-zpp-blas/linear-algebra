@@ -186,7 +186,6 @@ enum task_type {
  * as there is little point in storing such data.
  */
 struct task {
-
     task_type type;
 
     union {
@@ -201,21 +200,25 @@ struct task {
 
         struct {
             int64_t task_queue_id;
-            int64_t obj_id;
-        } blas_auto;
-
-        struct {
-            int64_t task_queue_id;
+            TRANSPOSE TransA;
+            TRANSPOSE TransB;
+            float alpha;
             int64_t A_id;
             int64_t B_id;
-        } blas_unary;
-
-        struct {
-            int64_t task_queue_id;
-            int64_t A_id;
-            int64_t B_id;
+            float beta;
             int64_t C_id;
-        } blas_binary;
+        } sgemm;
+
+        struct {
+            int64_t task_queue_id;
+            TRANSPOSE TransA;
+            TRANSPOSE TransB;
+            double alpha;
+            int64_t A_id;
+            int64_t B_id;
+            double beta;
+            int64_t C_id;
+        } dgemm;
     };
 
 };

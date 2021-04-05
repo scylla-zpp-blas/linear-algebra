@@ -45,12 +45,24 @@ public:
     /* Height/width measured in blocks is equal to the block index of terminal blocks.
      * E.g. in a matrix that is 2 blocks wide the rightmost column belongs to the block number 2.
      */
-    index_type get_blocks_width() const { return get_block_col(column_count); }
-    index_type get_blocks_height() const { return get_block_row(row_count); }
+    index_type get_blocks_width(TRANSPOSE trans = NoTrans) const {
+        if (trans != NoTrans) return get_blocks_height();
+
+        return get_block_col(column_count);
+    }
+    index_type get_blocks_height(TRANSPOSE trans = NoTrans) const {
+        if (trans != NoTrans) return get_blocks_width();
+
+        return get_block_row(row_count);
+    }
 
     static void init_meta(const std::shared_ptr<scmd::session> &session);
 
     basic_matrix(const std::shared_ptr<scmd::session> &session, int64_t id);
+
+    static void clear(const std::shared_ptr<scmd::session> &session, int64_t id);
+    static void resize(const std::shared_ptr<scmd::session> &session,
+                       int64_t id, int64_t new_row_count, int64_t new_column_count);
 };
 
 template<class T>
@@ -95,17 +107,10 @@ public:
         session->execute(create_table.set_timeout(0));
 
         if (force_new) {
-            std::cerr << "Clearing matrix contents..." << std::endl;
-            scmd::statement drop_table(fmt::format("TRUNCATE blas.matrix_{0};", id));
-            session->execute(drop_table.set_timeout(0));
+            clear(session, id);
         }
 
-        session->execute(fmt::format(R"(
-            UPDATE blas.matrix_meta
-                SET     row_count      = {1},
-                        column_count   = {2}
-                WHERE   id             = {0};
-        )", id, row_count, column_count));
+        resize(session, id, row_count, column_count);
 
         std::cerr << "Initialized matrix " << id << std::endl;
     }
@@ -116,7 +121,9 @@ public:
         return matrix<T>(session, id);
     }
 
-    T get_value(index_type x, index_type y) const {
+    T get_value(index_type x, index_type y, TRANSPOSE trans = NoTrans) const {
+        if (trans != NoTrans) std::swap(x, y);
+
         auto ans_vec = get_vals_for_query(_get_value_prepared, get_block_row(x), get_block_col(y), x, y);
 
         if (!ans_vec.empty()) {
@@ -137,7 +144,9 @@ public:
         return answer;
     }
 
-    matrix_block<T> get_block(index_type x, index_type y) const {
+    matrix_block<T> get_block(index_type x, index_type y, TRANSPOSE trans = NoTrans) const {
+        if (trans != NoTrans) std::swap(x, y);
+
         auto block_values = get_vals_for_query(_get_block_prepared, x, y);
 
         /* Move by offset – a block is an independent unit.
@@ -159,7 +168,7 @@ public:
             val.col_index -= offset_y;
         }
 
-        return scylla_blas::matrix_block(block_values, id, x, y);
+        return scylla_blas::matrix_block(block_values, id, x, y, trans);
     }
 
     void insert_value(index_type x, index_type y, T value) {

@@ -7,19 +7,12 @@
 #include "scylla_blas/scylla_blas.hh"
 #include "fixture.hh"
 
+#if false
 template <class T>
 scylla_blas::matrix<T> naive_multiply(const std::shared_ptr<scmd::session> &session,
-                         const scylla_blas::matrix<T> &A, const scylla_blas::matrix<T> &B) {
-    int64_t base_id = scylla_blas::get_timestamp();
-
-    int64_t A_id = base_id;
-    int64_t B_id = base_id + 1;
-    int64_t AB_id = base_id + 2;
-
-    auto AB = scylla_blas::matrix<T>::init_and_return(session, AB_id, A.row_count, B.column_count);
-
+                         const scylla_blas::matrix<T> &A, const scylla_blas::matrix<T> &B,
+                         scylla_blas::matrix<T> &AB) {
     for (scylla_blas::index_type i = 1; i <= A.row_count; i++) {
-        /* FIXME? std::unordered_map could be more efficient for very large and very sparse matrices */
         std::vector<T> results(B.column_count + 1, 0);
 
         scylla_blas::vector_segment<T> left_vec = A.get_row(i);
@@ -39,24 +32,9 @@ scylla_blas::matrix<T> naive_multiply(const std::shared_ptr<scmd::session> &sess
 
 template<class T>
 void test_multiply_with_routine(const std::shared_ptr<scmd::session> &session,
-                                scylla_blas::index_type A_id, scylla_blas::index_type B_id, auto fun) {
-    std::shared_ptr<scylla_blas::value_factory<T>> f =
-            std::make_shared<scylla_blas::value_factory<T>>(0, 9, 1111);
-
-    scylla_blas::sparse_matrix_value_generator<T> gen1(4, 6, 10, 42, f);
-    scylla_blas::sparse_matrix_value_generator<T> gen2(6, 8, 10, 44, f);
-
-    scylla_blas::matrix<T> A = scylla_blas::load_matrix_from_generator(session, gen1, A_id);
-    scylla_blas::matrix<T> B = scylla_blas::load_matrix_from_generator(session, gen2, B_id);
-    print_matrix(A);
-    print_matrix(B);
-
-    auto C_1 = naive_multiply(session, A, B);
-    print_matrix(C_1);
-
-    auto C_2 = fun(session, A, B);
-    print_matrix(C_2);
-
+                                int64_t A_id, scylla_blas::index_type width_A, scylla_blas::index_type height_A,
+                                int64_t B_id, scylla_blas::index_type width_B, scylla_blas::index_type height_B,
+                                auto fun) {
     BOOST_REQUIRE_EQUAL(C_1.row_count, C_2.row_count);
     BOOST_REQUIRE_EQUAL(C_1.column_count, C_2.column_count);
 
@@ -91,29 +69,47 @@ void test_multiply_with_routine(const std::shared_ptr<scmd::session> &session,
         }
     }
 }
+#endif
 
-BOOST_FIXTURE_TEST_SUITE(multiply_tests, scylla_fixture)
+BOOST_FIXTURE_TEST_SUITE(multiply_tests, matrix_fixture)
 
-BOOST_AUTO_TEST_CASE(multiply_float_mm)
+BOOST_AUTO_TEST_CASE(float_mm)
 {
     using namespace scylla_blas;
-    test_multiply_with_routine<float>(
-            session, 1000, 1001,
-            [](const auto &session, const auto &A, const auto &B) {
-                return routine_scheduler(session).sgemm(RowMajor, NoTrans, NoTrans, 1, A, B, 1);
-            }
-    );
-}
 
-BOOST_AUTO_TEST_CASE(multiply_double_mm)
-{
-    using namespace scylla_blas;
-    test_multiply_with_routine<double>(
-            session, 2000, 2001,
-            [](const auto &session, const auto &A, const auto &B) {
-                return routine_scheduler(session).dgemm(RowMajor, NoTrans, NoTrans, 1, A, B, 1);
-            }
-    );
+    print_matrix(*float_6x5);
+    print_matrix(*float_5x6);
+
+    std::cerr << "Multiply" << std::endl;
+    matrix<float>::clear(session, float_6x6->id);
+    routine_scheduler(session).sgemm( NoTrans, NoTrans, 1, *float_6x5, *float_5x6, 1, *float_6x6);
+    print_matrix(*float_6x6);
+
+    std::cerr << "Multiply with coeff (2.5)" << std::endl;
+    matrix<float>::clear(session, float_6x6->id);
+    routine_scheduler(session).sgemm( NoTrans, NoTrans, 2.5, *float_6x5, *float_5x6, 1, *float_6x6);
+    print_matrix(*float_6x6);
+
+    std::cerr << "Multiply and add 3 times result" << std::endl;
+    matrix<float>::clear(session, float_6x6->id);
+    routine_scheduler(session).sgemm( NoTrans, NoTrans, 1, *float_6x5, *float_5x6, 1, *float_6x6);
+    routine_scheduler(session).sgemm( NoTrans, NoTrans, 1, *float_6x5, *float_5x6, 3, *float_6x6);
+    print_matrix(*float_6x6);
+
+    std::cerr << "Multiply transA" << std::endl;
+    matrix<float>::clear(session, float_6x6->id);
+    routine_scheduler(session).sgemm( Trans, NoTrans, 1, *float_5x6, *float_5x6, 1, *float_6x6);
+    print_matrix(*float_6x6);
+
+    std::cerr << "Multiply transB" << std::endl;
+    matrix<float>::clear(session, float_6x6->id);
+    routine_scheduler(session).sgemm( NoTrans, Trans, 1, *float_6x5, *float_6x5, 1, *float_6x6);
+    print_matrix(*float_6x6);
+
+    std::cerr << "Multiply transAB" << std::endl;
+    matrix<float>::clear(session, float_6x6->id);
+    routine_scheduler(session).sgemm( Trans, Trans, 1, *float_5x6, *float_6x5, 1, *float_6x6);
+    print_matrix(*float_6x6);
 }
 
 BOOST_AUTO_TEST_SUITE_END();

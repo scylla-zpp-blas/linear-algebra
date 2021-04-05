@@ -8,9 +8,9 @@
 namespace scylla_blas {
 
 template <class T>
-scylla_blas::matrix<T> load_matrix_from_generator(const std::shared_ptr<scmd::session> &session,
-                                                  scylla_blas::matrix_value_generator<T> &gen, int64_t id) {
-    scylla_blas::matrix<T> result = scylla_blas::matrix<T>::init_and_return(session, id, gen.height(), gen.width(), true);
+void load_matrix_from_generator(const std::shared_ptr<scmd::session> &session,
+                                scylla_blas::matrix_value_generator<T> &gen,
+                                scylla_blas::matrix<T> &matrix) {
     scylla_blas::vector_segment<T> next_row;
     scylla_blas::matrix_value<T> prev_val (-1, -1, 0);
 
@@ -18,7 +18,7 @@ scylla_blas::matrix<T> load_matrix_from_generator(const std::shared_ptr<scmd::se
         scylla_blas::matrix_value<T> next_val = gen.next();
 
         if (prev_val.row_index != -1 && next_val.row_index != prev_val.row_index) {
-            result.insert_row(prev_val.row_index, next_row);
+            matrix.insert_row(prev_val.row_index, next_row);
             next_row.clear();
         }
 
@@ -27,16 +27,15 @@ scylla_blas::matrix<T> load_matrix_from_generator(const std::shared_ptr<scmd::se
     }
 
     if (prev_val.row_index != -1) {
-        result.insert_row(prev_val.row_index, next_row);
+        matrix.insert_row(prev_val.row_index, next_row);
     }
 
-    std::cerr << "Loaded a new matrix: " << id << " from a generator" << std::endl;
-    return result;
+    std::cerr << "Loaded a matrix: " << matrix.id << " from a generator" << std::endl;
 }
 
 /** DEBUG **/
 template<class T>
-void print_matrix(scylla_blas::matrix<T> &matrix) {
+void print_matrix(const scylla_blas::matrix<T> &matrix) {
     std::cout << "[" << matrix.id << "]" << std::endl;
     for (scylla_blas::index_type i = 1; i <= matrix.row_count; i++) {
         auto vec = matrix.get_row(i);
