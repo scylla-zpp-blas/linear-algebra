@@ -1,7 +1,6 @@
 #include <queue>
 
 #include <boost/test/unit_test.hpp>
-#include <scmd.hh>
 
 #include "scylla_blas/queue/scylla_queue.hh"
 #include "scylla_blas/matrix.hh"
@@ -11,23 +10,34 @@ BOOST_FIXTURE_TEST_SUITE(structure_tests, scylla_fixture)
 
 BOOST_AUTO_TEST_CASE(matrices)
 {
-    auto matrix = scylla_blas::matrix<float>(session, "testowa");
-    auto matrix_2 = scylla_blas::matrix<float>(session, "testowa");
+    scylla_blas::matrix<float>::init(session, 0, 5, 4, true);
 
-    matrix.update_value(1, 0, M_PI);
-    matrix.update_value(1, 1, 42);
-    std::cout << "(1, 1): " << matrix.get_value(1, 1) << std::endl;
-    matrix.update_value(1, 0, M_PI);
-    std::cout << "(1, 0): " << matrix.get_value(1, 0) << std::endl;
-    matrix.update_value(1, 1, 100);
-    std::cout << "(1, 0): " << matrix.get_value(1, 0) << std::endl;
-    std::cout << "(1, 1): " << matrix.get_value(1, 1) << std::endl;
+    auto matrix = scylla_blas::matrix<float>(session, 0);
+    auto matrix_2 = scylla_blas::matrix<float>(session, 0);
+
+    matrix.insert_value(1, 0, M_PI);
+    matrix.insert_value(1, 1, 42);
+    BOOST_REQUIRE_EQUAL(std::ceil(matrix.get_value(1, 0) * 10000), std::ceil(M_PI * 10000));
+    BOOST_REQUIRE_EQUAL(matrix.get_value(1, 1), 42);
+
+    matrix.insert_value(1, 0, M_PI);
+    BOOST_REQUIRE_EQUAL(std::ceil(matrix.get_value(1, 0) * 10000), std::ceil(M_PI * 10000));
+
+    matrix.insert_value(1, 1, 100);
+    BOOST_REQUIRE_EQUAL(std::ceil(matrix.get_value(1, 0) * 10000), std::ceil(M_PI * 10000));
+    BOOST_REQUIRE_EQUAL(matrix.get_value(1, 1), 100);
+
+    BOOST_REQUIRE_EQUAL(matrix.row_count, 5);
+    BOOST_REQUIRE_EQUAL(matrix.column_count, 4);
+
+    BOOST_REQUIRE_EQUAL(matrix.row_count, matrix_2.row_count);
+    BOOST_REQUIRE_EQUAL(matrix.column_count, matrix_2.column_count);
 }
 
 
 BOOST_AUTO_TEST_CASE(vectors)
 {
-    auto vector_1 = scylla_blas::vector<float>();
+    auto vector_1 = scylla_blas::vector_segment<float>();
 
     for (int i = 0; i < 10; i++) {
         vector_1.emplace_back(i, 10);
@@ -39,7 +49,7 @@ BOOST_AUTO_TEST_CASE(vectors)
     }
     std::cout << std::endl;
 
-    auto vector_2 = scylla_blas::vector<float>();
+    auto vector_2 = scylla_blas::vector_segment<float>();
     for (int i = 0; i < 5; i++) {
         vector_2.emplace_back(i, (float)M_PI * i * i);
     }
@@ -78,15 +88,18 @@ BOOST_AUTO_TEST_CASE(scylla_queue_sp_mc)
     std::vector<int64_t> values = {0, 42, 1410, 1, 1999, 2021, 1000 * 1000 * 1000 + 7, 406};
     std::queue<int64_t> task_ids = {};
     for(auto val : values) {
-        struct scylla_blas::task task {
+        scylla_blas::proto::task task {
+            .type = scylla_blas::proto::NONE,
+            .basic {
                 .data = val
+            }
         };
         task_ids.push(queue.produce(task));
     }
 
     for(auto val : values) {
         auto [id, task] = queue.consume();
-        BOOST_REQUIRE_EQUAL(val, task.data);
+        BOOST_REQUIRE_EQUAL(val, task.basic.data);
         queue.mark_as_finished(id);
         BOOST_REQUIRE(queue.is_finished(task_ids.front()));
         task_ids.pop();
@@ -103,15 +116,18 @@ BOOST_AUTO_TEST_CASE(scylla_queue_mp_sc)
     std::vector<int64_t> values = {0, 42, 1410, 1, 1999, 2021, 1000 * 1000 * 1000 + 7, 406};
     std::queue<int64_t> task_ids = {};
     for(auto val : values) {
-        struct scylla_blas::task task {
+        scylla_blas::proto::task task {
+            .type = scylla_blas::proto::NONE,
+            .basic {
                 .data = val
+            }
         };
         task_ids.push(queue.produce(task));
     }
 
     for(auto val : values) {
         auto [id, task] = queue.consume();
-        BOOST_REQUIRE_EQUAL(val, task.data);
+        BOOST_REQUIRE_EQUAL(val, task.basic.data);
         queue.mark_as_finished(id);
         BOOST_REQUIRE(queue.is_finished(task_ids.front()));
         task_ids.pop();
@@ -128,15 +144,18 @@ BOOST_AUTO_TEST_CASE(scylla_queue_sp_sc)
     std::vector<int64_t> values = {0, 42, 1410, 1, 1999, 2021, 1000 * 1000 * 1000 + 7, 406};
     std::queue<int64_t> task_ids = {};
     for(auto val : values) {
-        struct scylla_blas::task task {
+        scylla_blas::proto::task task {
+            .type = scylla_blas::proto::NONE,
+            .basic {
                 .data = val
+            }
         };
         task_ids.push(queue.produce(task));
     }
 
     for(auto val : values) {
         auto [id, task] = queue.consume();
-        BOOST_REQUIRE_EQUAL(val, task.data);
+        BOOST_REQUIRE_EQUAL(val, task.basic.data);
         queue.mark_as_finished(id);
         BOOST_REQUIRE(queue.is_finished(task_ids.front()));
         task_ids.pop();
@@ -153,15 +172,18 @@ BOOST_AUTO_TEST_CASE(scylla_queue_mp_mc)
     std::vector<int64_t> values = {0, 42, 1410, 1, 1999, 2021, 1000 * 1000 * 1000 + 7, 406};
     std::queue<int64_t> task_ids = {};
     for(auto val : values) {
-        struct scylla_blas::task task {
+        scylla_blas::proto::task task {
+            .type = scylla_blas::proto::NONE,
+            .basic {
                 .data = val
+            }
         };
         task_ids.push(queue.produce(task));
     }
 
     for(auto val : values) {
         auto [id, task] = queue.consume();
-        BOOST_REQUIRE_EQUAL(val, task.data);
+        BOOST_REQUIRE_EQUAL(val, task.basic.data);
         queue.mark_as_finished(id);
         BOOST_REQUIRE(queue.is_finished(task_ids.front()));
         task_ids.pop();

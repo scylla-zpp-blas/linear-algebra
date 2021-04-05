@@ -4,7 +4,6 @@
 #include <memory>
 
 #include "scylla_blas/utils/matrix_value_generator.hh"
-#include "scylla_blas/utils/int_math.hh"
 #include "value_factory.hh"
 
 namespace scylla_blas {
@@ -58,7 +57,7 @@ public:
         if (has_next()) {
             calc_next_pos();
         }
-        return matrix_value(IntMath::floor_div(_last_pos, width()), 1 + (_last_pos - 1) % width(),
+        return matrix_value(1 + (_last_pos - 1) / width(), 1 + (_last_pos - 1) % width(),
                             _matrix_value_factory->next());
     }
 

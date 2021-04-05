@@ -6,6 +6,7 @@
 #include <fmt/format.h>
 #include <scmd.hh>
 
+#include "proto.hh"
 #include "scylla_blas/utils/scylla_types.hh"
 #include "scylla_blas/utils/utils.hh"
 
@@ -15,22 +16,9 @@ public:
     using std::runtime_error::runtime_error;
 };
 
-// This is the struct that will be sent trough the queue.
-// We can freely modify it, to represent tasks.
-// Instance of this struct will be simply cast to char array,
-// stored as binary blob in the database,
-// then "de-serialized" at the other end.
-// This means it should not contain pointers or other data
-// that can't survive such brutal transportation.
-// The "data" member is there because tests are using it,
-// there is no problem with changing/removing it,
-// but tests must be modified accordingly.
-struct task {
-    int64_t data;
-};
-using task = struct task;
-
 class scylla_queue {
+    using task = proto::task;
+
     int64_t _id;
     std::shared_ptr<scmd::session> _session;
     bool multi_producer;
@@ -81,7 +69,7 @@ public:
     // e.g. queue was deleted.
     // It can potentially throw std::runtime_error or scmd::exception in those cases.
     // After successful execution returns id of the inserted task.
-    int64_t produce(const struct task &task);
+    int64_t produce(const task &task);
 
     // Tries to fetch first item from queue, deserializes and returns it.
     // Will throw empty_container_error if there are no tasks waiting.
@@ -89,7 +77,7 @@ public:
     // Returns id of fetched task (the same that produce returned for this task),
     // and deserialized task struct.
     // Returned id can be used to mark the task as finished.
-    std::pair<int64_t, struct task> consume();
+    std::pair<int64_t, task> consume();
 
     void mark_as_finished(int64_t id);
 
@@ -98,18 +86,18 @@ public:
 private:
     void update_counters();
 
-    scmd::future insert_task(int64_t task_id, const struct task &task);
+    scmd::future insert_task(int64_t task_id, const task &task);
 
-    int64_t produce_simple(const struct task &task);
+    int64_t produce_simple(const task &task);
 
-    int64_t produce_multi(const struct task &task);
+    int64_t produce_multi(const task &task);
 
-    static struct task task_from_value(const CassValue *v);
+    static task task_from_value(const CassValue *v);
 
-    struct task fetch_task_loop(int64_t task_id);
+    task fetch_task_loop(int64_t task_id);
 
-    std::pair<int64_t, struct task> consume_simple();
+    std::pair<int64_t, task> consume_simple();
 
-    std::pair<int64_t, struct task> consume_multi();
+    std::pair<int64_t, task> consume_multi();
 };
 }
