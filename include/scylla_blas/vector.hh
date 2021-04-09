@@ -17,6 +17,7 @@ public:
     T get_value(index_type x);
 
     vector_segment<T> get_segment(index_type x);
+    vector_segment<T> get_whole(index_type x);
 
     void update_value(index_type x, T value);
     void update_value(std::vector<vector_value<T>> values);

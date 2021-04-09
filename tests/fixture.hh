@@ -36,7 +36,7 @@ class matrix_fixture : public scylla_fixture {
         matrix_ptr = std::make_shared<scylla_blas::matrix<T>>(session, id);
 
         if (value_factory != nullptr) {
-            scylla_blas::sparse_matrix_value_generator<T> gen(w, h, (w * h) / 3, id, value_factory);
+            scylla_blas::sparse_matrix_value_generator<T> gen(w, h, 5 * h, id, value_factory);
             scylla_blas::load_matrix_from_generator(session, gen, *matrix_ptr);
         }
     }
@@ -65,15 +65,15 @@ public:
 
         std::shared_ptr<scylla_blas::value_factory<float>> f =
                 std::make_shared<scylla_blas::value_factory<float>>(0, 9, 142);
-        init_matrix(this->float_5x6, 5, 6, 1, f);
-        init_matrix(this->float_6x5, 6, 5, 2, f);
-        init_matrix(this->float_6x6, 6, 6, 3);
+        init_matrix(this->float_5x6, 2 * BLOCK_SIZE + 3, 2 * BLOCK_SIZE + 6, 1, f);
+        init_matrix(this->float_6x5, 2 * BLOCK_SIZE + 6, 2 * BLOCK_SIZE + 3, 2, f);
+        init_matrix(this->float_6x6, 2 * BLOCK_SIZE + 6, 2 * BLOCK_SIZE + 6, 3);
 
         std::shared_ptr<scylla_blas::value_factory<double>> d =
                 std::make_shared<scylla_blas::value_factory<double>>(0, 9, 242);
-        init_matrix(this->double_5x6, 5, 6, 11, d);
-        init_matrix(this->double_6x5, 6, 5, 12, d);
-        init_matrix(this->double_6x6, 6, 6, 13);
+        init_matrix(this->double_5x6, 2 * BLOCK_SIZE + 3, 2 * BLOCK_SIZE + 6, 11, d);
+        init_matrix(this->double_6x5, 2 * BLOCK_SIZE + 6, 2 * BLOCK_SIZE + 3, 12, d);
+        init_matrix(this->double_6x6, 2 * BLOCK_SIZE + 6, 2 * BLOCK_SIZE + 6, 13);
 
         std::cerr << "Test matrices initialized!" << std::endl;
     }
