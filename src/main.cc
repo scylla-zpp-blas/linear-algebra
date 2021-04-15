@@ -12,6 +12,7 @@ namespace po = boost::program_options;
 
 #include "scylla_blas/config.hh"
 #include "scylla_blas/matrix.hh"
+#include "scylla_blas/vector.hh"
 #include "scylla_blas/structure/matrix_block.hh"
 
 struct options {
@@ -86,6 +87,9 @@ void init(const struct options& op) {
 
     std::cerr << "Initializing matrix database..." << std::endl;
     scylla_blas::basic_matrix::init_meta(session);
+    
+    std::cerr << "Initializing vector database..." << std::endl;
+    scylla_blas::basic_vector::init_meta(session);
 
     std::cerr << "Creating main task queue..." << std::endl;
     scylla_blas::scylla_queue::create_queue(session, DEFAULT_WORKER_QUEUE_ID, true, true);
