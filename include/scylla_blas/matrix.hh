@@ -33,9 +33,14 @@ protected:
     scmd::prepared_query _get_row_prepared;
     scmd::prepared_query _get_block_prepared;
     scmd::prepared_query _insert_value_prepared;
+    scmd::prepared_query _clear_all_prepared;
+    scmd::prepared_query _clear_row_prepared;
 
     std::pair<index_type, index_type> get_dimensions() const;
 
+    static void clear(const std::shared_ptr<scmd::session> &session, int64_t id);
+    static void resize(const std::shared_ptr<scmd::session> &session,
+                       int64_t id, int64_t new_row_count, int64_t new_column_count);
 public:
     // Should we make these private, with accessors?
     const index_type id;
@@ -60,9 +65,8 @@ public:
 
     basic_matrix(const std::shared_ptr<scmd::session> &session, int64_t id);
 
-    static void clear(const std::shared_ptr<scmd::session> &session, int64_t id);
-    static void resize(const std::shared_ptr<scmd::session> &session,
-                       int64_t id, int64_t new_row_count, int64_t new_column_count);
+    void clear_row(index_type x);
+    void clear_all();
 };
 
 template<class T>
@@ -189,6 +193,7 @@ public:
         std::string inserts = "";
 
         for (auto &val: values) {
+            /* Do not store values equal or close to 0 */
             if (std::abs(val.value) < EPSILON) continue;
 
             inserts += fmt::format(
