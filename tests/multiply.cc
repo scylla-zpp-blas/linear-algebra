@@ -81,34 +81,34 @@ BOOST_AUTO_TEST_CASE(float_mm)
     // print_matrix(*float_5x6);
 
     std::cerr << "Multiply" << std::endl;
-    matrix<float>::clear(session, float_6x6->id);
-    routine_scheduler(session).sgemm( NoTrans, NoTrans, 1, *float_6x5, *float_5x6, 1, *float_6x6);
+    float_6x6->clear_all();
+    scheduler->sgemm( NoTrans, NoTrans, 1, *float_6x5, *float_5x6, 1, *float_6x6);
     // print_matrix(*float_6x6);
 
     std::cerr << "Multiply with coeff (2.5)" << std::endl;
-    matrix<float>::clear(session, float_6x6->id);
-    routine_scheduler(session).sgemm( NoTrans, NoTrans, 2.5, *float_6x5, *float_5x6, 1, *float_6x6);
+    float_6x6->clear_all();
+    scheduler->sgemm( NoTrans, NoTrans, 2.5, *float_6x5, *float_5x6, 1, *float_6x6);
     // print_matrix(*float_6x6);
 
     std::cerr << "Multiply and add 3 times result" << std::endl;
-    matrix<float>::clear(session, float_6x6->id);
-    routine_scheduler(session).sgemm( NoTrans, NoTrans, 1, *float_6x5, *float_5x6, 1, *float_6x6);
-    routine_scheduler(session).sgemm( NoTrans, NoTrans, 1, *float_6x5, *float_5x6, 3, *float_6x6);
+    float_6x6->clear_all();
+    scheduler->sgemm( NoTrans, NoTrans, 1, *float_6x5, *float_5x6, 1, *float_6x6);
+    scheduler->sgemm( NoTrans, NoTrans, 1, *float_6x5, *float_5x6, 3, *float_6x6);
     // print_matrix(*float_6x6);
 
     std::cerr << "Multiply transA" << std::endl;
-    matrix<float>::clear(session, float_6x6->id);
-    routine_scheduler(session).sgemm( Trans, NoTrans, 1, *float_5x6, *float_5x6, 1, *float_6x6);
+    float_6x6->clear_all();
+    scheduler->sgemm( Trans, NoTrans, 1, *float_5x6, *float_5x6, 1, *float_6x6);
     // print_matrix(*float_6x6);
 
     std::cerr << "Multiply transB" << std::endl;
-    matrix<float>::clear(session, float_6x6->id);
-    routine_scheduler(session).sgemm( NoTrans, Trans, 1, *float_6x5, *float_6x5, 1, *float_6x6);
+    float_6x6->clear_all();
+    scheduler->sgemm( NoTrans, Trans, 1, *float_6x5, *float_6x5, 1, *float_6x6);
     // print_matrix(*float_6x6);
 
     std::cerr << "Multiply transAB" << std::endl;
-    matrix<float>::clear(session, float_6x6->id);
-    routine_scheduler(session).sgemm( Trans, Trans, 1, *float_5x6, *float_6x5, 1, *float_6x6);
+    float_6x6->clear_all();
+    scheduler->sgemm( Trans, Trans, 1, *float_5x6, *float_6x5, 1, *float_6x6);
     // print_matrix(*float_6x6);
 }
 

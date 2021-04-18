@@ -12,11 +12,15 @@
 class scylla_fixture {
 public:
     std::shared_ptr<scmd::session> session;
+    std::shared_ptr<scylla_blas::routine_scheduler> scheduler;
 
     scylla_fixture() : 
-        session(nullptr) {
+        session(nullptr),
+        scheduler(nullptr)
+    {
         global_config::init();
         connect();
+        this->scheduler = std::make_shared<scylla_blas::routine_scheduler>(session);
     }
 
     ~scylla_fixture() {
