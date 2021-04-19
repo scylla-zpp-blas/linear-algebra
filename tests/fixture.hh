@@ -82,3 +82,60 @@ public:
         std::cerr << "Test matrices initialized!" << std::endl;
     }
 };
+
+class vector_fixture : public scylla_fixture {
+    template<class T>
+    void init_vector(std::shared_ptr<scylla_blas::vector<T>>& vector_ptr,
+                     scylla_blas::index_type len, int64_t id,
+                     std::shared_ptr<scylla_blas::value_factory<T>> value_factory = nullptr) {
+        scylla_blas::vector<T>::init(session, id, len, true);
+        vector_ptr = std::make_shared<scylla_blas::vector<T>>(session, id);
+
+        if (value_factory != nullptr) {
+            std::vector<scylla_blas::vector_value<T>> values;
+
+            for (scylla_blas::index_type i = 1; i <= len; i++)
+                values.emplace_back(i, value_factory->next());
+
+            vector_ptr->update_values(values);
+        }
+    }
+public:
+    std::shared_ptr<scylla_blas::vector<float>> float_A;
+    std::shared_ptr<scylla_blas::vector<float>> float_B;
+    std::shared_ptr<scylla_blas::vector<float>> float_C;
+
+    std::shared_ptr<scylla_blas::vector<double>> double_A;
+    std::shared_ptr<scylla_blas::vector<double>> double_B;
+    std::shared_ptr<scylla_blas::vector<double>> double_C;
+
+    vector_fixture() :
+            scylla_fixture(),
+            float_A(nullptr),
+            float_B(nullptr),
+            float_C(nullptr),
+            double_A(nullptr),
+            double_B(nullptr),
+            double_C(nullptr) {
+        init_vectors(session);
+    }
+
+    void init_vectors(const std::shared_ptr<scmd::session> &session) {
+        std::cerr << "Initializing test vectors..." << std::endl;
+        scylla_blas::index_type len = 2 * BLOCK_SIZE + 3;
+
+        std::shared_ptr<scylla_blas::value_factory<float>> f =
+                std::make_shared<scylla_blas::value_factory<float>>(0, 9, 142);
+        init_vector(this->float_A, len, 1, f);
+        init_vector(this->float_B, len, 2, f);
+        init_vector(this->float_C, len, 3);
+
+        std::shared_ptr<scylla_blas::value_factory<double>> d =
+                std::make_shared<scylla_blas::value_factory<double>>(0, 9, 242);
+        init_vector(this->double_A, len, 11, d);
+        init_vector(this->double_B, len, 12, d);
+        init_vector(this->double_C, len, 13);
+
+        std::cerr << "Test vectors initialized!" << std::endl;
+    }
+};

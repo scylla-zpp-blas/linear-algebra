@@ -9,6 +9,7 @@
 #include "scylla_queue.hh"
 
 #include "scylla_blas/matrix.hh"
+#include "scylla_blas/vector.hh"
 
 namespace {
 
@@ -62,26 +63,40 @@ void gemm(const std::shared_ptr<scmd::session> &session,
 
 namespace scylla_blas::worker {
 
-void sgemm(const std::shared_ptr<scmd::session> &session, const proto::task &task) {
-    auto [task_queue_id, TransA, TransB, alpha, A_id, B_id, beta, C_id] = task.sgemm;
+/* LEVEL 1 */
+void sswap(const std::shared_ptr<scmd::session> &session, const proto::task &task);
+void dswap(const std::shared_ptr<scmd::session> &session, const proto::task &task);
 
-    gemm<float>(session, task_queue_id, TransA, TransB, alpha, A_id, B_id, beta, C_id);
-}
+void sscal(const std::shared_ptr<scmd::session> &session, const proto::task &task);
+void dscal(const std::shared_ptr<scmd::session> &session, const proto::task &task);
 
-void dgemm(const std::shared_ptr<scmd::session> &session, const proto::task &task) {
-    auto [task_queue_id, TransA, TransB, alpha, A_id, B_id, beta, C_id] = task.dgemm;
+void scopy(const std::shared_ptr<scmd::session> &session, const proto::task &task);
+void dcopy(const std::shared_ptr<scmd::session> &session, const proto::task &task);
 
-    gemm<double>(session, task_queue_id, TransA, TransB, alpha, A_id, B_id, beta, C_id);
-}
+void saxpy(const std::shared_ptr<scmd::session> &session, const proto::task &task);
+void daxpy(const std::shared_ptr<scmd::session> &session, const proto::task &task);
+
+/* LEVEL 3 */
+void sgemm(const std::shared_ptr<scmd::session> &session, const proto::task &task);
+void dgemm(const std::shared_ptr<scmd::session> &session, const proto::task &task);
 
 using procedure_t = void(const std::shared_ptr<scmd::session>&, const proto::task&);
 
-constexpr std::array<std::pair<proto::task_type, const procedure_t&>, 2> task_to_procedure = {{
+constexpr std::array<std::pair<proto::task_type, const procedure_t&>, 10> task_to_procedure = {{
+        { proto::SSWAP, sswap },
+        { proto::DSWAP, dswap },
+        { proto::SSCAL, sscal },
+        { proto::DSCAL, dscal },
+        { proto::SCOPY, scopy },
+        { proto::DCOPY, dcopy },
+        { proto::SAXPY, saxpy },
+        { proto::DAXPY, daxpy },
+
         { proto::SGEMM, sgemm },
         { proto::DGEMM, dgemm }
 }};
 
-constexpr procedure_t& get_procedure_for_task(proto::task t) {
+constexpr procedure_t& get_procedure_for_task(const proto::task &t) {
     auto pred = [=](auto &val){ return val.first == t.type; };
 
     auto it = std::find_if(task_to_procedure.begin(), task_to_procedure.end(), pred);
@@ -91,18 +106,6 @@ constexpr procedure_t& get_procedure_for_task(proto::task t) {
     }
 
     return it->second;
-}
-
-constexpr proto::task_type get_task_type_for_procedure(const procedure_t &proc) {
-    auto pred = [=](auto &val){ return val.second == proc; };
-
-    auto it = std::find_if(task_to_procedure.begin(), task_to_procedure.end(), pred);
-
-    if (it == task_to_procedure.end()) {
-        throw std::runtime_error("Procedure not implemented!");
-    }
-
-    return it->first;
 }
 
 }

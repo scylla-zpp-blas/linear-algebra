@@ -189,6 +189,8 @@ struct task {
     task_type type;
 
     union {
+        index_type index;
+
         struct {
             int64_t data;
         } basic;
@@ -197,6 +199,14 @@ struct task {
             index_type block_row;
             index_type block_column;
         } coord;
+
+        struct {
+            int64_t task_queue_id;
+            float salpha;
+            double dalpha;
+            int64_t X_id;
+            int64_t Y_id;
+        } vector_task;
 
         struct {
             int64_t task_queue_id;

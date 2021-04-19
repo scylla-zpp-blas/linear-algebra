@@ -114,7 +114,7 @@ public:
         return vector<T>(session, id);
     }
 
-    T get_value(index_type x) {
+    T get_value(index_type x) const {
         auto ans_vec = get_vals_for_query(_get_value_prepared, get_segment_index(x), x);
 
         if (!ans_vec.empty()) {
@@ -124,7 +124,7 @@ public:
         }
     }
 
-    vector_segment<T> get_segment(index_type x) {
+    vector_segment<T> get_segment(index_type x) const {
         std::vector<vector_value<T>> segment_values = get_vals_for_query(_get_segment_prepared, x);
 
         /*
@@ -141,7 +141,7 @@ public:
     }
 
     /* The vectors can be very large so we probably only want to use get_whole for visualization/testing purposes */
-    vector_segment<T> get_whole() {
+    vector_segment<T> get_whole() const {
         std::vector<vector_value<T>> values = get_vals_for_query(_get_vector_prepared);
 
         vector_segment<T> answer;

@@ -25,11 +25,15 @@ class routine_scheduler {
     using zdouble = std::complex<double>;
 
     template<class T>
-    matrix<T>& gemm(const enum scylla_blas::TRANSPOSE TransA,
-                    const enum scylla_blas::TRANSPOSE TransB,
+    matrix<T>& gemm(const scylla_blas::TRANSPOSE TransA,
+                    const scylla_blas::TRANSPOSE TransB,
                     const T alpha, const scylla_blas::matrix<T> &A,
                     const scylla_blas::matrix<T> &B,
                     const T beta, scylla_blas::matrix<T> &C);
+
+    void produce_vector_tasks(const proto::task_type type,
+                              const float salpha, const double dalpha,
+                              const int64_t X_id, const int64_t Y_id);
 
     const int64_t _subtask_queue_id;
     scylla_queue _subtask_queue;
