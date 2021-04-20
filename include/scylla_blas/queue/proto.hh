@@ -220,4 +220,19 @@ struct task {
 
 };
 
+enum response_type {
+    R_NONE,
+    R_INT64
+};
+
+struct response {
+    response_type type;
+
+    union {
+        struct {
+            int64_t response;
+        } simple;
+    };
+};
+
 }

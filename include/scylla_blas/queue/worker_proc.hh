@@ -45,15 +45,14 @@ void consume_binary(const std::shared_ptr<scmd::session> &session,
     std::cerr << "Linked to queue " << task_queue_id << std::endl;
 
     while (true) {
-        try {
-            auto [task_id, binary_subtask] = task_queue.consume();
-            std::cerr << "New secondary task obtained; id = " << task_id << std::endl;
-
-            consume(binary_subtask, A, B, C);
-        } catch (const empty_container_error& e) {
+        auto opt = task_queue.consume();
+        if (!opt) {
             // The task queue is empty – nothing left to do.
             break;
         }
+        auto [task_id, binary_subtask] = opt.value();
+        std::cerr << "New secondary task obtained; id = " << task_id << std::endl;
+        consume(binary_subtask, A, B, C);
     }
 }
 
