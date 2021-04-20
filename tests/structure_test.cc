@@ -2,6 +2,8 @@
 
 #include "scylla_blas/queue/scylla_queue.hh"
 #include "scylla_blas/matrix.hh"
+#include "scylla_blas/vector.hh"
+#include "scylla_blas/config.hh"
 #include "fixture.hh"
 
 BOOST_FIXTURE_TEST_SUITE(structure_tests, scylla_fixture)
@@ -32,8 +34,7 @@ BOOST_AUTO_TEST_CASE(matrices)
     BOOST_REQUIRE_EQUAL(matrix.column_count, matrix_2.column_count);
 }
 
-
-BOOST_AUTO_TEST_CASE(vectors)
+BOOST_AUTO_TEST_CASE(vector_segments)
 {
     auto vector_1 = scylla_blas::vector_segment<float>();
 
@@ -74,6 +75,85 @@ BOOST_AUTO_TEST_CASE(vectors)
         std::cout << "(" << entry.index << ": " << entry.value << "), ";
     }
     std::cout << std::endl;
+}
+
+BOOST_AUTO_TEST_CASE(vectors)
+{
+    /* init */
+    auto vector_1 = scylla_blas::vector<float>::init_and_return(session, 0, 2*BLOCK_SIZE+1);
+
+    BOOST_REQUIRE_EQUAL(vector_1.get_segment_count(), 3);
+
+    /* update_values */
+    std::vector<scylla_blas::vector_value<float>> values_1;
+    for (int i = 1; i <= 2*BLOCK_SIZE+1; i++) {
+        values_1.emplace_back(i, M_PI);
+    }
+    vector_1.update_values(values_1);
+
+    BOOST_REQUIRE_EQUAL(std::ceil(vector_1.get_value(1) * 10000), std::ceil(M_PI * 10000));
+    BOOST_REQUIRE_EQUAL(std::ceil(vector_1.get_value(2*BLOCK_SIZE+1) * 10000), std::ceil(M_PI * 10000));
+
+    /* get_segment */
+    auto seg_1 = vector_1.get_segment(2);
+
+    BOOST_REQUIRE_EQUAL(std::ceil(seg_1[0].value * 10000), std::ceil(M_PI * 10000));
+    BOOST_REQUIRE_EQUAL(std::ceil(seg_1[BLOCK_SIZE-1].value * 10000), std::ceil(M_PI * 10000));
+
+    BOOST_REQUIRE_EQUAL(seg_1[0].index, 1);
+    BOOST_REQUIRE_EQUAL(seg_1[BLOCK_SIZE-1].index, BLOCK_SIZE);
+
+    BOOST_REQUIRE_EQUAL(seg_1.size(), BLOCK_SIZE);
+
+    /* get_segment last */
+    auto seg_end = vector_1.get_segment(3);
+
+    BOOST_REQUIRE_EQUAL(seg_end.size(), 1);
+
+    /* update_value */
+    vector_1.update_value(1, M_E);
+    vector_1.update_value(2, 0);
+
+    BOOST_REQUIRE_EQUAL(std::ceil(vector_1.get_value(1) * 10000), std::ceil(M_E * 10000));
+    BOOST_REQUIRE_EQUAL(vector_1.get_value(2), 0);
+
+    /* update_segment */
+    scylla_blas::vector_segment<float> seg_2;
+    seg_2.emplace_back(1, M_E);
+    seg_2.emplace_back(2, 0);
+    vector_1.update_segment(2, seg_2);
+
+    BOOST_REQUIRE_EQUAL(std::ceil(vector_1.get_value(BLOCK_SIZE+1) * 10000), std::ceil(M_E * 10000));
+    BOOST_REQUIRE_EQUAL(vector_1.get_value(BLOCK_SIZE+2), 0);
+    BOOST_REQUIRE_EQUAL(vector_1.get_value(BLOCK_SIZE+3), 0);
+
+    /* get_segment with zeros */
+    auto seg_3 = vector_1.get_segment(2);
+
+    BOOST_REQUIRE_EQUAL(std::ceil(seg_3[0].value * 10000), std::ceil(M_E * 10000));
+    BOOST_REQUIRE_EQUAL(seg_3[0].index, 1);
+
+    BOOST_REQUIRE_EQUAL(seg_3.size(), 1);
+
+    /* update_values overwriting */
+    std::vector<scylla_blas::vector_value<float>> values_2;
+    values_2.emplace_back(1, 0);
+    values_2.emplace_back(2, M_PI);
+    values_2.emplace_back(3, M_E);
+    vector_1.update_values(values_2);
+
+    BOOST_REQUIRE_EQUAL(vector_1.get_value(1), 0);
+    BOOST_REQUIRE_EQUAL(std::ceil(vector_1.get_value(2) * 10000), std::ceil(M_PI * 10000));
+    BOOST_REQUIRE_EQUAL(std::ceil(vector_1.get_value(3) * 10000), std::ceil(M_E * 10000));
+
+    /* clear */
+    vector_1.clear_value(2);
+
+    BOOST_REQUIRE_EQUAL(vector_1.get_value(2), 0);
+
+    vector_1.clear_segment(1);
+
+    BOOST_REQUIRE_EQUAL(vector_1.get_value(3), 0);
 }
 
 BOOST_AUTO_TEST_SUITE_END();
