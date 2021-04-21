@@ -115,7 +115,7 @@ void worker(const struct options& op) {
     std::cerr << "Starting worker loop...\n";
     for (;;) {
         auto opt = base_queue.consume();
-        if(!opt) {
+        if (!opt) {
             scylla_blas::wait_seconds(WORKER_SLEEP_TIME_SECONDS);
             continue;
         }
