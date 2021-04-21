@@ -1,4 +1,6 @@
 #include "scylla_blas/queue/scylla_queue.hh"
+#include <chrono>
+
 
 using task = scylla_blas::scylla_queue::task;
 using response = scylla_blas::scylla_queue::response;
@@ -96,7 +98,7 @@ int64_t scylla_blas::scylla_queue::produce(const task &task) {
     }
 }
 
-std::vector<int64_t> scylla_blas::scylla_queue::produce(const std::vector<task> &tasks) {
+int64_t scylla_blas::scylla_queue::produce(const std::vector<task> &tasks) {
     if (multi_producer) {
         return produce_vec_multi(tasks);
     } else {
@@ -191,20 +193,18 @@ int64_t scylla_blas::scylla_queue::produce_simple(const task &task) {
     return cnt_new - 1;
 }
 
-std::vector<int64_t> scylla_blas::scylla_queue::produce_vec_simple(const std::vector<task> &tasks) {
+int64_t scylla_blas::scylla_queue::produce_vec_simple(const std::vector<task> &tasks) {
     auto batch = prepare_batch_insert_query(cnt_new, tasks);
     auto future_1 = _session->execute_async(batch);
     auto future_2 = _session->execute_async(update_new_counter_prepared, (int64_t)(cnt_new + tasks.size()));
 
-    std::vector<int64_t> ids;
-    ids.reserve(tasks.size());
-    for(size_t i = 0; i < tasks.size(); i++) ids.push_back(i + cnt_new);
+    int64_t first_id = cnt_new;
     cnt_new += tasks.size();
 
     future_1.wait();
     future_2.wait();
 
-    return ids;
+    return first_id;
 }
 
 int64_t scylla_blas::scylla_queue::produce_multi(const task &task) {
@@ -223,7 +223,7 @@ int64_t scylla_blas::scylla_queue::produce_multi(const task &task) {
     }
 }
 
-std::vector<int64_t> scylla_blas::scylla_queue::produce_vec_multi(const std::vector<task> &tasks) {
+int64_t scylla_blas::scylla_queue::produce_vec_multi(const std::vector<task> &tasks) {
     update_counters();
     while(true) {
         auto result = _session->execute(update_new_counter_trans_prepared, (int64_t)(cnt_new + tasks.size()), cnt_new);
@@ -233,12 +233,10 @@ std::vector<int64_t> scylla_blas::scylla_queue::produce_vec_multi(const std::vec
         if (result.get_column<bool>("[applied]")) {
             auto batch = prepare_batch_insert_query(cnt_new, tasks);
             auto future = _session->execute_async(batch);
-            std::vector<int64_t> ids;
-            ids.reserve(tasks.size());
-            for(size_t i = 0; i < tasks.size(); i++) ids.push_back(i + cnt_new);
+            int64_t first_id = cnt_new;
             cnt_new += tasks.size();
             future.wait();
-            return ids;
+            return first_id;
         } else {
             cnt_new = result.get_column<int64_t>("cnt_new");
         }
@@ -309,16 +307,32 @@ std::optional<std::pair<int64_t, task>> scylla_blas::scylla_queue::consume_multi
         if (cnt_used >= cnt_new) {
             return std::nullopt;
         }
-        auto result = _session->execute(update_used_counter_trans_prepared, cnt_used + 1, cnt_used, cnt_new);
-        if (!result.next_row()) {
-            throw std::runtime_error("Queue deleted while working?");
-        }
-        cnt_new = result.get_column<int64_t>("cnt_new");
-        cnt_used = result.get_column<int64_t>("cnt_used");
-        if (result.get_column<bool>("[applied]")) {
-            // We claimed a task
-            cnt_used++;
-            return std::make_pair(cnt_used-1, fetch_task_loop(cnt_used-1));
+
+        std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+        try {
+            auto result = _session->execute(update_used_counter_trans_prepared, cnt_used + 1, cnt_used, cnt_new);
+
+
+            std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+            if (!result.next_row()) {
+                throw std::runtime_error("Queue deleted while working?");
+            }
+            cnt_new = result.get_column<int64_t>("cnt_new");
+            cnt_used = result.get_column<int64_t>("cnt_used");
+            std::cout << "Tried to claim a task, it took: "
+                      << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count()
+                      << "[µs]"
+                      << ", success: "
+                      << result.get_column<bool>("[applied]")
+                      << std::endl;
+            if (result.get_column<bool>("[applied]")) {
+                // We claimed a task
+                cnt_used++;
+                return std::make_pair(cnt_used - 1, fetch_task_loop(cnt_used - 1));
+            }
+        } catch (const std::runtime_error &e) {
+            std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+            std::cout << "\n\n\nWORKER EXCEPTION. QEURY DURATION: " << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() << "\n\n\n";
         }
     }
 }

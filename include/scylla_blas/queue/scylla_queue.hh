@@ -73,7 +73,9 @@ public:
 
     // Version of produce that puts multiple tasks to queue.
     // It should be more performant than calling produce multiple times.
-    std::vector<int64_t> produce(const std::vector<task> &tasks);
+    // Assigned task id are contiguous, and task id of tasks[0] is returned,
+    // which means that task id of tasks[i] is retval + i
+    int64_t produce(const std::vector<task> &tasks);
 
     // Tries to fetch first item from queue, deserializes and returns it.
     // Returns std:nullopt if queue is empty.
@@ -104,11 +106,11 @@ private:
 
     int64_t produce_simple(const task &task);
 
-    std::vector<int64_t> produce_vec_simple(const std::vector<task> &tasks);
+    int64_t produce_vec_simple(const std::vector<task> &tasks);
 
     int64_t produce_multi(const task &task);
 
-    std::vector<int64_t> produce_vec_multi(const std::vector<task> &tasks);
+    int64_t produce_vec_multi(const std::vector<task> &tasks);
 
     static task task_from_value(const CassValue *v);
 

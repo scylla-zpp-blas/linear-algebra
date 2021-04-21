@@ -77,7 +77,7 @@ static void test_queue_response(scylla_blas::scylla_queue& queue) {
 
 static void test_queue_batch(scylla_blas::scylla_queue& queue) {
         // Test tasks without results
-        std::vector<int64_t> task_ids;
+        int64_t tasks_id;
         std::vector<scylla_blas::proto::task> tasks;
         for(auto val : values) {
             scylla_blas::proto::task task {
@@ -89,23 +89,23 @@ static void test_queue_batch(scylla_blas::scylla_queue& queue) {
             tasks.push_back(task);
         }
 
-        task_ids = queue.produce(tasks);
+        tasks_id = queue.produce(tasks);
 
         for(auto val : values) {
             auto opt = queue.consume();
             BOOST_REQUIRE(opt);
             auto [id, task] = opt.value();
             BOOST_REQUIRE_EQUAL(val, task.basic.data);
-            BOOST_REQUIRE(!queue.is_finished(task_ids.front()));
-            BOOST_REQUIRE(!queue.get_response(task_ids.front()));
+            BOOST_REQUIRE(!queue.is_finished(tasks_id));
+            BOOST_REQUIRE(!queue.get_response(tasks_id));
             queue.mark_as_finished(id);
-            auto r2_opt = queue.get_response(task_ids.front());
+            auto r2_opt = queue.get_response(tasks_id);
             BOOST_REQUIRE(r2_opt.has_value());
             auto r2 = r2_opt.value();
             BOOST_REQUIRE(r2.type == scylla_blas::proto::R_NONE);
-            BOOST_REQUIRE(queue.is_finished(task_ids.front()));
+            BOOST_REQUIRE(queue.is_finished(tasks_id));
 
-            task_ids.erase(task_ids.begin());
+            tasks_id++;
         }
     }
 
