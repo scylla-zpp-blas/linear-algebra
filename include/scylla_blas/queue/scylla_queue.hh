@@ -71,10 +71,10 @@ public:
     // After successful execution returns id of the inserted task.
     int64_t produce(const task &task);
 
-    // Version of produce that puts multiple tasks to queue.
-    // It should be more performant than calling produce multiple times.
-    // Assigned task id are contiguous, and task id of tasks[0] is returned,
-    // which means that task id of tasks[i] is retval + i
+    // Version of produce that pushes multiple tasks to queue.
+    // It should be more performant than calling normal version of produce multiple times.
+    // Returns task_id, where { task_id, task_id + 1, ..., task_id + tasks.size() - 1 }
+    // are the ids of corresponding tasks.
     int64_t produce(const std::vector<task> &tasks);
 
     // Tries to fetch first item from queue, deserializes and returns it.
