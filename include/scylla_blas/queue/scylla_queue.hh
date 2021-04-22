@@ -17,14 +17,14 @@ public:
 };
 
 class scylla_queue {
-    int64_t _id;
+    int64_t queue_id;
     std::shared_ptr<scmd::session> _session;
     bool multi_producer;
     bool multi_consumer;
     int64_t cnt_new;
     int64_t cnt_used;
 
-    scmd::statement fetch_counters_stmt;
+    scmd::prepared_query fetch_counters_stmt;
 
     scmd::prepared_query update_new_counter_prepared;
     scmd::prepared_query update_new_counter_trans_prepared;
