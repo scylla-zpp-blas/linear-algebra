@@ -119,11 +119,11 @@ private:
 
     int64_t produce_simple(const task &task);
 
-    int64_t produce_vec_simple(const std::vector<task> &tasks);
+    int64_t produce_many_simple(const std::vector<task> &tasks);
 
     int64_t produce_multi(const task &task);
 
-    int64_t produce_vec_multi(const std::vector<task> &tasks);
+    int64_t produce_many_multi(const std::vector<task> &tasks);
 
     static task task_from_value(const CassValue *v);
 

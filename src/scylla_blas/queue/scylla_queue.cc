@@ -107,9 +107,9 @@ int64_t scylla_blas::scylla_queue::produce(const task &task) {
 
 int64_t scylla_blas::scylla_queue::produce(const std::vector<task> &tasks) {
     if (multi_producer) {
-        return produce_vec_multi(tasks);
+        return produce_many_multi(tasks);
     } else {
-        return produce_vec_simple(tasks);
+        return produce_many_simple(tasks);
     }
 }
 
@@ -231,7 +231,7 @@ int64_t scylla_blas::scylla_queue::produce_simple(const task &task) {
     return cnt_new - 1;
 }
 
-int64_t scylla_blas::scylla_queue::produce_vec_simple(const std::vector<task> &tasks) {
+int64_t scylla_blas::scylla_queue::produce_many_simple(const std::vector<task> &tasks) {
     auto batch = prepare_batch_insert_query(cnt_new, tasks);
     auto future_1 = _session->execute_async(batch);
     auto future_2 = _session->execute_async(*update_new_counter_prepared, (int64_t)(cnt_new + tasks.size()), queue_id);
@@ -261,7 +261,7 @@ int64_t scylla_blas::scylla_queue::produce_multi(const task &task) {
     }
 }
 
-int64_t scylla_blas::scylla_queue::produce_vec_multi(const std::vector<task> &tasks) {
+int64_t scylla_blas::scylla_queue::produce_many_multi(const std::vector<task> &tasks) {
     update_counters();
     while(true) {
         auto result = _session->execute(*update_new_counter_trans_prepared, (int64_t)(cnt_new + tasks.size()), queue_id, cnt_new);
