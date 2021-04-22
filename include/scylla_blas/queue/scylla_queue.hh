@@ -2,6 +2,8 @@
 
 #include <iostream>
 #include <memory>
+#include <unordered_map>
+#include <unordered_set>
 
 #include <fmt/format.h>
 #include <scmd.hh>
@@ -17,6 +19,11 @@ public:
 };
 
 class scylla_queue {
+public:
+    using shared_prepared = std::shared_ptr<scmd::prepared_query>;
+private:
+    static std::unordered_map<scmd::session *, std::unordered_set<scylla_queue *>> session_map;
+
     int64_t queue_id;
     std::shared_ptr<scmd::session> _session;
     bool multi_producer;
@@ -24,20 +31,20 @@ class scylla_queue {
     int64_t cnt_new;
     int64_t cnt_used;
 
-    scmd::prepared_query fetch_counters_stmt;
+    shared_prepared fetch_counters_stmt;
 
-    scmd::prepared_query update_new_counter_prepared;
-    scmd::prepared_query update_new_counter_trans_prepared;
+    shared_prepared update_new_counter_prepared;
+    shared_prepared update_new_counter_trans_prepared;
 
-    scmd::prepared_query update_used_counter_prepared;
-    scmd::prepared_query update_used_counter_trans_prepared;
+    shared_prepared update_used_counter_prepared;
+    shared_prepared update_used_counter_trans_prepared;
 
-    scmd::prepared_query fetch_task_by_id_prepared;
-    scmd::prepared_query insert_task_prepared;
+    shared_prepared fetch_task_by_id_prepared;
+    shared_prepared insert_task_prepared;
 
-    scmd::prepared_query mark_task_finished_prepared;
-    scmd::prepared_query check_task_finished_prepared;
-    scmd::prepared_query get_task_response;
+    shared_prepared mark_task_finished_prepared;
+    shared_prepared check_task_finished_prepared;
+    shared_prepared get_task_response;
 
 public:
     using task = proto::task;
@@ -64,6 +71,8 @@ public:
     // Queue with given id must be created before constructing this object, \
     // using "create_queue" method.
     scylla_queue(const std::shared_ptr<scmd::session> &session, int64_t id);
+
+    ~scylla_queue();
 
     // Serializes given task (by casting to char array), and pushes it to queue.
     // Shouldn't throw exceptions until something is broken, e.g. queue was deleted.
@@ -96,6 +105,10 @@ public:
     std::optional<response> get_response(int64_t id);
 
 private:
+    void prepare_statements();
+
+    void copy_statements_from(scylla_queue *other);
+
     void update_counters();
 
     scmd::statement prepare_insert_query(int64_t task_id, const task &task);
