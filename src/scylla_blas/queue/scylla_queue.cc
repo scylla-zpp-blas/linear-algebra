@@ -1,6 +1,4 @@
 #include "scylla_blas/queue/scylla_queue.hh"
-#include <chrono>
-
 
 using task = scylla_blas::scylla_queue::task;
 using response = scylla_blas::scylla_queue::response;
@@ -346,31 +344,18 @@ std::optional<std::pair<int64_t, task>> scylla_blas::scylla_queue::consume_multi
             return std::nullopt;
         }
 
-        std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
-        try {
-            auto result = _session->execute(*update_used_counter_trans_prepared, cnt_used + 1, queue_id, cnt_used, cnt_new);
+        auto result = _session->execute(*update_used_counter_trans_prepared, cnt_used + 1, queue_id, cnt_used, cnt_new);
 
+        if (!result.next_row()) {
+            throw std::runtime_error("Queue deleted while working?");
+        }
+        cnt_new = result.get_column<int64_t>("cnt_new");
+        cnt_used = result.get_column<int64_t>("cnt_used");
 
-            std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
-            if (!result.next_row()) {
-                throw std::runtime_error("Queue deleted while working?");
-            }
-            cnt_new = result.get_column<int64_t>("cnt_new");
-            cnt_used = result.get_column<int64_t>("cnt_used");
-            std::cout << "Tried to claim a task, it took: "
-                      << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count()
-                      << "[µs]"
-                      << ", success: "
-                      << result.get_column<bool>("[applied]")
-                      << std::endl;
-            if (result.get_column<bool>("[applied]")) {
-                // We claimed a task
-                cnt_used++;
-                return std::make_pair(cnt_used - 1, fetch_task_loop(cnt_used - 1));
-            }
-        } catch (const std::runtime_error &e) {
-            std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
-            std::cout << "\n\n\nWORKER EXCEPTION. QEURY DURATION: " << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() << "\n\n\n";
+        if (result.get_column<bool>("[applied]")) {
+            // We claimed a task
+            cnt_used++;
+            return std::make_pair(cnt_used - 1, fetch_task_loop(cnt_used - 1));
         }
     }
 }
