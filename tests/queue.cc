@@ -22,7 +22,7 @@ static void test_queue_simple(scylla_blas::scylla_queue& queue) {
         task_ids.push(queue.produce(task));
     }
 
-    for(auto val : values) {
+    for (auto val : values) {
         auto opt = queue.consume();
         BOOST_REQUIRE(opt);
         auto [id, task] = opt.value();

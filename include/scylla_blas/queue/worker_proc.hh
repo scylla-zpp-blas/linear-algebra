@@ -46,7 +46,7 @@ void consume_binary(const std::shared_ptr<scmd::session> &session,
 
     while (true) {
         auto opt = task_queue.consume();
-        if (!opt) {
+        if (!opt.has_value()) {
             // The task queue is empty – nothing left to do.
             break;
         }
