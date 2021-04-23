@@ -53,7 +53,7 @@ static void test_queue_response(scylla_blas::scylla_queue& queue) {
         task_ids.push(queue.produce(task));
     }
 
-    for(auto val : values) {
+    for (auto val : values) {
         auto opt = queue.consume();
         BOOST_REQUIRE(opt);
         auto [id, task] = opt.value();
@@ -79,7 +79,7 @@ static void test_queue_batch(scylla_blas::scylla_queue& queue) {
         // Test tasks without results
         int64_t tasks_id;
         std::vector<scylla_blas::proto::task> tasks;
-        for(auto val : values) {
+        for (auto val : values) {
             scylla_blas::proto::task task {
                     .type = scylla_blas::proto::NONE,
                     .basic {
