@@ -114,32 +114,33 @@ void worker(const struct options& op) {
 
     std::cerr << "Starting worker loop...\n";
     for (;;) {
-        try {
-            auto [task_id, task_data] = base_queue.consume();
-            std::cerr << "A new task received! task_id: " << task_id  << std::endl;
-
-            int64_t attempts;
-            for (attempts = 0; attempts <= MAX_WORKER_RETRIES; attempts++) {
-                /* Keep trying until the task is finished – otherwise it will be lost and never marked as finished */
-                /* TODO: scylla_queue.mark_as_failed()? */
-                try {
-                    auto proc = scylla_blas::worker::get_procedure_for_task(task_data);
-                    proc(session, task_data);
-                    base_queue.mark_as_finished(task_id);
-                    break;
-                } catch (const std::exception &e) {
-                    std::cerr << "Task " << task_id << " failed. Reason: " << e.what() << std::endl;
-                    std::cerr << "Retrying..." << std::endl;
-                }
-            }
-
-            if (attempts <= MAX_WORKER_RETRIES) {
-                std::cerr << "Task " << task_id << " completed succesfully." << std::endl;
-            } else {
-                std::cerr << "Abandoned task " << task_id << " due to too many failures." << std::endl;
-            }
-        } catch (const scylla_blas::empty_container_error& e) {
+        auto opt = base_queue.consume();
+        if (!opt.has_value()) {
             scylla_blas::wait_seconds(WORKER_SLEEP_TIME_SECONDS);
+            continue;
+        }
+        auto [task_id, task_data] = opt.value();
+        std::cerr << "A new task received! task_id: " << task_id  << std::endl;
+
+        int64_t attempts;
+        for (attempts = 0; attempts <= MAX_WORKER_RETRIES; attempts++) {
+            /* Keep trying until the task is finished – otherwise it will be lost and never marked as finished */
+            /* TODO: scylla_queue.mark_as_failed()? */
+            try {
+                auto proc = scylla_blas::worker::get_procedure_for_task(task_data);
+                proc(session, task_data);
+                base_queue.mark_as_finished(task_id);
+                break;
+            } catch (const std::exception &e) {
+                std::cerr << "Task " << task_id << " failed. Reason: " << e.what() << std::endl;
+                std::cerr << "Retrying..." << std::endl;
+            }
+        }
+
+        if (attempts <= MAX_WORKER_RETRIES) {
+            std::cerr << "Task " << task_id << " completed succesfully." << std::endl;
+        } else {
+            std::cerr << "Abandoned task " << task_id << " due to too many failures." << std::endl;
         }
     }
 }

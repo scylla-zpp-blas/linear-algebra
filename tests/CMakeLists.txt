@@ -1,4 +1,4 @@
-set(TEST_SRC config.hh fixture.hh main.cc multiply.cc structure_test.cc generators/sparse_matrix_value_generator.hh generators/value_factory.hh )
+set(TEST_SRC config.hh fixture.hh main.cc multiply.cc structure_test.cc queue.cc generators/sparse_matrix_value_generator.hh generators/value_factory.hh )
 
 add_executable(scylla_blas_tests "${TEST_SRC}")
 target_link_libraries(scylla_blas_tests scylla_blas ${Boost_THREAD_LIBRARY} ${Boost_UNIT_TEST_FRAMEWORK_LIBRARY})
