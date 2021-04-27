@@ -20,20 +20,46 @@ namespace scylla_blas {
  * the number of arguments and returning results the C++ way.
  */
 class routine_scheduler {
-    std::shared_ptr <scmd::session> _session;
     using cfloat = std::complex<float>;
     using zdouble = std::complex<double>;
+    using none_type = void*;
 
     template<class T>
-    matrix<T>& gemm(const scylla_blas::TRANSPOSE TransA,
-                    const scylla_blas::TRANSPOSE TransB,
-                    const T alpha, const scylla_blas::matrix<T> &A,
-                    const scylla_blas::matrix<T> &B,
-                    const T beta, scylla_blas::matrix<T> &C);
+    using updater = std::function<void(T&, const proto::response&)>;
 
-    void produce_vector_tasks(const proto::task_type type,
-                              const float salpha, const double dalpha,
-                              const int64_t X_id, const int64_t Y_id);
+    /* Produces `cnt` copies of `task`, waits until all of them are completed.
+     * Partial results from completion reports are accumulated in `acc`
+     * with `update`, and returned in the end.
+     *
+     * If there is no result to be accumulated, `update` can be a pointer to null.
+     * Otherwise, accumulation errors will be reported if `update` is not a valid function.
+     */
+    template<class T>
+    T produce_and_wait(scylla_blas::scylla_queue &queue,
+                       const scylla_blas::proto::task &task,
+                       scylla_blas::index_type cnt, int64_t sleep_time,
+                       T acc, updater<T> update);
+
+    /* Produces a number of vector-only primary tasks for workers, waits
+     * until they are reported to be complete, accumulating result using
+     * the 'update' function, provided that there is any.
+     */
+    template<class T>
+    T produce_vector_tasks(const proto::task_type type, const T alpha,
+                           const int64_t X_id, const int64_t Y_id,
+                           T acc = 0, updater<T> update = nullptr);
+
+    /* Produces a number of matrix-only primary tasks for workers, waits
+     * until they are reported to be complete, accumulating result using
+     * the 'update' function, provided that there is any.
+     */
+    template<class T>
+    T produce_matrix_tasks(const proto::task_type type,
+                           const int64_t A_id, const enum TRANSPOSE TransA, const T alpha,
+                           const int64_t B_id, const enum TRANSPOSE TransB, const T beta,
+                           const int64_t C_id, T acc = 0, updater<T> update = nullptr);
+
+    std::shared_ptr <scmd::session> _session;
 
     const int64_t _subtask_queue_id;
     scylla_queue _subtask_queue;

@@ -46,31 +46,60 @@ void add_blocks_as_queue_tasks(scylla_blas::scylla_queue &queue,
             queue.produce({
                  .type = scylla_blas::proto::NONE,
                  .coord {
-                         .block_row = i,
-                         .block_column = j
+                     .block_row = i,
+                     .block_column = j
                  }});
         }
     }
 }
 
-void produce_and_wait(scylla_blas::scylla_queue &queue,
-                      const scylla_blas::proto::task &task,
-                      scylla_blas::index_type cnt, int64_t sleep_time) {
-    std::cerr << "Ordering multiplication to the workers" << std::endl;
-    std::vector<int64_t> task_ids;
-    for (scylla_blas::index_type i = 0; i < cnt; i++) {
-        task_ids.push_back(queue.produce(task));
-    }
-
-    std::cerr << "Waiting for workers to complete the order..." << std::endl;
-    for (int64_t id : task_ids) {
-        while (!queue.is_finished(id)) {
-            scylla_blas::wait_seconds(sleep_time);
-        }
-    }
 }
 
+template<>
+float scylla_blas::routine_scheduler::produce_matrix_tasks(const proto::task_type type,
+                                                           const int64_t A_id, const enum TRANSPOSE TransA, const float alpha,
+                                                           const int64_t B_id, const enum TRANSPOSE TransB, const float beta,
+                                                           const int64_t C_id, float acc, updater<float> update) {
+    return produce_and_wait(this->_main_worker_queue, proto::task {
+        .type = type,
+        .matrix_task_float = {
+            .task_queue_id = this->_subtask_queue_id,
+
+            .A_id = A_id,
+            .TransA = TransA,
+            .alpha = alpha,
+
+            .B_id = B_id,
+            .TransB = TransB,
+            .beta = beta,
+
+            .C_id = C_id
+        }}, LIMIT_WORKER_CONCURRENCY, WORKER_SLEEP_TIME_SECONDS, acc, update);
 }
+
+template<>
+double scylla_blas::routine_scheduler::produce_matrix_tasks(const proto::task_type type,
+                                                            const int64_t A_id, const enum TRANSPOSE TransA, const double alpha,
+                                                            const int64_t B_id, const enum TRANSPOSE TransB, const double beta,
+                                                            const int64_t C_id, double acc, updater<double> update) {
+    return produce_and_wait(this->_main_worker_queue, proto::task{
+        .type = type,
+        .matrix_task_double = {
+            .task_queue_id = this->_subtask_queue_id,
+
+            .A_id = A_id,
+            .TransA = TransA,
+            .alpha = alpha,
+
+            .B_id = B_id,
+            .TransB = TransB,
+            .beta = beta,
+
+            .C_id = C_id
+        }}, LIMIT_WORKER_CONCURRENCY, WORKER_SLEEP_TIME_SECONDS, acc, update);
+}
+
+#define NONE 0
 
 /* TODO: Can we use define? Or in any other way avoid these boilerplatey signatures? */
 scylla_blas::matrix<float>&
@@ -81,18 +110,7 @@ scylla_blas::routine_scheduler::sgemm(const enum TRANSPOSE TransA, const enum TR
     assert_multiplication_compatible(TransA, A, B, TransB, C);
     add_blocks_as_queue_tasks(this->_subtask_queue, C);
 
-    produce_and_wait(this->_main_worker_queue, proto::task {
-            .type = proto::SGEMM,
-            .sgemm = {
-                    .task_queue_id = this->_subtask_queue_id,
-                    .TransA = TransA,
-                    .TransB = TransB,
-                    .alpha = alpha,
-                    .A_id = A.id,
-                    .B_id = B.id,
-                    .beta = beta,
-                    .C_id = C.id
-            }}, LIMIT_WORKER_CONCURRENCY, WORKER_SLEEP_TIME_SECONDS);
+    produce_matrix_tasks<float>(proto::SGEMM, A.id, TransA, alpha, B.id, TransB, beta, C.id);
 
     return C;
 }
@@ -100,23 +118,11 @@ scylla_blas::routine_scheduler::sgemm(const enum TRANSPOSE TransA, const enum TR
 scylla_blas::matrix<double>&
 scylla_blas::routine_scheduler::dgemm(const enum TRANSPOSE TransA, const enum TRANSPOSE TransB,
                                       const double alpha, const matrix<double> &A,
-                                      const matrix<double> &B,
-                                      const double beta, scylla_blas::matrix<double> &C) {
+                                      const matrix<double> &B, const double beta, scylla_blas::matrix<double> &C) {
     assert_multiplication_compatible(TransA, A, B, TransB, C);
     add_blocks_as_queue_tasks(this->_subtask_queue, C);
 
-    produce_and_wait(this->_main_worker_queue, proto::task {
-            .type = proto::DGEMM,
-            .dgemm = {
-                    .task_queue_id = this->_subtask_queue_id,
-                    .TransA = TransA,
-                    .TransB = TransB,
-                    .alpha = alpha,
-                    .A_id = A.id,
-                    .B_id = B.id,
-                    .beta = beta,
-                    .C_id = C.id
-            }}, LIMIT_WORKER_CONCURRENCY, WORKER_SLEEP_TIME_SECONDS);
+    produce_matrix_tasks<double>(proto::SGEMM, A.id, TransA, alpha, B.id, TransB, beta, C.id);
 
     return C;
 }

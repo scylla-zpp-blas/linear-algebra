@@ -16,18 +16,11 @@ void print_vector(const scylla_blas::vector<T>& vec) {
 }
 }
 
-BOOST_FIXTURE_TEST_SUITE(vector_scale, vector_fixture)
-
-BOOST_AUTO_TEST_CASE(float_scale)
+BOOST_FIXTURE_TEST_CASE(vector_scale, vector_fixture)
 {
     scheduler->sscal(2, *float_A);
     print_vector(*float_A);
-}
 
-BOOST_AUTO_TEST_CASE(double_scale)
-{
     scheduler->dscal(2, *double_A);
     print_vector(*double_A);
 }
-
-BOOST_AUTO_TEST_SUITE_END();

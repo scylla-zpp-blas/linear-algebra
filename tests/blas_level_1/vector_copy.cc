@@ -16,51 +16,28 @@ void print_vector(const scylla_blas::vector<T>& vec) {
 }
 }
 
-BOOST_FIXTURE_TEST_SUITE(vector_copy, vector_fixture)
-
-BOOST_AUTO_TEST_CASE(float_scale)
+BOOST_FIXTURE_TEST_CASE(vector_copy, vector_fixture)
 {
     print_vector(*float_B);
-
     scheduler->scopy(*float_A, *float_B);
-
     print_vector(*float_A);
     print_vector(*float_B);
-}
 
-BOOST_AUTO_TEST_CASE(double_scale)
-{
     print_vector(*double_B);
-
     scheduler->dcopy(*double_A, *double_B);
-
     print_vector(*double_A);
     print_vector(*double_B);
 }
 
-BOOST_AUTO_TEST_SUITE_END();
-
-
-BOOST_FIXTURE_TEST_SUITE(vector_alpha_sum_copy, vector_fixture)
-
-BOOST_AUTO_TEST_CASE(float_scale)
+BOOST_FIXTURE_TEST_CASE(vector_alpha_sum_copy, vector_fixture)
 {
     print_vector(*float_B);
-
     scheduler->saxpy(3.14, *float_A, *float_B);
-
     print_vector(*float_A);
     print_vector(*float_B);
-}
 
-BOOST_AUTO_TEST_CASE(double_scale)
-{
     print_vector(*double_B);
-
     scheduler->daxpy(3.14, *double_A, *double_B);
-
     print_vector(*double_A);
     print_vector(*double_B);
 }
-
-BOOST_AUTO_TEST_SUITE_END();

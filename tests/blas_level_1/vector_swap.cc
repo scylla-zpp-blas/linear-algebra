@@ -16,9 +16,7 @@ void print_vector(const scylla_blas::vector<T>& vec) {
 }
 }
 
-BOOST_FIXTURE_TEST_SUITE(vector_swap, vector_fixture)
-
-BOOST_AUTO_TEST_CASE(float_swap)
+BOOST_FIXTURE_TEST_CASE(vector_swap, vector_fixture)
 {
     print_vector(*float_A);
     print_vector(*float_B);
@@ -27,6 +25,12 @@ BOOST_AUTO_TEST_CASE(float_swap)
 
     print_vector(*float_A);
     print_vector(*float_B);
-}
 
-BOOST_AUTO_TEST_SUITE_END();
+    print_vector(*double_A);
+    print_vector(*double_B);
+
+    scheduler->dswap(*double_A, *double_B);
+
+    print_vector(*double_A);
+    print_vector(*double_B);
+}

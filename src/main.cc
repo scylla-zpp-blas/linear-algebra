@@ -116,7 +116,7 @@ void worker(const struct options& op) {
     std::cerr << "Accessing default task queue..." << std::endl;
     auto base_queue = scylla_blas::scylla_queue(session, DEFAULT_WORKER_QUEUE_ID);
 
-    std::cerr << "Starting worker loop...\n";
+    std::cerr << "Starting worker loop..." << std::endl;
     for (;;) {
         auto opt = base_queue.consume();
         if (!opt.has_value()) {
@@ -128,12 +128,20 @@ void worker(const struct options& op) {
 
         int64_t attempts;
         for (attempts = 0; attempts <= MAX_WORKER_RETRIES; attempts++) {
+            scylla_blas::worker::procedure_t& proc = scylla_blas::worker::get_procedure_for_task(task_data);
+
             /* Keep trying until the task is finished – otherwise it will be lost and never marked as finished */
             /* TODO: scylla_queue.mark_as_failed()? */
             try {
-                auto proc = scylla_blas::worker::get_procedure_for_task(task_data);
-                proc(session, task_data);
-                base_queue.mark_as_finished(task_id);
+                auto result = proc(session, task_data);
+
+                if (result.has_value()) {
+                    /* The procedure has generated a partial result to be returned */
+                    base_queue.mark_as_finished(task_id, result.value());
+                } else {
+                    base_queue.mark_as_finished(task_id);
+                }
+
                 break;
             } catch (const std::exception &e) {
                 std::cerr << "Task " << task_id << " failed. Reason: " << e.what() << std::endl;

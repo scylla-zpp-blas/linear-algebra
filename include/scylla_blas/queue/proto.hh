@@ -202,33 +202,51 @@ struct task {
 
         struct {
             int64_t task_queue_id;
-            float salpha;
-            double dalpha;
             int64_t X_id;
             int64_t Y_id;
-        } vector_task;
+        } vector_task_simple;
 
         struct {
             int64_t task_queue_id;
-            TRANSPOSE TransA;
-            TRANSPOSE TransB;
             float alpha;
-            int64_t A_id;
-            int64_t B_id;
-            float beta;
-            int64_t C_id;
-        } sgemm;
+            int64_t X_id;
+            int64_t Y_id;
+        } vector_task_float;
 
         struct {
             int64_t task_queue_id;
-            TRANSPOSE TransA;
-            TRANSPOSE TransB;
             double alpha;
+            int64_t X_id;
+            int64_t Y_id;
+        } vector_task_double;
+
+        struct {
+            int64_t task_queue_id;
+
             int64_t A_id;
+            TRANSPOSE TransA;
+            float alpha;
+
             int64_t B_id;
-            double beta;
+            TRANSPOSE TransB;
+            float beta;
+
             int64_t C_id;
-        } dgemm;
+        } matrix_task_float;
+
+        struct {
+            int64_t task_queue_id;
+
+            int64_t A_id;
+            TRANSPOSE TransA;
+            double alpha;
+
+            int64_t B_id;
+            TRANSPOSE TransB;
+            double beta;
+
+            int64_t C_id;
+        } matrix_task_double;
     };
 
 };
@@ -242,6 +260,19 @@ struct response {
     response_type type;
 
     union {
+        float result_float;
+        double result_double;
+
+        struct {
+            index_type index;
+            float value;
+        } result_max_float_index;
+
+        struct {
+            index_type index;
+            double value;
+        } result_max_double_index;
+
         struct {
             int64_t response;
         } simple;
