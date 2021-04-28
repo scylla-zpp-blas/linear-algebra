@@ -122,7 +122,7 @@ scylla_blas::routine_scheduler::dgemm(const enum TRANSPOSE TransA, const enum TR
     assert_multiplication_compatible(TransA, A, B, TransB, C);
     add_blocks_as_queue_tasks(this->_subtask_queue, C);
 
-    produce_matrix_tasks<double>(proto::SGEMM, A.id, TransA, alpha, B.id, TransB, beta, C.id);
+    produce_matrix_tasks<double>(proto::DGEMM, A.id, TransA, alpha, B.id, TransB, beta, C.id);
 
     return C;
 }

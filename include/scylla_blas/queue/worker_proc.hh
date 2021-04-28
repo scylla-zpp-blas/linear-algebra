@@ -34,7 +34,7 @@ constexpr std::array<std::pair<proto::task_type, const procedure_t &>, 20> task_
          {proto::SASUM, sasum},
          {proto::ISAMAX, isamax},
 
-         {proto::DSCAL, dswap},
+         {proto::DSWAP, dswap},
          {proto::DSCAL, dscal},
          {proto::DCOPY, dcopy},
          {proto::DAXPY, daxpy},

@@ -137,6 +137,7 @@ void worker(const struct options& op) {
 
                 if (result.has_value()) {
                     /* The procedure has generated a partial result to be returned */
+                    result.value().type = scylla_blas::proto::R_SOME; /* We don't really need result types beyond NONE and SOME */
                     base_queue.mark_as_finished(task_id, result.value());
                 } else {
                     base_queue.mark_as_finished(task_id);

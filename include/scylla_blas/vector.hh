@@ -45,7 +45,11 @@ public:
     index_type get_segment_count() const {
         return get_segment_index(length);
     }
-    
+
+    index_type get_segment_offset(index_type segment_number) const {
+        return (segment_number - 1) * BLOCK_SIZE;
+    }
+
     static void init_meta(const std::shared_ptr<scmd::session> &session);
 
     basic_vector(const std::shared_ptr<scmd::session> &session, int64_t id);
@@ -130,7 +134,7 @@ public:
         /*
          * Segments are moved by offset similarly to matrix blocks.
          */
-        index_type offset = (x - 1) * BLOCK_SIZE;
+        index_type offset = get_segment_offset(x);
 
         vector_segment<T> answer;
         for (auto &val : segment_values) {

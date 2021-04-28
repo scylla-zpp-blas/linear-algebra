@@ -253,6 +253,7 @@ struct task {
 
 enum response_type {
     R_NONE,
+    R_SOME,
     R_INT64
 };
 

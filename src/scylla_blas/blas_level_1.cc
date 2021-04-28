@@ -37,25 +37,24 @@ template<class T>
 T scylla_blas::routine_scheduler::produce_and_wait(scylla_queue &queue, const proto::task &task,
                                                    index_type cnt, int64_t sleep_time,
                                                    T acc, updater<T> update) {
-    std::cerr << "Ordering task to the workers" << std::endl;
     std::vector<int64_t> task_ids;
     for (scylla_blas::index_type i = 0; i < cnt; i++) {
         task_ids.push_back(queue.produce(task));
     }
 
-    std::cerr << "Waiting for workers to complete the order..." << std::endl;
     for (int64_t id : task_ids) {
         while (!queue.is_finished(id)) {
             scylla_blas::wait_seconds(sleep_time);
-            auto response = queue.get_response(id).value();
+        }
 
-            if (response.type == proto::R_NONE) continue;
+        auto response = queue.get_response(id);
 
-            try {
-                update(acc, response);
-            } catch(std::exception &e) {
-                std::cerr << "Result update failed: " << e.what() << std::endl;
-            }
+        if (response.value().type == proto::R_NONE) continue;
+
+        try {
+            update(acc, response.value());
+        } catch(std::exception &e) {
+            std::cerr << "Result update failed: " << e.what() << std::endl;
         }
     }
 

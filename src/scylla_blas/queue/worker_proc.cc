@@ -171,16 +171,20 @@ std::pair<scylla_blas::index_type, T> iamax(const std::shared_ptr<scmd::session>
     T max_abs = 0;
     scylla_blas::index_type imax = 0;
 
-    auto nrm2_segment = [&X, &max_abs, &imax] (scylla_blas::proto::task &subtask) {
+    auto iamax_segment = [&X, &max_abs, &imax] (scylla_blas::proto::task &subtask) {
+        scylla_blas::index_type offset = X.get_segment_offset(subtask.index);
+
         for (auto &val : X.get_segment(subtask.index)) {
             if (std::abs(val.value) > max_abs) {
                 max_abs = std::abs(val.value);
-                imax = val.index;
+                imax = val.index + offset;
+            } else if (std::abs(val.value) == max_abs) {
+                imax = std::min(imax, val.index + offset);
             }
         }
     };
 
-    consume_tasks(task_queue, nrm2_segment);
+    consume_tasks(task_queue, iamax_segment);
     return { imax, max_abs };
 }
 
@@ -260,7 +264,7 @@ DEFINE_WORKER_FUNCTION(sasum, {
 })
 
 DEFINE_WORKER_FUNCTION(isamax, {
-    auto result = iamax<float>(session, task.vector_task_simple);
+    auto result = iamax<float>(session, task.vector_task_float);
     return (proto::response{ .result_max_float_index { .index = result.first, .value = result.second }});
 })
 
@@ -305,7 +309,7 @@ DEFINE_WORKER_FUNCTION(dasum, {
 })
 
 DEFINE_WORKER_FUNCTION(idamax, {
-    auto result = iamax<double>(session, task.vector_task_simple);
+    auto result = iamax<double>(session, task.vector_task_double);
     return (proto::response{ .result_max_double_index { .index = result.first, .value = result.second }});
 })
 

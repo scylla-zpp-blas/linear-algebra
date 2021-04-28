@@ -3,7 +3,7 @@
 #include "scylla_blas/scylla_blas.hh"
 #include "../fixture.hh"
 
-BOOST_FIXTURE_TEST_CASE(vector_const_op, vector_fixture)
+BOOST_FIXTURE_TEST_CASE(vector_constant_operations, vector_fixture)
 {
     /* DOT */
     std::cout << "sdot(float_A, float_B) = " << scheduler->sdot(*float_A, *float_B) << std::endl;
