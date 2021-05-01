@@ -41,7 +41,7 @@ void init_vectors(const std::shared_ptr<scmd::session> &session) {
 
 int main(int argc, char *argv[]) {
     if (argc <= 1) {
-        throw std::runtime_error("You need to specify ip in the command line: " + std::string(argv[0]) + " -- scylla_ip");
+        throw std::runtime_error("You need to specify ip in the command line: " + std::string(argv[0]) + " scylla_ip [scylla_port]");
     }
     std::string scylla_ip = argv[1];
     std::string scylla_port = argc > 2 ? argv[2] : std::to_string(SCYLLA_DEFAULT_PORT);

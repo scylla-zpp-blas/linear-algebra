@@ -20,8 +20,8 @@ std::pair<scylla_blas::index_type, scylla_blas::index_type> scylla_blas::basic_m
 }
 
 void scylla_blas::basic_matrix::clear(const std::shared_ptr<scmd::session> &session, int64_t id) {
-    scmd::statement drop_table(fmt::format("TRUNCATE blas.matrix_{};", id));
-    session->execute(drop_table.set_timeout(0));
+    scmd::statement truncate(fmt::format("TRUNCATE blas.matrix_{};", id));
+    session->execute(truncate.set_timeout(0));
 }
 
 void scylla_blas::basic_matrix::resize(const std::shared_ptr<scmd::session> &session,

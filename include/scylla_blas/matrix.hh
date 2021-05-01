@@ -38,11 +38,22 @@ protected:
 
     std::pair<index_type, index_type> get_dimensions() const;
 
+    /* Removes all values inserted into the matrix up to the point of execution.
+     * Doesn't remove the matrix itself or modify its metadata, so it doesn't need
+     * to be reinitialized for further usage.
+     *
+     * This static private method works same as the object-specific, public method "clear_all".
+     * The only difference is that a separate object needs not be initialized.
+     */
     static void clear(const std::shared_ptr<scmd::session> &session, int64_t id);
+
+    /* Changes matrices' dimensions in the database.
+     * Those can be used by the user for custom assertions, although the class itself
+     * doesn't make ANY validity checks concerning dimensions of stored or returned data.
+     */
     static void resize(const std::shared_ptr<scmd::session> &session,
                        int64_t id, int64_t new_row_count, int64_t new_column_count);
 public:
-    // Should we make these private, with accessors?
     const index_type id;
     const index_type row_count;
     const index_type column_count;

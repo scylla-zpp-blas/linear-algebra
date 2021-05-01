@@ -11,6 +11,7 @@ add_subdirectory(lib/fmt EXCLUDE_FROM_ALL)
 
 set(SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src/scylla_blas)
 set(BLAS_SRC
+        ${SRC_DIR}/blas_generic.cc
         ${SRC_DIR}/blas_level_1.cc
         ${SRC_DIR}/blas_level_3.cc
         ${SRC_DIR}/matrix.cc
@@ -39,7 +40,7 @@ set(BLAS_INCLUDE
         ${INCLUDE_DIR}/utils/matrix_value_generator.hh
         ${INCLUDE_DIR}/utils/scylla_types.hh
         ${INCLUDE_DIR}/utils/utils.hh
-        )
+        src/scylla_blas/blas_generic.cc)
 
 add_library(scylla_blas SHARED "${BLAS_SRC}" "${BLAS_INCLUDE}")
 target_include_directories(scylla_blas PUBLIC ${CMAKE_SOURCE_DIR}/include)

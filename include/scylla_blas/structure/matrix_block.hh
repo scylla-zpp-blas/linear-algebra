@@ -13,17 +13,17 @@ namespace scylla_blas {
 
 template<class T>
 class matrix_block {
-    using list_of_vectors = std::map<scylla_blas::index_type, scylla_blas::vector_segment<T>>;
-    using fast_list_of_vectors = std::unordered_map<scylla_blas::index_type, scylla_blas::vector_segment<T>>;
-    using list_of_values = std::vector<scylla_blas::matrix_value<T>>;
+    using row_map_t = std::map<scylla_blas::index_type, scylla_blas::vector_segment<T>>;
+    using row_hashmap_t = std::unordered_map<scylla_blas::index_type, scylla_blas::vector_segment<T>>;
+    using vector_of_values = std::vector<scylla_blas::matrix_value<T>>;
 
     /* TODO: this may be worth optimising by direct vector construction from values. */
-    list_of_vectors values_to_vectors (const list_of_values &lval) {
-        fast_list_of_vectors helper;
-        for (auto &val : lval)
+    row_map_t values_to_rows (const vector_of_values &vals) {
+        row_hashmap_t helper;
+        for (auto &val : vals)
             helper[val.row_index].emplace_back(val.col_index, val.value);
 
-        list_of_vectors ret;
+        row_map_t ret;
         for (auto &val : helper)
             ret.insert({val.first, std::move(val.second)});
 
@@ -31,46 +31,46 @@ class matrix_block {
     }
 
     /* TODO: std::vector instead of std::unordered map? */
-    list_of_vectors transpose_vectors(const list_of_vectors &love) {
-        fast_list_of_vectors helper;
-        for (auto &entry : love)
+    row_map_t transpose_row_map (const row_map_t &rmap) {
+        row_hashmap_t helper;
+        for (auto &entry : rmap)
             for (auto &val : entry.second)
                 helper[val.index].emplace_back(entry.first, val.value);
 
-        list_of_vectors ret;
+        row_map_t ret;
         for (auto &val : helper)
             ret.insert({val.first, std::move(val.second)});
 
         return ret;
     }
 
-    list_of_values vectors_to_values(const list_of_vectors &love) {
-        list_of_values ret;
+    vector_of_values vectors_to_values(const row_map_t &rmap) {
+        vector_of_values ret;
 
-        for (auto &entry : love)
+        for (auto &entry : rmap)
             for (auto &val : entry.second)
                 ret.emplace_back(entry.first, val.index, val.value);
 
         return ret;
     }
 
-    list_of_values transpose_values(const list_of_values &lval) {
-        return vectors_to_values(transpose_vectors(values_to_vectors(lval)));
+    vector_of_values transpose_values(const vector_of_values &vals) {
+        return vectors_to_values(transpose_row_map(values_to_rows(vals)));
     }
 
-    list_of_values _values;
+    vector_of_values _values;
 
-    explicit matrix_block(list_of_values values) :
+    explicit matrix_block(vector_of_values values) :
             _values(values), i(-1), j(-1) {}
 public:
     const int64_t matrix_id = 0;
     const index_type i;
     const index_type j;
 
-    matrix_block(list_of_values values, int64_t matrix_id, index_type i, index_type j, TRANSPOSE trans = NoTrans) :
+    matrix_block(vector_of_values values, int64_t matrix_id, index_type i, index_type j, TRANSPOSE trans = NoTrans) :
             _values(trans == NoTrans ? values : transpose_values(values)), matrix_id(matrix_id), i(i), j(j) {}
 
-    matrix_block& transpose(TRANSPOSE trans) {
+    matrix_block &transpose(TRANSPOSE trans) {
         if (trans != NoTrans) {
             _values = transpose_values(_values);
         }
@@ -78,20 +78,20 @@ public:
         return *this;
     }
 
-    matrix_block& operator*=(const matrix_block &other) {
-        auto list_of_vectors = values_to_vectors(_values);
-        auto transposed_other = transpose_vectors(values_to_vectors(other._values));
+    matrix_block &operator*=(const matrix_block &other) {
+        auto row_map = values_to_rows(_values);
+        auto transposed_other = transpose_row_map(values_to_rows(other._values));
 
         _values.clear();
 
-        for (auto &left : list_of_vectors)
+        for (auto &left : row_map)
             for (auto &right : transposed_other)
                 _values.emplace_back(left.first, right.first, left.second.prod(right.second));
 
         return *this;
     }
 
-    matrix_block& operator*=(const T arg) {
+    matrix_block &operator*=(const T arg) {
         for (auto &val : _values)
             val.value *= arg;
 
@@ -113,17 +113,17 @@ public:
         return result;
     }
 
-    matrix_block& operator+=(const matrix_block &other) {
-        auto this_ListVec = values_to_vectors(_values);
-        auto other_ListVec = values_to_vectors(other._values);
+    matrix_block &operator+=(const matrix_block &other) {
+        auto this_row_map = values_to_rows(_values);
+        auto other_row_map = values_to_rows(other._values);
 
         _values.clear();
 
-        for (auto &[row_id, row_values] : other_ListVec) {
-            this_ListVec[row_id] += row_values;
+        for (auto &[row_id, row_values] : other_row_map) {
+            this_row_map[row_id] += row_values;
         }
 
-        _values = vectors_to_values(this_ListVec);
+        _values = vectors_to_values(this_row_map);
 
         return *this;
     }
@@ -136,7 +136,7 @@ public:
         return result;
     }
 
-    const list_of_values& get_values_raw() const {
+    const vector_of_values &get_values_raw() const {
         return _values;
     }
 };
