@@ -31,59 +31,59 @@ void trim_to_triangular(auto matrix, scylla_blas::index_type K = -1) {
 }
 
 }
-
-BOOST_FIXTURE_TEST_CASE(triangular_solver, mixed_fixture)
-{
-    using namespace scylla_blas;
-
-    {
-        auto old_vec = float_B->get_whole();
-
-        trim_to_triangular<float>(float_BxB);
-        scheduler->strsv(Upper, NoTrans, NonUnit, *float_BxB, *float_B);
-        scheduler->sgemv(NoTrans, 1,  *float_BxB, *float_B, 0, *float_B2);
-
-        auto new_vec = float_B2->get_whole();
-        BOOST_REQUIRE_LE((old_vec + new_vec * (-1)).nrminf() / new_vec.nrminf(), EPSILON);
-    }
-
-    {
-        auto old_vec = double_B->get_whole();
-
-        trim_to_triangular<double>(double_BxB);
-        scheduler->dtrsv(Upper, NoTrans, NonUnit, *double_BxB, *double_B);
-        scheduler->dgemv(NoTrans, 1,  *double_BxB, *double_B, 0, *double_B2);
-
-        auto new_vec = double_B2->get_whole();
-        BOOST_REQUIRE_LE((old_vec + new_vec * (-1)).nrminf() / new_vec.nrminf(), EPSILON);
-    }
-}
-
-BOOST_FIXTURE_TEST_CASE(triangular_banded_solver, mixed_fixture)
-{
-    using namespace scylla_blas;
-    index_type K = 2;
-
-    {
-        auto old_vec = float_B->get_whole();
-
-        trim_to_triangular<float>(float_BxB, K);
-        scheduler->stbsv(Upper, NoTrans, NonUnit, K, *float_BxB, *float_B);
-        scheduler->sgbmv(NoTrans, 0, K, 1, *float_BxB, *float_B, 0, *float_B2);
-
-        auto new_vec = float_B2->get_whole();
-        BOOST_REQUIRE_LE((old_vec + new_vec * (-1)).nrminf() / new_vec.nrminf(), EPSILON);
-    }
-
-    {
-        auto old_vec = double_B->get_whole();
-
-        trim_to_triangular<double>(double_BxB, K);
-        scheduler->dtbsv(Upper, NoTrans, NonUnit, K, *double_BxB, *double_B);
-        scheduler->dgbmv(NoTrans, 0, K, 1, *double_BxB, *double_B, 0, *double_B2);
-
-        auto new_vec = double_B2->get_whole();
-        BOOST_REQUIRE_LE((old_vec + new_vec * (-1)).nrminf() / new_vec.nrminf(), EPSILON);
-    }
-}
-
+//
+//BOOST_FIXTURE_TEST_CASE(triangular_solver, mixed_fixture)
+//{
+//    using namespace scylla_blas;
+//
+//    {
+//        auto old_vec = float_B->get_whole();
+//
+//        trim_to_triangular<float>(float_BxB);
+//        scheduler->strsv(Upper, NoTrans, NonUnit, *float_BxB, *float_B);
+//        scheduler->sgemv(NoTrans, 1,  *float_BxB, *float_B, 0, *float_B2);
+//
+//        auto new_vec = float_B2->get_whole();
+//        BOOST_REQUIRE_LE((old_vec + new_vec * (-1)).nrminf() / new_vec.nrminf(), EPSILON);
+//    }
+//
+//    {
+//        auto old_vec = double_B->get_whole();
+//
+//        trim_to_triangular<double>(double_BxB);
+//        scheduler->dtrsv(Upper, NoTrans, NonUnit, *double_BxB, *double_B);
+//        scheduler->dgemv(NoTrans, 1,  *double_BxB, *double_B, 0, *double_B2);
+//
+//        auto new_vec = double_B2->get_whole();
+//        BOOST_REQUIRE_LE((old_vec + new_vec * (-1)).nrminf() / new_vec.nrminf(), EPSILON);
+//    }
+//}
+//
+//BOOST_FIXTURE_TEST_CASE(triangular_banded_solver, mixed_fixture)
+//{
+//    using namespace scylla_blas;
+//    index_type K = 2;
+//
+//    {
+//        auto old_vec = float_B->get_whole();
+//
+//        trim_to_triangular<float>(float_BxB, K);
+//        scheduler->stbsv(Upper, NoTrans, NonUnit, K, *float_BxB, *float_B);
+//        scheduler->sgbmv(NoTrans, 0, K, 1, *float_BxB, *float_B, 0, *float_B2);
+//
+//        auto new_vec = float_B2->get_whole();
+//        BOOST_REQUIRE_LE((old_vec + new_vec * (-1)).nrminf() / new_vec.nrminf(), EPSILON);
+//    }
+//
+//    {
+//        auto old_vec = double_B->get_whole();
+//
+//        trim_to_triangular<double>(double_BxB, K);
+//        scheduler->dtbsv(Upper, NoTrans, NonUnit, K, *double_BxB, *double_B);
+//        scheduler->dgbmv(NoTrans, 0, K, 1, *double_BxB, *double_B, 0, *double_B2);
+//
+//        auto new_vec = double_B2->get_whole();
+//        BOOST_REQUIRE_LE((old_vec + new_vec * (-1)).nrminf() / new_vec.nrminf(), EPSILON);
+//    }
+//}
+//

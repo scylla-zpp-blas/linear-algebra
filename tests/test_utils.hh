@@ -68,27 +68,3 @@ void print_matrix(const scylla_blas::matrix<T> &matrix) {
     std::cout << std::setprecision(default_precision);
 }
 
-template<class T>
-void print_vector(const scylla_blas::vector<T> &vec) {
-    auto default_precision = std::cout.precision();
-    auto whole = vec.get_whole();
-
-    std::cout << std::setprecision(4);
-    std::cout << "Vector " << vec.id << ": " << std::endl;
-
-    scylla_blas::index_type expected = 1;
-    for (auto entry : whole) {
-        while (expected < entry.index) {
-            /* Show empty rows */
-            std::cout << expected << " ->\t" << 0 << std::endl;
-            expected++;
-        }
-
-        std::cout << entry.index << " ->\t" << entry.value << std::endl;
-
-        expected = entry.index + 1;
-    }
-
-    std::cout << std::endl;
-    std::cout << std::setprecision(default_precision);
-}
