@@ -8,15 +8,16 @@
 
 #include "config.hh"
 #include "generators/sparse_matrix_value_generator.hh"
+#include "generators/preset_value_factory.hh"
 
 class scylla_fixture {
 public:
     std::shared_ptr<scmd::session> session;
     std::shared_ptr<scylla_blas::routine_scheduler> scheduler;
 
-    scylla_fixture() : 
-        session(nullptr),
-        scheduler(nullptr)
+    scylla_fixture() :
+            session(nullptr),
+            scheduler(nullptr)
     {
         global_config::init();
         connect();
@@ -35,7 +36,7 @@ class matrix_fixture : public scylla_fixture {
     template<class T>
     void init_matrix(std::shared_ptr<scylla_blas::matrix<T>>& matrix_ptr,
                      scylla_blas::index_type w, scylla_blas::index_type h, int64_t id,
-                     std::shared_ptr<scylla_blas::value_factory<T>> value_factory = nullptr) {
+                     std::shared_ptr<scylla_blas::random_value_factory<T>> value_factory = nullptr) {
         matrix_ptr = std::make_shared<scylla_blas::matrix<T>>(session, id);
         matrix_ptr->clear_all();
 
@@ -70,14 +71,14 @@ public:
         scylla_blas::index_type A = 2 * BLOCK_SIZE + 3;
         scylla_blas::index_type B = 2 * BLOCK_SIZE + 6;
 
-        std::shared_ptr<scylla_blas::value_factory<float>> f =
-                std::make_shared<scylla_blas::value_factory<float>>(0, 9, 142);
+        std::shared_ptr<scylla_blas::random_value_factory<float>> f =
+                std::make_shared<scylla_blas::random_value_factory<float>>(0, 9, 142);
         init_matrix(this->float_AxB, A, B, test_const::float_matrix_AxB_id, f);
         init_matrix(this->float_BxA, B, A, test_const::float_matrix_BxA_id, f);
         init_matrix(this->float_BxB, B, B, test_const::float_matrix_BxB_id);
 
-        std::shared_ptr<scylla_blas::value_factory<double>> d =
-                std::make_shared<scylla_blas::value_factory<double>>(0, 9, 242);
+        std::shared_ptr<scylla_blas::random_value_factory<double>> d =
+                std::make_shared<scylla_blas::random_value_factory<double>>(0, 9, 242);
         init_matrix(this->double_AxB, A, B, test_const::double_matrix_AxB_id, d);
         init_matrix(this->double_BxA, B, A, test_const::double_matrix_BxA_id, d);
         init_matrix(this->double_BxB, B, B, test_const::double_matrix_BxB_id);
@@ -87,8 +88,9 @@ public:
 };
 
 class vector_fixture : public scylla_fixture {
+private:
     template<class T>
-    void init_vector(std::shared_ptr<scylla_blas::vector<T>>& vector_ptr,
+    void init_vector(std::shared_ptr<scylla_blas::vector<T>> &vector_ptr,
                      scylla_blas::index_type len, int64_t id,
                      std::shared_ptr<scylla_blas::value_factory<T>> value_factory = nullptr) {
         scylla_blas::vector<T>::clear(session, id);
@@ -123,18 +125,28 @@ public:
         init_vectors(session);
     }
 
+    std::shared_ptr<scylla_blas::vector<float>> getScyllaVectorOf(std::vector<float> values) {
+        std::shared_ptr<scylla_blas::value_factory<float>> factory =
+                std::make_shared<scylla_blas::preset_value_factory<float>>(values);
+        init_vector(float_A,
+                    values.size(),
+                    test_const::float_vector_1_id,
+                    factory);
+        return float_A;
+    }
+
     void init_vectors(const std::shared_ptr<scmd::session> &session) {
         std::cerr << "Initializing test vectors..." << std::endl;
         scylla_blas::index_type len = test_const::test_vector_len;
 
         std::shared_ptr<scylla_blas::value_factory<float>> f =
-                std::make_shared<scylla_blas::value_factory<float>>(0, 9, 142);
+                std::make_shared<scylla_blas::random_value_factory<float>>(0, 9, 142);
         init_vector(this->float_A, len, test_const::float_vector_1_id, f);
         init_vector(this->float_B, len, test_const::float_vector_2_id,  f);
         init_vector(this->float_C, len, test_const::float_vector_3_id);
 
         std::shared_ptr<scylla_blas::value_factory<double>> d =
-                std::make_shared<scylla_blas::value_factory<double>>(0, 9, 242);
+                std::make_shared<scylla_blas::random_value_factory<double>>(0, 9, 242);
         init_vector(this->double_A, len, test_const::double_vector_1_id, d);
         init_vector(this->double_B, len, test_const::double_vector_2_id, d);
         init_vector(this->double_C, len, test_const::double_vector_3_id);

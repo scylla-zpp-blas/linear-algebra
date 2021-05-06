@@ -12,7 +12,9 @@ set(TEST_SRC
         blas_level_1/vector_scale.cc
 
         generators/sparse_matrix_value_generator.hh
+        generators/random_value_factory.hh
         generators/value_factory.hh
+        generators/preset_value_factory.hh
 )
 
 add_executable(scylla_blas_tests main.cc "${TEST_SRC}")

@@ -2,7 +2,7 @@
 
 #include <scmd.hh>
 
-#include "generators/value_factory.hh"
+#include "generators/random_value_factory.hh"
 #include "generators/sparse_matrix_value_generator.hh"
 #include "scylla_blas/scylla_blas.hh"
 #include "fixture.hh"

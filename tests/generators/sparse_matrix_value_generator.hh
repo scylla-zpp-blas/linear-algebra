@@ -4,7 +4,7 @@
 #include <memory>
 
 #include "scylla_blas/utils/matrix_value_generator.hh"
-#include "value_factory.hh"
+#include "random_value_factory.hh"
 
 namespace scylla_blas {
 
@@ -20,7 +20,7 @@ private:
     size_t _width, _height;
     size_t _suggested_max;
     std::mt19937 _rng;
-    std::shared_ptr<value_factory<V>> _matrix_value_factory;
+    std::shared_ptr<random_value_factory<V>> _matrix_value_factory;
     size_t _last_pos, _next_pos, _currently_generated;
 
     void calc_next_pos() {
@@ -32,7 +32,7 @@ private:
 
 public:
     sparse_matrix_value_generator(int height, int width, size_t suggested_number_of_values,
-                                  int seed, std::shared_ptr<value_factory<V>> matrix_value_factory) {
+                                  int seed, std::shared_ptr<random_value_factory<V>> matrix_value_factory) {
         _height = height;
         _width = width;
         _suggested_max = suggested_number_of_values;
