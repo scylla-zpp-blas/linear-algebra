@@ -1,9 +1,7 @@
 #include <boost/test/unit_test.hpp>
 
-#include "scylla_blas/scylla_blas.hh"
 #include "../fixture.hh"
 #include "scylla_blas/queue/worker_proc.hh"
-#include "../generators/preset_value_factory.hh"
 
 namespace {
 template<class T>
@@ -18,34 +16,28 @@ void print_vector(const scylla_blas::vector<T> &vec) {
 }
 
 template <class T>
-inline bool is_zeros(std::vector<T> &values, int start, int end) {
-    bool is_zeros = true;
+inline void assert_zeros(std::vector<T> &values, int start, int end) {
     for (int i = start; i < end; i++) {
-        if (abs(values[i]) > scylla_blas::epsilon)
-            is_zeros = false;
+        BOOST_CHECK(abs(values[i]) < scylla_blas::epsilon);
     }
-    return is_zeros;
 }
 
 template<class T>
-bool cmp_vector(const scylla_blas::vector<T> &vec, std::vector<T> values) {
+void cmp_vector(const scylla_blas::vector<T> &vec, std::vector<T> values) {
     auto whole = vec.get_whole();
 
     int last = -1;
     for (auto entry : whole) {
-        if (last + 1 != entry.index - 1 && !is_zeros(values, last + 1, entry.index - 1)) {
-            return false;
+        if (last + 1 != entry.index - 1) {
+            assert_zeros(values, last + 1, entry.index - 1);
         }
-        if (abs(entry.value - values[entry.index - 1]) > scylla_blas::epsilon) {
-            return false;
-        }
+        BOOST_CHECK(abs(entry.value - values[entry.index - 1]) < scylla_blas::epsilon);
         last = entry.index - 1;
     }
-    return true;
 }
 
 
-BOOST_FIXTURE_TEST_CASE(vector_scale, vector_fixture)
+BOOST_FIXTURE_TEST_CASE(float_vector_scale_IT, vector_fixture)
 {
     // Given vector of 3 floats
     std::vector<float> vals = {1.6f, 2.9999f, 3.0f};
@@ -56,7 +48,27 @@ BOOST_FIXTURE_TEST_CASE(vector_scale, vector_fixture)
 
     // Then result vector is scaled by 2.
     std::vector<float> valsx2 = {1.6f * 2, 2.9999f * 2, 3.0f * 2};
-    BOOST_CHECK(cmp_vector(*vector, valsx2));
+    cmp_vector(*vector, valsx2);
 }
+
+BOOST_FIXTURE_TEST_CASE(double_vector_scale_IT, vector_fixture)
+{
+    // Given vector of 4 doubles
+    std::vector<double> vals = {1.6, 2.999999, 3.0, 3.141592653589793238462643383};
+    auto vector = getScyllaVectorOf(vals);
+
+    // When performing scaling by 59.49
+    const double alpha = 59.05;
+    scheduler->dscal(alpha, *vector);
+
+    // Then result vector is scaled by 59.49.
+    std::vector<double> valsx2 = {
+            1.6 * alpha,
+            2.999999 * alpha,
+            3.0 * alpha,
+            3.141592653589793238462643383 * alpha};
+    cmp_vector(*vector, valsx2);
+}
+
 
 }

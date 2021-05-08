@@ -135,6 +135,16 @@ public:
         return float_A;
     }
 
+    std::shared_ptr<scylla_blas::vector<double>> getScyllaVectorOf(std::vector<double> values) {
+        std::shared_ptr<scylla_blas::value_factory<double>> factory =
+                std::make_shared<scylla_blas::preset_value_factory<double>>(values);
+        init_vector(double_A,
+                    values.size(),
+                    test_const::double_vector_1_id,
+                    factory);
+        return double_A;
+    }
+
     void init_vectors(const std::shared_ptr<scmd::session> &session) {
         std::cerr << "Initializing test vectors..." << std::endl;
         scylla_blas::index_type len = test_const::test_vector_len;
