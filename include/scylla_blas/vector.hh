@@ -54,6 +54,19 @@ public:
 
     basic_vector(const std::shared_ptr<scmd::session> &session, int64_t id);
 
+    basic_vector(basic_vector&& other) :
+        _session(std::move(other._session)),
+        _get_meta_prepared(std::move(other._get_meta_prepared)),
+        _get_value_prepared(std::move(other._get_value_prepared)),
+        _get_segment_prepared(std::move(other._get_segment_prepared)),
+        _get_vector_prepared(std::move(other._get_vector_prepared)),
+        _insert_value_prepared(std::move(other._insert_value_prepared)),
+        _clear_value_prepared(std::move(other._clear_value_prepared)),
+        _clear_segment_prepared(std::move(other._clear_segment_prepared)),
+        id (other.id),
+        length (other.length)
+    { }
+
     static void clear(const std::shared_ptr<scmd::session> &session, int64_t id);
     static void resize(const std::shared_ptr<scmd::session> &session,
                        int64_t id, int64_t new_legnth);
@@ -84,6 +97,8 @@ class vector : public basic_vector {
 public:
     vector(const std::shared_ptr<scmd::session> &session, int64_t id) : basic_vector(session, id)
         { std::cerr << "A handle created to vector " << id << std::endl; }
+
+    vector(vector &&other) : basic_vector(other) {}
 
     /* We don't want to implicitly initialize a handle (somewhat costly) if it is discarded by the user.
      * Instead, let's have a version of init that does it explicitly, and a version that doesn't do it at all.

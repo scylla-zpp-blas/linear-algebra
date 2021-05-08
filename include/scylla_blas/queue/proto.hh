@@ -223,6 +223,39 @@ struct task {
         struct {
             int64_t task_queue_id;
 
+            index_type KL, KU;
+
+            UPLO Uplo;
+            DIAG Diag;
+
+            int64_t A_id;
+            TRANSPOSE TransA;
+            float alpha;
+
+            int64_t X_id;
+            float beta;
+
+            int64_t Y_id;
+        } mixed_task_float;
+
+        struct {
+            int64_t task_queue_id;
+
+            index_type KL, KU;
+
+            int64_t A_id;
+            TRANSPOSE TransA;
+            double alpha;
+
+            int64_t X_id;
+            double beta;
+
+            int64_t Y_id;
+        } mixed_task_double;
+
+        struct {
+            int64_t task_queue_id;
+
             int64_t A_id;
             TRANSPOSE TransA;
             float alpha;
@@ -268,6 +301,9 @@ struct response {
             index_type index;
             float value;
         } result_max_float_index;
+
+        std::pair<float, float> result_float_pair;
+        std::pair<double, double> result_double_pair;
 
         struct {
             index_type index;

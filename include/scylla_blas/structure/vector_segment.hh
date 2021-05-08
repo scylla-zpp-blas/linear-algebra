@@ -82,7 +82,7 @@ public:
         return result;
     }
 
-    const T prod(const vector_segment &other) {
+    T dot_prod(const vector_segment &other) const {
         T ret = 0;
 
         auto it_1 = this->begin();
@@ -101,6 +101,26 @@ public:
         }
 
         return ret;
+    }
+
+    T mod2 () const {
+        T result = 0;
+
+        for (auto &val : *this) {
+            result += std::abs(val.value * val.value);
+        }
+
+        return result;
+    }
+
+    T nrminf () const {
+        T result = 0;
+
+        for (auto &val : *this) {
+            result += std::abs(val.value);
+        }
+
+        return result;
     }
 };
 

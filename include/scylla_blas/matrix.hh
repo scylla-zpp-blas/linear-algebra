@@ -72,9 +72,53 @@ public:
         return get_block_row(row_count);
     }
 
+    index_type get_column_count(TRANSPOSE trans = NoTrans) const {
+        if (trans != NoTrans) return get_row_count();
+        return column_count;
+    }
+    index_type get_row_count(TRANSPOSE trans = NoTrans) const {
+        if (trans != NoTrans) return get_column_count();
+        return row_count;
+    }
+
+    /* Returns the column range of possibly non-zero blocks for given block_row,
+     * assuming that the matrix is banded, with given KL and KU parameters
+     */
+    std::pair<index_type, index_type> get_banded_block_limits_for_row(index_type block_row, index_type KL,
+                                                                      index_type KU, TRANSPOSE trans = NoTrans) const {
+        index_type start = std::max(block_row - ((KL - 1) / BLOCK_SIZE + 1), index_type(0));
+        index_type end = std::min(get_blocks_width(trans), block_row + KU / BLOCK_SIZE);
+
+        return {start, end};
+    }
+
+    /* Returns the row range of possibly non-zero blocks for given block_column,
+     * assuming that the matrix is banded, with given KL and KU parameters
+     */
+    std::pair<index_type, index_type> get_banded_block_limits_for_column(index_type block_column, index_type KL,
+                                                                         index_type KU, TRANSPOSE trans = NoTrans) const {
+        index_type start = std::max(block_column - ((KU - 1) / BLOCK_SIZE + 1), index_type(0));
+        index_type end = std::min(get_blocks_height(trans), block_column + KL / BLOCK_SIZE);
+
+        return {start, end};
+    }
+
     static void init_meta(const std::shared_ptr<scmd::session> &session);
 
     basic_matrix(const std::shared_ptr<scmd::session> &session, int64_t id);
+    basic_matrix(basic_matrix&& other) :
+        _session(std::move(other._session)),
+        _get_meta_prepared(std::move(other._get_meta_prepared)),
+        _get_value_prepared(std::move(other._get_value_prepared)),
+        _get_row_prepared(std::move(other._get_row_prepared)),
+        _get_block_prepared(std::move(other._get_block_prepared)),
+        _insert_value_prepared(std::move(other._insert_value_prepared)),
+        _clear_all_prepared(std::move(other._clear_all_prepared)),
+        _clear_row_prepared(std::move(other._clear_row_prepared)),
+        id (other.id),
+        row_count (other.row_count),
+        column_count(other.column_count)
+    { }
 
     void clear_row(index_type x);
     void clear_all();
@@ -100,6 +144,8 @@ class matrix : public basic_matrix {
 public:
     matrix(const std::shared_ptr<scmd::session> &session, int64_t id) : basic_matrix(session, id)
         { std::cerr << "A handle created to matrix " << id << std::endl; }
+
+    matrix(matrix &&other) : basic_matrix(other) {}
 
     /* We don't want to implicitly initialize a handle (somewhat costly) if it is discarded by the user.
      * Instead, let's have a version of init that does it explicitly, and a version that doesn't do it at all.
@@ -204,8 +250,11 @@ public:
         std::string inserts = "";
 
         for (auto &val: values) {
-            /* Do not store values equal or close to 0 */
-            if (std::abs(val.value) < EPSILON) continue;
+            /* We do not want to store values equal or close to 0,
+             * but we want to be able to overwrite all old values at each "insert",
+             * so we can't skip any values passed here.
+             */
+            // if (std::abs(val.value) < EPSILON) continue;
 
             inserts += fmt::format(
                     "INSERT INTO blas.matrix_{} (block_x, block_y, id_x, id_y, value) VALUES ({}, {}, {}, {}, {}); ",
@@ -219,6 +268,8 @@ public:
         _session->execute("BEGIN BATCH " + inserts + "APPLY BATCH;");
     }
 
+    /* Inserts a given row into the matrix, preserving old values in cells for which
+     * no updates have been provided */
     void insert_row(index_type x, const vector_segment<T> &row_data) {
         std::vector<matrix_value<T>> values;
 
@@ -228,6 +279,8 @@ public:
         insert_values(values);
     }
 
+    /* Inserts a given block into the matrix, preserving old values in cells for which
+     * no updates have been provided */
     void insert_block(index_type row, index_type column, const matrix_block<T> &block) {
         std::vector<matrix_value<T>> values = block.get_values_raw();
         index_type offset_row = (row - 1) * BLOCK_SIZE;

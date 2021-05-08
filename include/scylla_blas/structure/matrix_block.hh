@@ -18,7 +18,7 @@ class matrix_block {
     using vector_of_values = std::vector<scylla_blas::matrix_value<T>>;
 
     /* TODO: this may be worth optimising by direct vector construction from values. */
-    row_map_t values_to_rows (const vector_of_values &vals) {
+    static row_map_t values_to_rows (const vector_of_values &vals) {
         row_hashmap_t helper;
         for (auto &val : vals)
             helper[val.row_index].emplace_back(val.col_index, val.value);
@@ -31,7 +31,7 @@ class matrix_block {
     }
 
     /* TODO: std::vector instead of std::unordered map? */
-    row_map_t transpose_row_map (const row_map_t &rmap) {
+    static row_map_t transpose_row_map (const row_map_t &rmap) {
         row_hashmap_t helper;
         for (auto &entry : rmap)
             for (auto &val : entry.second)
@@ -44,7 +44,7 @@ class matrix_block {
         return ret;
     }
 
-    vector_of_values vectors_to_values(const row_map_t &rmap) {
+    static vector_of_values vectors_to_values(const row_map_t &rmap) {
         vector_of_values ret;
 
         for (auto &entry : rmap)
@@ -54,18 +54,19 @@ class matrix_block {
         return ret;
     }
 
-    vector_of_values transpose_values(const vector_of_values &vals) {
+    static vector_of_values transpose_values(const vector_of_values &vals) {
         return vectors_to_values(transpose_row_map(values_to_rows(vals)));
     }
 
     vector_of_values _values;
 
-    explicit matrix_block(vector_of_values values) :
-            _values(values), i(-1), j(-1) {}
 public:
     const int64_t matrix_id = 0;
     const index_type i;
     const index_type j;
+
+    matrix_block(vector_of_values values) :
+            _values(values), i(-1), j(-1) {}
 
     matrix_block(vector_of_values values, int64_t matrix_id, index_type i, index_type j, TRANSPOSE trans = NoTrans) :
             _values(trans == NoTrans ? values : transpose_values(values)), matrix_id(matrix_id), i(i), j(j) {}
@@ -78,6 +79,10 @@ public:
         return *this;
     }
 
+    const vector_of_values& get_raw() const {
+        return _values;
+    }
+
     matrix_block &operator*=(const matrix_block &other) {
         auto row_map = values_to_rows(_values);
         auto transposed_other = transpose_row_map(values_to_rows(other._values));
@@ -86,7 +91,7 @@ public:
 
         for (auto &left : row_map)
             for (auto &right : transposed_other)
-                _values.emplace_back(left.first, right.first, left.second.prod(right.second));
+                _values.emplace_back(left.first, right.first, left.second.dot_prod(right.second));
 
         return *this;
     }
@@ -138,6 +143,27 @@ public:
 
     const vector_of_values &get_values_raw() const {
         return _values;
+    }
+
+    vector_segment<T> mult_vect(const vector_segment<T> &other) const {
+        auto row_map = values_to_rows(_values);
+        vector_segment<T> result;
+
+        for (auto &[row_id, row_values] : row_map) {
+            result.push_back(vector_value<T>(row_id, other.dot_prod(row_values)));
+        }
+
+        return result;
+    }
+
+    static matrix_block<T> outer_prod(const vector_segment<T> &X, const vector_segment<T> &Y) {
+        vector_of_values vals;
+
+        for (auto &[i, x] : X)
+            for (auto &[j, y] : Y)
+                vals.emplace_back(i, j, x * y);
+
+        return matrix_block(vals);
     }
 };
 

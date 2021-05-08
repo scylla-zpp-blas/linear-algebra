@@ -19,10 +19,15 @@ using procedure_t = std::optional<proto::response>(const std::shared_ptr<scmd::s
 procedure_t sswap, sscal, scopy, saxpy, sdot, sdsdot, snrm2, sasum, isamax;
 procedure_t dswap, dscal, dcopy, daxpy, ddot, dsdot, dnrm2, dasum, idamax;
 
-/* LEVEL 3 */
-procedure_t dgemm, sgemm;
+/* LEVEL 2 */
+procedure_t sgemv, sgbmv, strsv, stbsv, sger;
+procedure_t dgemv, dgbmv, dtrsv, dtbsv, dger;
 
-constexpr std::array<std::pair<proto::task_type, const procedure_t &>, 20> task_to_procedure =
+/* LEVEL 3 */
+procedure_t sgemm, ssyrk, ssyr2k;
+procedure_t dgemm, dsyrk, dsyr2k;
+
+constexpr std::array<std::pair<proto::task_type, const procedure_t &>, 34> task_to_procedure =
 {{
          {proto::SSWAP, sswap},
          {proto::SSCAL, sscal},
@@ -44,8 +49,23 @@ constexpr std::array<std::pair<proto::task_type, const procedure_t &>, 20> task_
          {proto::DASUM, dasum},
          {proto::IDAMAX, idamax},
 
+         {proto::SGEMV, sgemv},
+         {proto::DGEMV, dgemv},
+         {proto::SGBMV, sgemv},
+         {proto::DGBMV, dgemv},
+         {proto::STRSV, stbsv},
+         {proto::DTRSV, dtbsv},
+         {proto::STRSV, strsv},
+         {proto::DTRSV, dtrsv},
+         {proto::SGER, sger},
+         {proto::DGER, dger},
+
          {proto::SGEMM, sgemm},
-         {proto::DGEMM, dgemm}
+         {proto::DGEMM, dgemm},
+         {proto::SSYRK, ssyrk},
+         {proto::DSYRK, dsyrk},
+         {proto::SSYR2K, ssyr2k},
+         {proto::DSYR2K, dsyr2k}
  }};
 
 constexpr procedure_t& get_procedure_for_task(const proto::task &t) {

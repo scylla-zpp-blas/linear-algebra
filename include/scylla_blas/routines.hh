@@ -49,6 +49,18 @@ class routine_scheduler {
                            const int64_t X_id, const int64_t Y_id,
                            T acc = 0, updater<T> update = nullptr);
 
+    /* Produces a number of matrix-to-wektor primary tasks for workers, waits
+     * until they are reported to be complete, accumulating result using
+     * the 'update' function, provided that there is any.
+     */
+    template<class T>
+    T produce_mixed_tasks(const proto::task_type type,
+                          const index_type KL, const index_type KU,
+                          const UPLO Uplo, const DIAG Diag,
+                          const int64_t A_id, const TRANSPOSE TransA, const T alpha,
+                          const int64_t X_id, const T beta,
+                          const int64_t Y_id, T acc = 0, updater<T> update = nullptr);
+
     /* Produces a number of matrix-only primary tasks for workers, waits
      * until they are reported to be complete, accumulating result using
      * the 'update' function, provided that there is any.
@@ -132,124 +144,90 @@ public:
  * ===========================================================================
  */
 
-    vector<float> sgemv(const enum TRANSPOSE TransA,
+    vector<float>& sgemv(const enum TRANSPOSE TransA,
                         const float alpha, const matrix<float> &A,
-                        const vector<float> &X, const float beta);
+                        const vector<float> &X, const float beta, vector<float> &Y);
 
-    vector<float> sgbmv(const enum TRANSPOSE TransA,
+    vector<float>& sgbmv(const enum TRANSPOSE TransA,
                         const int KL, const int KU,
                         const float alpha, const matrix<float> &A,
-                        const vector<float> &X, const float beta);
+                        const vector<float> &X, const float beta, vector<float> &Y);
 
-    vector<float> strmv(const enum UPLO Uplo,
+    vector<float>& strmv(const enum UPLO Uplo,
                         const enum TRANSPOSE TransA, const enum DIAG Diag,
                         const matrix<float> &A, vector<float> &X);
 
-    vector<float> stbmv(const enum UPLO Uplo,
+    vector<float>& stbmv(const enum UPLO Uplo,
                         const enum TRANSPOSE TransA, const enum DIAG Diag,
                         const int K, const matrix<float> &A, vector<float> &X);
 
-    vector<float> stpmv(const enum UPLO Uplo,
-                        const enum TRANSPOSE TransA, const enum DIAG Diag,
-                        const matrix<float> &Ap, vector<float> &X);
-
-    vector<float> strsv(const enum UPLO Uplo,
+    vector<float>& strsv(__attribute__((unused)) const enum UPLO Uplo,
                         const enum TRANSPOSE TransA, const enum DIAG Diag,
                         const matrix<float> &A, vector<float> &X);
 
-    vector<float> stbsv(const enum UPLO Uplo,
+    vector<float>& stbsv(__attribute__((unused)) const enum UPLO Uplo,
                         const enum TRANSPOSE TransA, const enum DIAG Diag,
                         const int K, const matrix<float> &A, vector<float> &X);
 
-    vector<float> stpsv(const enum UPLO Uplo,
-                        const enum TRANSPOSE TransA, const enum DIAG Diag,
-                        const matrix<float> &Ap, vector<float> &X);
-
-    vector<double> dgemv(const enum TRANSPOSE TransA,
+    vector<double>& dgemv(const enum TRANSPOSE TransA,
                          const double alpha, const matrix<double> &A,
-                         const vector<double> &X, const double beta);
+                         const vector<double> &X, const double beta, vector<double> &Y);
 
-    vector<double> dgbmv(const enum TRANSPOSE TransA,
+    vector<double>& dgbmv(const enum TRANSPOSE TransA,
                          const int KL, const int KU,
                          const double alpha, const matrix<double> &A,
-                         const vector<double> &X, const double beta);
+                         const vector<double> &X, const double beta, vector<double> &Y);
 
-    vector<double> dtrmv(const enum UPLO Uplo,
+    vector<double>& dtrmv(const enum UPLO Uplo,
                          const enum TRANSPOSE TransA, const enum DIAG Diag,
                          const matrix<double> &A, vector<double> &X);
 
-    vector<double> dtbmv(const enum UPLO Uplo,
+    vector<double>& dtbmv(const enum UPLO Uplo,
                          const enum TRANSPOSE TransA, const enum DIAG Diag,
                          const int K, const matrix<double> &A, vector<double> &X);
 
-    vector<double> dtpmv(const enum UPLO Uplo,
-                         const enum TRANSPOSE TransA, const enum DIAG Diag,
-                         const matrix<double> &Ap, vector<double> &X);
-
-    vector<double> dtrsv(const enum UPLO Uplo,
+    vector<double>& dtrsv(__attribute__((unused)) const enum UPLO Uplo,
                          const enum TRANSPOSE TransA, const enum DIAG Diag,
                          const matrix<double> &A, vector<double> &X);
 
-    vector<double> dtbsv(const enum UPLO Uplo,
+    vector<double>& dtbsv(__attribute__((unused)) const enum UPLO Uplo,
                          const enum TRANSPOSE TransA, const enum DIAG Diag,
                          const int K, const matrix<double> &A, vector<double> &X);
-
-    vector<double> dtpsv(const enum UPLO Uplo,
-                         const enum TRANSPOSE TransA, const enum DIAG Diag,
-                         const matrix<double> &Ap, vector<double> &X);
 
     /* Routines with S and D prefixes only */
-    vector<float> ssymv(const enum UPLO Uplo,
+    vector<float>& ssymv(const enum UPLO Uplo,
                         const float alpha, const matrix<float> &A,
-                        const vector<float> &X, const float beta);
+                        const vector<float> &X, const float beta, vector<float> &Y);
 
-    vector<float> ssbmv(const enum UPLO Uplo,
+    vector<float>& ssbmv(const enum UPLO Uplo,
                         const int K, const float alpha, const matrix<float> &A,
-                        const vector<float> &X, const float beta);
+                        const vector<float> &X, const float beta, vector<float> &Y);
 
-    vector<float> sspmv(const enum UPLO Uplo,
-                        const float alpha, const matrix<float> &Ap,
-                        const vector<float> &X, const float beta);
+    matrix<float>& sger(const float alpha,
+                       const vector<float> &X, const vector<float> &Y, matrix<float> &A);
 
-    matrix<float> sger(const float alpha, const vector<float> &X, const vector<float> &Y);
+    matrix<float>& ssyr(const enum UPLO Uplo,
+                       const float alpha, const vector<float> &X, matrix<float> &A);
 
-    matrix<float> ssyr(const enum UPLO Uplo,
-                       const float alpha, const vector<float> &X);
+    matrix<float>& ssyr2(const enum UPLO Uplo, const float alpha,
+                        const vector<float> &X, const vector<float> &Y, matrix<float> &A);
 
-    matrix<float> sspr(const enum UPLO Uplo,
-                       const float alpha, const vector<float> &X);
-
-    matrix<float> ssyr2(const enum UPLO Uplo,
-                        const float alpha, const vector<float> &X, const vector<float> &Y);
-
-    matrix<double> sspr2(const enum UPLO Uplo,
-                         const double alpha, const vector<double> &X, const vector<double> &Y);
-
-    vector<double> dsymv(const enum UPLO Uplo,
+    vector<double>& dsymv(const enum UPLO Uplo,
                          const double alpha, const matrix<double> &A,
-                         const vector<double> &X, const double beta);
+                         const vector<double> &X, const double beta, vector<double> &Y);
 
-    vector<double> dsbmv(const enum UPLO Uplo,
+    vector<double>& dsbmv(const enum UPLO Uplo,
                          const int K, const double alpha, const matrix<double> &A,
-                         const vector<double> &X, const double beta);
+                         const vector<double> &X, const double beta, vector<double> &Y);
 
-    vector<double> dspmv(const enum UPLO Uplo,
-                         const double alpha, const matrix<double> &Ap,
-                         const vector<double> &X, const double beta);
+    matrix<double>& dger(const double alpha,
+                       const vector<double> &X, const vector<double> &Y, matrix<double> &A);
 
-    matrix<double> dger(const double alpha, const vector<double> &X, const vector<double> &Y);
+    matrix<double>& dsyr(const enum UPLO Uplo,
+                       const double alpha, const vector<double> &X, matrix<double> &A);
 
-    matrix<double> dsyr(const enum UPLO Uplo,
-                        const double alpha, const vector<double> &X);
-
-    matrix<double> dspr(const enum UPLO Uplo,
-                        const double alpha, const vector<double> &X);
-
-    matrix<double> dsyr2(const enum UPLO Uplo,
-                         const double alpha, const vector<double> &X, const vector<double> &Y);
-
-    matrix<double> dspr2(const enum UPLO Uplo,
-                         const double alpha, const vector<double> &X, const vector<double> &Y);
+    matrix<double>& dsyr2(const enum UPLO Uplo, const double alpha,
+                        const vector<double> &X, const vector<double> &Y, matrix<double> &A);
 
 /*
 * ===========================================================================
@@ -268,13 +246,13 @@ public:
                         const matrix<float> &B,
                         const float beta, matrix<float> &C);
 
-    matrix<float>& ssyrk(const enum UPLO Uplo, const enum TRANSPOSE Trans, const int K,
-                        const float alpha, const matrix<float> &A,
-                        const float beta, matrix<float> &B);
-
-    matrix<float>& ssyr2k(const enum UPLO Uplo, const enum TRANSPOSE Trans, const int K,
+    matrix<float>& ssyrk(__attribute__((unused)) const enum UPLO Uplo, const enum TRANSPOSE Trans,
                          const float alpha, const matrix<float> &A,
-                         const float beta, matrix<float> &B);
+                         const float beta, matrix<float> &C);
+
+    matrix<float>& ssyr2k(__attribute__((unused)) const enum UPLO Uplo, const enum TRANSPOSE Trans,
+                          const float alpha, const matrix<float> &A,
+                          const float beta, const matrix<float> &B, matrix<float> &C);
 
     matrix<float>& strmm(const enum SIDE Side, const enum UPLO Uplo,
                         const enum TRANSPOSE TransA, const enum DIAG Diag,
@@ -284,31 +262,31 @@ public:
                         const enum TRANSPOSE TransA, const enum DIAG Diag,
                         const float alpha, const matrix<float> &A, matrix<float> &B);
 
-    matrix<double>& dgemm(const enum TRANSPOSE TransA, const enum TRANSPOSE TransB,
-                        const double alpha, const matrix<double> &A,
-                        const matrix<double> &B,
-                        const double beta, matrix<double> &C);
+    matrix<double> &dgemm(const enum TRANSPOSE TransA, const enum TRANSPOSE TransB,
+                          const double alpha, const matrix<double> &A,
+                          const matrix<double> &B,
+                          const double beta, matrix<double> &C);
 
-    matrix<double>& dsymm(const enum SIDE Side, const enum UPLO Uplo,
-                        const double alpha, const matrix<double> &A,
-                        const matrix<double> &B,
-                        const double beta, matrix<double> &C);
+    matrix<double> &dsymm(const enum SIDE Side, const enum UPLO Uplo,
+                          const double alpha, const matrix<double> &A,
+                          const matrix<double> &B,
+                          const double beta, matrix<double> &C);
 
-    matrix<double>& dsyrk(const enum UPLO Uplo, const enum TRANSPOSE Trans, const int K,
-                        const double alpha, const matrix<double> &A,
-                        const double beta, matrix<double> &B);
+    matrix<double> &dsyrk(__attribute__((unused)) const enum UPLO Uplo, const enum TRANSPOSE Trans,
+                          const double alpha, const matrix<double> &A,
+                          const double beta, matrix<double> &C);
 
-    matrix<double>& dsyr2k(const enum UPLO Uplo, const enum TRANSPOSE Trans, const int K,
-                         const double alpha, const matrix<double> &A,
-                         const double beta, matrix<double> &B);
+    matrix<double> &dsyr2k(__attribute__((unused)) const enum UPLO Uplo, const enum TRANSPOSE Trans,
+                           const double alpha, const matrix<double> &A,
+                           const double beta, const matrix<double> &B, matrix<double> &C);
 
-    matrix<double>& dtrmm(const enum SIDE Side, const enum UPLO Uplo,
-                        const enum TRANSPOSE TransA, const enum DIAG Diag,
-                        const double alpha, const matrix<double> &A, matrix<double> &B);
+    matrix<double> &dtrmm(const enum SIDE Side, const enum UPLO Uplo,
+                          const enum TRANSPOSE TransA, const enum DIAG Diag,
+                          const double alpha, const matrix<double> &A, matrix<double> &B);
 
-    matrix<double>& dtrsm(const enum SIDE Side, const enum UPLO Uplo,
-                        const enum TRANSPOSE TransA, const enum DIAG Diag,
-                        const double alpha, const matrix<double> &A, matrix<double> &B);
+    matrix<double> &dtrsm(const enum SIDE Side, const enum UPLO Uplo,
+                          const enum TRANSPOSE TransA, const enum DIAG Diag,
+                          const double alpha, const matrix<double> &A, matrix<double> &B);
 };
 
 }

@@ -90,6 +90,8 @@ void init(const struct options& op) {
     
     std::cerr << "Initializing vector database..." << std::endl;
     scylla_blas::basic_vector::init_meta(session);
+    scylla_blas::vector<float>::init(session, HELPER_FLOAT_VECTOR_ID, 0);
+    scylla_blas::vector<double>::init(session, HELPER_DOUBLE_VECTOR_ID, 0);
 
     std::cerr << "Creating main task queue..." << std::endl;
     scylla_blas::scylla_queue::create_queue(session, DEFAULT_WORKER_QUEUE_ID, true, true);

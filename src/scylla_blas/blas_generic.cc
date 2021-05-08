@@ -2,8 +2,8 @@
 
 template<>
 float scylla_blas::routine_scheduler::produce_and_wait(scylla_queue &queue, const proto::task &task,
-                                                   index_type cnt, int64_t sleep_time,
-                                                   float acc, updater<float> update) {
+                                                        index_type cnt, int64_t sleep_time,
+                                                        float acc, updater<float> update) {
     std::vector<int64_t> task_ids;
     for (scylla_blas::index_type i = 0; i < cnt; i++) {
         task_ids.push_back(queue.produce(task));
@@ -30,8 +30,8 @@ float scylla_blas::routine_scheduler::produce_and_wait(scylla_queue &queue, cons
 
 template<>
 double scylla_blas::routine_scheduler::produce_and_wait(scylla_queue &queue, const proto::task &task,
-                                                   index_type cnt, int64_t sleep_time,
-                                                   double acc, updater<double> update) {
+                                                        index_type cnt, int64_t sleep_time,
+                                                        double acc, updater<double> update) {
     std::vector<int64_t> task_ids;
     for (scylla_blas::index_type i = 0; i < cnt; i++) {
         task_ids.push_back(queue.produce(task));

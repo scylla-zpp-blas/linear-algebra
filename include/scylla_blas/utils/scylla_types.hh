@@ -15,8 +15,13 @@ static std::string get_type_name() {
 
 /* ENUMs used in BLAS routines */
 enum TRANSPOSE {
-    NoTrans = 111, Trans = 112, ConjTrans = 113
+    NoTrans = 111, Trans = 112 //, ConjTrans = 113
 };
+
+TRANSPOSE anti_trans(TRANSPOSE trans) {
+    return trans == NoTrans ? Trans : NoTrans;
+}
+
 enum UPLO {
     Upper = 121, Lower = 122
 };

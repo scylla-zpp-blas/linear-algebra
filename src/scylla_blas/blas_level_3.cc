@@ -101,7 +101,6 @@ double scylla_blas::routine_scheduler::produce_matrix_tasks(const proto::task_ty
 
 #define NONE 0
 
-/* TODO: Can we use define? Or in any other way avoid these boilerplatey signatures? */
 scylla_blas::matrix<float>&
 scylla_blas::routine_scheduler::sgemm(const enum TRANSPOSE TransA, const enum TRANSPOSE TransB,
                                       const float alpha, const matrix<float> &A,
@@ -127,23 +126,26 @@ scylla_blas::routine_scheduler::dgemm(const enum TRANSPOSE TransA, const enum TR
     return C;
 }
 
-/* TODO: Do this right – only use the part of the matrices pointed to by 'Uplo' */
 scylla_blas::matrix<float>&
-scylla_blas::routine_scheduler::ssymm(const enum SIDE Side, const enum UPLO Uplo,
-                                      const float alpha, const matrix<float> &A,
-                                      const matrix<float> &B,
+scylla_blas::routine_scheduler::ssyrk(__attribute__((unused)) const enum UPLO Uplo,
+                                      const enum TRANSPOSE TransA, const float alpha, const matrix<float> &A,
                                       const float beta, matrix<float> &C) {
-    return sgemm(NoTrans, NoTrans,
-                 alpha, (Side == Left ? A : B),
-                 (Side == Left ? B : A), beta, C);
+    assert_multiplication_compatible(TransA, A, A, anti_trans(TransA), C);
+    add_blocks_as_queue_tasks(this->_subtask_queue, C);
+
+    produce_matrix_tasks<float>(proto::SSYRK, A.id, TransA, alpha, NONE, NoTrans, beta, C.id);
+
+    return C;
 }
 
 scylla_blas::matrix<double>&
-scylla_blas::routine_scheduler::dsymm(const enum SIDE Side, const enum UPLO Uplo,
-                                      const double alpha, const matrix<double> &A,
-                                      const matrix<double> &B,
+scylla_blas::routine_scheduler::dsyrk(__attribute__((unused)) const enum UPLO Uplo,
+                                      const enum TRANSPOSE TransA, const double alpha, const matrix<double> &A,
                                       const double beta, matrix<double> &C) {
-    return dgemm(NoTrans, NoTrans,
-                 alpha, (Side == Left ? A : B),
-                 (Side == Left ? B : A), beta, C);
+    assert_multiplication_compatible(TransA, A, A, anti_trans(TransA, C);
+    add_blocks_as_queue_tasks(this->_subtask_queue, C);
+
+    produce_matrix_tasks<float>(proto::DSYRK, A.id, TransA, alpha, NONE, NoTrans, beta, C.id);
+
+    return C;
 }
