@@ -142,10 +142,36 @@ scylla_blas::matrix<double>&
 scylla_blas::routine_scheduler::dsyrk(__attribute__((unused)) const enum UPLO Uplo,
                                       const enum TRANSPOSE TransA, const double alpha, const matrix<double> &A,
                                       const double beta, matrix<double> &C) {
-    assert_multiplication_compatible(TransA, A, A, anti_trans(TransA, C);
+    assert_multiplication_compatible(TransA, A, A, anti_trans(TransA), C);
     add_blocks_as_queue_tasks(this->_subtask_queue, C);
 
     produce_matrix_tasks<float>(proto::DSYRK, A.id, TransA, alpha, NONE, NoTrans, beta, C.id);
+
+    return C;
+}
+
+scylla_blas::matrix<float>&
+scylla_blas::routine_scheduler::ssyr2k(__attribute__((unused)) const enum UPLO Uplo,
+                                      const enum TRANSPOSE Trans, const float alpha, const matrix<float> &A,
+                                      const float beta, const matrix<float> &B, matrix<float> &C) {
+    assert_multiplication_compatible(Trans, A, B, anti_trans(Trans), C);
+    assert_multiplication_compatible(anti_trans(Trans), A, B, Trans, C);
+    add_blocks_as_queue_tasks(this->_subtask_queue, C);
+
+    produce_matrix_tasks<float>(proto::SSYR2K, A.id, Trans, alpha, B.id, NoTrans, beta, C.id);
+
+    return C;
+}
+
+scylla_blas::matrix<double>&
+scylla_blas::routine_scheduler::dsyr2k(__attribute__((unused)) const enum UPLO Uplo,
+                                      const enum TRANSPOSE TransA, const double alpha, const matrix<double> &A,
+                                      const double beta, const matrix<double> &B, matrix<double> &C) {
+    assert_multiplication_compatible(Trans, A, B, anti_trans(Trans), C);
+    assert_multiplication_compatible(anti_trans(Trans), A, B, Trans, C);
+    add_blocks_as_queue_tasks(this->_subtask_queue, C);
+
+    produce_matrix_tasks<float>(proto::DSYR2K, A.id, Trans, alpha, B.id, NoTrans, beta, C.id);
 
     return C;
 }

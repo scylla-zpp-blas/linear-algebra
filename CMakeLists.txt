@@ -26,7 +26,6 @@ set(BLAS_INCLUDE
         ${INCLUDE_DIR}/config.hh
         ${INCLUDE_DIR}/matrix.hh
         ${INCLUDE_DIR}/routines.hh
-        ${INCLUDE_DIR}/scylla_blas.hh
         ${INCLUDE_DIR}/vector.hh
 
         ${INCLUDE_DIR}/queue/proto.hh
@@ -38,10 +37,8 @@ set(BLAS_INCLUDE
         ${INCLUDE_DIR}/structure/matrix_block.hh
         ${INCLUDE_DIR}/structure/matrix_value.hh
 
-        ${INCLUDE_DIR}/utils/matrix_value_generator.hh
         ${INCLUDE_DIR}/utils/scylla_types.hh
-        ${INCLUDE_DIR}/utils/utils.hh
-        src/scylla_blas/blas_generic.cc)
+        ${INCLUDE_DIR}/utils/utils.hh)
 
 add_library(scylla_blas SHARED "${BLAS_SRC}" "${BLAS_INCLUDE}")
 target_include_directories(scylla_blas PUBLIC ${CMAKE_SOURCE_DIR}/include)

@@ -29,9 +29,6 @@ void swap(const std::shared_ptr<scmd::session> &session, const auto &task_detail
         scylla_blas::vector_segment<T> X_segm = X.get_segment(subtask.index);
         scylla_blas::vector_segment<T> Y_segm = Y.get_segment(subtask.index);
 
-        X.clear_segment(subtask.index);
-        Y.clear_segment(subtask.index);
-
         X.update_segment(subtask.index, Y_segm);
         Y.update_segment(subtask.index, X_segm);
     };
@@ -49,7 +46,6 @@ void scal(const std::shared_ptr<scmd::session> &session, auto &task_details) {
         for (auto &entry : X_segm)
             entry.value *= task_details.alpha;
 
-        X.clear_segment(subtask.index);
         X.update_segment(subtask.index, X_segm);
     };
 
@@ -63,7 +59,6 @@ void copy(const std::shared_ptr<scmd::session> &session, auto &task_details) {
     scylla_blas::vector<T> Y(session, task_details.Y_id);
 
     auto copy_segment = [&X, &Y] (scylla_blas::proto::task &subtask) {
-        Y.clear_segment(subtask.index);
         Y.update_segment(subtask.index, X.get_segment(subtask.index));
     };
 
@@ -179,7 +174,7 @@ void gemv(const std::shared_ptr<scmd::session> &session, auto &task_details) {
 
         for (index_type i = 1; i <= prod_segments; i++) {
             matrix_block block_A = A.get_block(subtask.index, i, task_details.TransA);
-            vector_segment segment_X = X.get_segment(subtask.index);
+            vector_segment segment_X = X.get_segment(i);
 
             result += block_A.mult_vect(segment_X) * task_details.alpha;
         }
@@ -238,7 +233,7 @@ std::pair<T, T> tsv_generic(const std::shared_ptr<scmd::session> &session,
         for (index_type i = subtask.index + 1; i <= limit; i++) {
             /* For non-diagonals: a straightforward matrix * vector computation gives Ux_n */
             matrix_block block_A = A.get_block(subtask.index, i, task_details.TransA);
-            vector_segment segment_X = X.get_segment(subtask.index);
+            vector_segment segment_X = X.get_segment(i);
 
             sum += block_A.mult_vect(segment_X);
         }
@@ -247,7 +242,7 @@ std::pair<T, T> tsv_generic(const std::shared_ptr<scmd::session> &session,
         vector_segment old = X.get_segment(subtask.index);
         matrix_block block_A = A.get_block(subtask.index, subtask.index, task_details.TransA);
         std::vector<matrix_value<T>> anti_diag, rest;
-        for (auto &val : block_A.get_raw()) {
+        for (auto &val : block_A.get_values_raw()) {
             if (val.row_index == val.col_index) {
                 anti_diag.emplace_back(val.row_index, val.col_index, 1.0 / val.value);
             } else {
@@ -273,19 +268,19 @@ std::pair<T, T> tsv_generic(const std::shared_ptr<scmd::session> &session,
 }
 
 template<class T>
-std::pair<T, T> tsrv(const std::shared_ptr<scmd::session> &session, auto &task_details) {
-    return tsv_generic(session, task_details,
-                       [&task_details](const scylla_blas::matrix<T> &A, scylla_blas::index_type row) {
-                           return A.get_blocks_width(task_details.transA);
-                       });
+std::pair<T, T> trsv(const std::shared_ptr<scmd::session> &session, auto &task_details) {
+    return tsv_generic<T>(session, task_details,
+                          [&task_details](const scylla_blas::matrix<T> &A, scylla_blas::index_type row) {
+                              return A.get_blocks_width(task_details.TransA);
+                          });
 }
 
 template<class T>
-std::pair<T, T> tsbv(const std::shared_ptr<scmd::session> &session, auto &task_details) {
-    return tsv_generic(session, task_details,
-                       [&task_details](const scylla_blas::matrix<T> &A, scylla_blas::index_type row) {
-                           return A.get_banded_block_limits_for_row(row, 0, task_details.K, task_details.transA).second;
-                       });
+std::pair<T, T> tbsv(const std::shared_ptr<scmd::session> &session, auto &task_details) {
+    return tsv_generic<T>(session, task_details,
+                          [&task_details](const scylla_blas::matrix<T> &A, scylla_blas::index_type row) {
+                              return A.get_banded_block_limits_for_row(row, 0, task_details.KU, task_details.TransA).second;
+                          });
 }
 
 template<class T>
@@ -509,22 +504,22 @@ DEFINE_WORKER_FUNCTION(dgbmv, {
 
 DEFINE_WORKER_FUNCTION(strsv, {
     auto result = trsv<float>(session, task.mixed_task_float);
-    return proto::response{ .result_float_pair = result };
+    return (proto::response{ .result_float_pair = { .first = result.first, .second = result.second } });
 })
 
 DEFINE_WORKER_FUNCTION(dtrsv, {
     auto result = trsv<double>(session, task.mixed_task_double);
-    return proto::response{ .result_double_pair = result };
+    return (proto::response{ .result_double_pair = { .first = result.first, .second = result.second } });
 })
 
 DEFINE_WORKER_FUNCTION(stbsv, {
     auto result = tbsv<float>(session, task.mixed_task_float);
-    return proto::response{ .result_float_pair = result };
+    return (proto::response{ .result_float_pair = { .first = result.first, .second = result.second } });
 })
 
 DEFINE_WORKER_FUNCTION(dtbsv, {
     auto result = tbsv<double>(session, task.mixed_task_double);
-    return proto::response{ .result_double_pair = result };
+    return (proto::response{ .result_double_pair = { .first = result.first, .second = result.second } });
 })
 
 DEFINE_WORKER_FUNCTION(sger, {

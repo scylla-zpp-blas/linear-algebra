@@ -2,8 +2,6 @@
 
 #include <random>
 
-namespace scylla_blas {
-
 template<typename T>
 class value_factory {
 private:
@@ -23,5 +21,3 @@ public:
         return _dist(_rng);
     }
 };
-
-}

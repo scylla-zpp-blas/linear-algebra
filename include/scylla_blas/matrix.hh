@@ -86,8 +86,8 @@ public:
      */
     std::pair<index_type, index_type> get_banded_block_limits_for_row(index_type block_row, index_type KL,
                                                                       index_type KU, TRANSPOSE trans = NoTrans) const {
-        index_type start = std::max(block_row - ((KL - 1) / BLOCK_SIZE + 1), index_type(0));
-        index_type end = std::min(get_blocks_width(trans), block_row + KU / BLOCK_SIZE);
+        index_type start = std::max(block_row - ceil_div(KL, BLOCK_SIZE), index_type(0));
+        index_type end = std::min(get_blocks_width(trans), block_row + ceil_div(KU, BLOCK_SIZE));
 
         return {start, end};
     }
@@ -119,6 +119,10 @@ public:
         row_count (other.row_count),
         column_count(other.column_count)
     { }
+
+    bool operator==(const basic_matrix &other) const {
+        return this->id == other.id;
+    }
 
     void clear_row(index_type x);
     void clear_all();
@@ -250,11 +254,8 @@ public:
         std::string inserts = "";
 
         for (auto &val: values) {
-            /* We do not want to store values equal or close to 0,
-             * but we want to be able to overwrite all old values at each "insert",
-             * so we can't skip any values passed here.
-             */
-            // if (std::abs(val.value) < EPSILON) continue;
+            /* We do not want to store values equal or close to 0 */
+            if (std::abs(val.value) < EPSILON) continue;
 
             inserts += fmt::format(
                     "INSERT INTO blas.matrix_{} (block_x, block_y, id_x, id_y, value) VALUES ({}, {}, {}, {}, {}); ",
@@ -268,8 +269,7 @@ public:
         _session->execute("BEGIN BATCH " + inserts + "APPLY BATCH;");
     }
 
-    /* Inserts a given row into the matrix, preserving old values in cells for which
-     * no updates have been provided */
+    /* Inserts a given block into the matrix. Old values will not be modified or deleted */
     void insert_row(index_type x, const vector_segment<T> &row_data) {
         std::vector<matrix_value<T>> values;
 
@@ -279,8 +279,13 @@ public:
         insert_values(values);
     }
 
-    /* Inserts a given block into the matrix, preserving old values in cells for which
-     * no updates have been provided */
+    void update_row(index_type x, const vector_segment<T> &row_data) {
+        clear_row(x);
+        insert_row(x, row_data);
+    }
+
+    /* Inserts a given block into the matrix. Old values will not be modified or deleted */
+    /* TODO: investigate */
     void insert_block(index_type row, index_type column, const matrix_block<T> &block) {
         std::vector<matrix_value<T>> values = block.get_values_raw();
         index_type offset_row = (row - 1) * BLOCK_SIZE;

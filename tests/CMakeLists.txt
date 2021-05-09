@@ -2,6 +2,7 @@ set(TEST_SRC
         const.hh
         config.hh
         fixture.hh
+        test_utils.hh
 
         multiply.cc
         queue.cc
@@ -10,7 +11,10 @@ set(TEST_SRC
         blas_level_1/vector_const_op.cc
         blas_level_1/vector_swap.cc
         blas_level_1/vector_scale.cc
+        blas_level_2/multiplications.cc
+        blas_level_2/solver.cc
 
+        generators/matrix_value_generator.hh
         generators/sparse_matrix_value_generator.hh
         generators/value_factory.hh
 )

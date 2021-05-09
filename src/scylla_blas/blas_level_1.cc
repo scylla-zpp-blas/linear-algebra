@@ -68,6 +68,7 @@ double scylla_blas::routine_scheduler::produce_vector_tasks(const proto::task_ty
 
 void
 scylla_blas::routine_scheduler::sswap(vector<float> &X, vector<float> &Y) {
+    if (X == Y) return;
     assert_length_equal(X, Y);
     add_segments_as_queue_tasks(this->_subtask_queue, X);
 
@@ -76,6 +77,7 @@ scylla_blas::routine_scheduler::sswap(vector<float> &X, vector<float> &Y) {
 
 void
 scylla_blas::routine_scheduler::dswap(vector<double> &X, vector<double> &Y) {
+    if (X == Y) return;
     assert_length_equal(X, Y);
     add_segments_as_queue_tasks(this->_subtask_queue, X);
 
@@ -98,6 +100,7 @@ scylla_blas::routine_scheduler::dscal(const double alpha, vector<double> &X) {
 
 void
 scylla_blas::routine_scheduler::scopy(const vector<float> &X, vector<float> &Y) {
+    if (X == Y) return;
     assert_length_equal(X, Y);
     add_segments_as_queue_tasks(this->_subtask_queue, X);
 
@@ -106,6 +109,7 @@ scylla_blas::routine_scheduler::scopy(const vector<float> &X, vector<float> &Y) 
 
 void
 scylla_blas::routine_scheduler::dcopy(const vector<double> &X, vector<double> &Y) {
+    if (X == Y) return;
     assert_length_equal(X, Y);
     add_segments_as_queue_tasks(this->_subtask_queue, X);
 
@@ -114,6 +118,8 @@ scylla_blas::routine_scheduler::dcopy(const vector<double> &X, vector<double> &Y
 
 void
 scylla_blas::routine_scheduler::saxpy(const float alpha, const vector<float> &X, vector<float> &Y) {
+    /* (X == Y) to be handled by a worker separately */
+
     assert_length_equal(X, Y);
     add_segments_as_queue_tasks(this->_subtask_queue, X);
 
@@ -122,6 +128,8 @@ scylla_blas::routine_scheduler::saxpy(const float alpha, const vector<float> &X,
 
 void
 scylla_blas::routine_scheduler::daxpy(const double alpha, const vector<double> &X, vector<double> &Y) {
+    /* (X == Y) to be handled by a worker separately */
+
     assert_length_equal(X, Y);
     add_segments_as_queue_tasks(this->_subtask_queue, X);
 
@@ -130,6 +138,8 @@ scylla_blas::routine_scheduler::daxpy(const double alpha, const vector<double> &
 
 float
 scylla_blas::routine_scheduler::sdot(const vector<float> &X, const vector<float> &Y) {
+    /* (X == Y) to be handled by a worker separately */
+
     assert_length_equal(X, Y);
     add_segments_as_queue_tasks(this->_subtask_queue, X);
 
@@ -139,6 +149,8 @@ scylla_blas::routine_scheduler::sdot(const vector<float> &X, const vector<float>
 
 double
 scylla_blas::routine_scheduler::ddot(const vector<double> &X, const vector<double> &Y) {
+    /* (X == Y) to be handled by a worker separately */
+
     assert_length_equal(X, Y);
     add_segments_as_queue_tasks(this->_subtask_queue, X);
 
@@ -148,6 +160,8 @@ scylla_blas::routine_scheduler::ddot(const vector<double> &X, const vector<doubl
 
 float
 scylla_blas::routine_scheduler::sdsdot(float B, const vector<float> &X, const vector<float> &Y) {
+    /* (X == Y) to be handled by a worker separately */
+
     assert_length_equal(X, Y);
     add_segments_as_queue_tasks(this->_subtask_queue, X);
 
@@ -157,6 +171,8 @@ scylla_blas::routine_scheduler::sdsdot(float B, const vector<float> &X, const ve
 
 double
 scylla_blas::routine_scheduler::dsdot(const vector<float> &X, const vector<float> &Y) {
+    /* (X == Y) to be handled by a worker separately */
+
     assert_length_equal(X, Y);
     add_segments_as_queue_tasks(this->_subtask_queue, X);
 

@@ -67,9 +67,15 @@ public:
         length (other.length)
     { }
 
+    bool operator==(const basic_vector &other) const {
+        return this->id == other.id;
+    }
+
     static void clear(const std::shared_ptr<scmd::session> &session, int64_t id);
     static void resize(const std::shared_ptr<scmd::session> &session,
                        int64_t id, int64_t new_legnth);
+
+    void clear_all() { clear(_session, id); }
 };
 
 template<class T>

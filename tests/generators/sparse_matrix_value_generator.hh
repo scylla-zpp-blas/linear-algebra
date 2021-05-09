@@ -3,10 +3,8 @@
 #include <random>
 #include <memory>
 
-#include "scylla_blas/utils/matrix_value_generator.hh"
+#include "matrix_value_generator.hh"
 #include "value_factory.hh"
-
-namespace scylla_blas {
 
 class no_next_value_exception : public std::exception {
     const char *what() const noexcept override {
@@ -48,7 +46,7 @@ public:
         return _next_pos <= height() * width() && _currently_generated < _suggested_max;
     }
 
-    matrix_value<V> next() {
+    scylla_blas::matrix_value<V> next() {
         if (!has_next()) {
             throw no_next_value_exception();
         }
@@ -57,8 +55,8 @@ public:
         if (has_next()) {
             calc_next_pos();
         }
-        return matrix_value(1 + (_last_pos - 1) / width(), 1 + (_last_pos - 1) % width(),
-                            _matrix_value_factory->next());
+        return scylla_blas::matrix_value(1 + (_last_pos - 1) / width(), 1 + (_last_pos - 1) % width(),
+                                         _matrix_value_factory->next());
     }
 
     size_t height() {
@@ -69,5 +67,3 @@ public:
         return this->_width;
     }
 };
-
-}

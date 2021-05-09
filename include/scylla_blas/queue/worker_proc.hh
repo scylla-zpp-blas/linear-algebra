@@ -53,10 +53,10 @@ constexpr std::array<std::pair<proto::task_type, const procedure_t &>, 34> task_
          {proto::DGEMV, dgemv},
          {proto::SGBMV, sgemv},
          {proto::DGBMV, dgemv},
-         {proto::STRSV, stbsv},
-         {proto::DTRSV, dtbsv},
          {proto::STRSV, strsv},
          {proto::DTRSV, dtrsv},
+         {proto::STBSV, stbsv},
+         {proto::DTBSV, dtbsv},
          {proto::SGER, sger},
          {proto::DGER, dger},
 

@@ -302,8 +302,15 @@ struct response {
             float value;
         } result_max_float_index;
 
-        std::pair<float, float> result_float_pair;
-        std::pair<double, double> result_double_pair;
+        struct { 
+            float first;
+            float second;
+        } result_float_pair;
+        
+        struct {
+            double first;
+            double second;
+        } result_double_pair;
 
         struct {
             index_type index;

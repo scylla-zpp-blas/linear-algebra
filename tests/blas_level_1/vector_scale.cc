@@ -1,20 +1,7 @@
 #include <boost/test/unit_test.hpp>
 
-#include "scylla_blas/scylla_blas.hh"
+#include "../test_utils.hh"
 #include "../fixture.hh"
-
-namespace {
-template<class T>
-void print_vector(const scylla_blas::vector<T>& vec) {
-    auto whole = vec.get_whole();
-
-    std::cout << "Vector " << vec.id << ": ";
-    for (auto entry : whole) {
-        std::cout << "(" << entry.index << "-> " << entry.value << "), ";
-    }
-    std::cout << std::endl;
-}
-}
 
 BOOST_FIXTURE_TEST_CASE(vector_scale, vector_fixture)
 {

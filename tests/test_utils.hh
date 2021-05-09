@@ -1,15 +1,17 @@
 #pragma once
+
+#include <iomanip>
+
 #include "scylla_blas/matrix.hh"
 #include "scylla_blas/routines.hh"
-#include "scylla_blas/utils/matrix_value_generator.hh"
 #include "scylla_blas/utils/scylla_types.hh"
 #include "scylla_blas/utils/utils.hh"
 
-namespace scylla_blas {
+#include "generators/matrix_value_generator.hh"
 
 template <class T>
 void load_matrix_from_generator(const std::shared_ptr<scmd::session> &session,
-                                scylla_blas::matrix_value_generator<T> &gen,
+                                matrix_value_generator<T> &gen,
                                 scylla_blas::matrix<T> &matrix) {
     scylla_blas::vector_segment<T> next_row;
     scylla_blas::matrix_value<T> prev_val (-1, -1, 0);
@@ -36,21 +38,57 @@ void load_matrix_from_generator(const std::shared_ptr<scmd::session> &session,
 /** DEBUG **/
 template<class T>
 void print_matrix(const scylla_blas::matrix<T> &matrix) {
-    std::cout << "[" << matrix.id << "]" << std::endl;
+    auto default_precision = std::cout.precision();
+
+    std::cout << std::setprecision(4);
+    std::cout << "Matrix " << matrix.id << ": " << std::endl;
+
+    /* Show column numbering */
+    std::cout << " \\ \t";
+    for (scylla_blas::index_type j = 1; j <= matrix.column_count; j++)
+        std::cout << std::setw(6) << j << " ";
+    std::cout << std::endl;
+
     for (scylla_blas::index_type i = 1; i <= matrix.row_count; i++) {
+        std::cout  << i << " ->\t";
         auto vec = matrix.get_row(i);
         auto it = vec.begin();
         for (scylla_blas::index_type j = 1; j <= matrix.column_count; j++) {
             if (it != vec.end() && it->index == j) {
-                std::cout << it->value << " ";
+                std::cout << std::setw(6) << it->value << " ";
                 it++;
             } else {
-                std::cout << 0 << "\t";
+                std::cout << std::setw(6) << 0 << " ";
             }
         }
         std::cout << std::endl;
     }
+
     std::cout << std::endl;
+    std::cout << std::setprecision(default_precision);
 }
 
+template<class T>
+void print_vector(const scylla_blas::vector<T> &vec) {
+    auto default_precision = std::cout.precision();
+    auto whole = vec.get_whole();
+
+    std::cout << std::setprecision(4);
+    std::cout << "Vector " << vec.id << ": " << std::endl;
+
+    scylla_blas::index_type expected = 1;
+    for (auto entry : whole) {
+        while (expected < entry.index) {
+            /* Show empty rows */
+            std::cout << expected << " ->\t" << 0 << std::endl;
+            expected++;
+        }
+
+        std::cout << entry.index << " ->\t" << entry.value << std::endl;
+
+        expected = entry.index + 1;
+    }
+
+    std::cout << std::endl;
+    std::cout << std::setprecision(default_precision);
 }

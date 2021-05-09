@@ -120,8 +120,13 @@ scylla_blas::routine_scheduler::sgemv(const enum TRANSPOSE TransA,
                                      const float alpha, const matrix<float> &A,
                                      const vector<float> &X, const float beta,
                                      vector<float> &Y) {
+    if (X == Y) {
+        throw("Invalid operation: const vector X passed equal to non-const vector Y in sgemv");
+    }
+
     assert_width_length_equal(A, X, TransA);
-    assert_width_length_equal(A, Y, TransA);
+    assert_height_length_equal(A, Y, TransA);
+
     add_segments_as_queue_tasks(this->_subtask_queue, Y);
 
     produce_mixed_tasks<float>(proto::SGEMV, NONE, NONE, Upper, NonUnit, A.id, TransA, alpha, X.id, beta, Y.id);
@@ -133,8 +138,12 @@ scylla_blas::routine_scheduler::dgemv(const enum TRANSPOSE TransA,
                                      const double alpha, const matrix<double> &A,
                                      const vector<double> &X, const double beta,
                                      vector<double> &Y) {
+    if (X == Y) {
+        throw("Invalid operation: const vector X passed equal to non-const vector Y in dgemv");
+    }
+
     assert_width_length_equal(A, X, TransA);
-    assert_width_length_equal(A, Y, TransA);
+    assert_height_length_equal(A, Y, TransA);
     add_segments_as_queue_tasks(this->_subtask_queue, Y);
 
     produce_mixed_tasks<double>(proto::DGEMV, NONE, NONE, Upper, NonUnit, A.id, TransA, alpha, X.id, beta, Y.id);
@@ -147,8 +156,12 @@ scylla_blas::routine_scheduler::sgbmv(const enum TRANSPOSE TransA,
                                       const float alpha, const matrix<float> &A,
                                       const vector<float> &X, const float beta,
                                       vector<float> &Y) {
+    if (X == Y) {
+        throw("Invalid operation: const vector X passed equal to non-const vector Y in sgbmv");
+    }
+
     assert_width_length_equal(A, X, TransA);
-    assert_width_length_equal(A, Y, TransA);
+    assert_height_length_equal(A, Y, TransA);
     add_segments_as_queue_tasks(this->_subtask_queue, Y);
 
     produce_mixed_tasks<float>(proto::SGBMV, KL, KU, Upper, NonUnit, A.id, TransA, alpha, X.id, beta, Y.id);
@@ -161,8 +174,12 @@ scylla_blas::routine_scheduler::dgbmv(const enum TRANSPOSE TransA,
                                       const double alpha, const matrix<double> &A,
                                       const vector<double> &X, const double beta,
                                       vector<double> &Y) {
+    if (X == Y) {
+        throw("Invalid operation: const vector X passed equal to non-const vector Y in dgbmv");
+    }
+
     assert_width_length_equal(A, X, TransA);
-    assert_width_length_equal(A, Y, TransA);
+    assert_height_length_equal(A, Y, TransA);
     add_segments_as_queue_tasks(this->_subtask_queue, Y);
 
     produce_mixed_tasks<double>(proto::DGBMV, KL, KU, Upper, NonUnit, A.id, TransA, alpha, X.id, beta, Y.id);
@@ -172,6 +189,7 @@ scylla_blas::routine_scheduler::dgbmv(const enum TRANSPOSE TransA,
 scylla_blas::matrix<float>&
 scylla_blas::routine_scheduler::sger(const float alpha, const vector<float> &X,
                                      const vector<float> &Y, matrix<float> &A) {
+    /* Leave handling X == Y to a worker */
     assert_height_length_equal(A, X);
     assert_width_length_equal(A, Y);
     add_blocks_as_queue_tasks(this->_subtask_queue, A);
@@ -183,6 +201,7 @@ scylla_blas::routine_scheduler::sger(const float alpha, const vector<float> &X,
 scylla_blas::matrix<double>&
 scylla_blas::routine_scheduler::dger(const double alpha, const vector<double> &X,
                                      const vector<double> &Y, matrix<double> &A) {
+    /* Leave handling X == Y to a worker */
     assert_height_length_equal(A, X);
     assert_width_length_equal(A, Y);
     add_blocks_as_queue_tasks(this->_subtask_queue, A);
@@ -194,7 +213,9 @@ scylla_blas::routine_scheduler::dger(const double alpha, const vector<double> &X
 scylla_blas::vector<float>&
 scylla_blas::routine_scheduler::strsv(const enum UPLO Uplo, const enum TRANSPOSE TransA, const enum DIAG Diag,
                                       const matrix<float> &A, vector<float> &X) {
-    assert_width_length_equal(A, X, TransA);
+    /* A needs to be a square matrix */
+    assert_height_length_equal(A, X);
+    assert_width_length_equal(A, X);
     scylla_blas::vector<float>::clear(this->_session, HELPER_FLOAT_VECTOR_ID);
 
     add_segments_as_queue_tasks(this->_subtask_queue, X);
@@ -202,6 +223,8 @@ scylla_blas::routine_scheduler::strsv(const enum UPLO Uplo, const enum TRANSPOSE
 
     float error, sum;
     do {
+        sum = 0;
+
         add_segments_as_queue_tasks(this->_subtask_queue, X);
         error = produce_mixed_tasks<float>(proto::STRSV, NONE, NONE, Uplo, Diag, A.id, TransA, NONE, HELPER_FLOAT_VECTOR_ID, NONE, X.id,
                                            0, [&sum](float &result, const proto::response &r) {
@@ -215,7 +238,9 @@ scylla_blas::routine_scheduler::strsv(const enum UPLO Uplo, const enum TRANSPOSE
 scylla_blas::vector<double>&
 scylla_blas::routine_scheduler::dtrsv(const enum UPLO Uplo, const enum TRANSPOSE TransA, const enum DIAG Diag,
                                       const matrix<double> &A, vector<double> &X) {
-    assert_width_length_equal(A, X, TransA);
+    /* A needs to be a square matrix */
+    assert_height_length_equal(A, X);
+    assert_width_length_equal(A, X);
     scylla_blas::vector<double>::clear(this->_session, HELPER_DOUBLE_VECTOR_ID);
 
     add_segments_as_queue_tasks(this->_subtask_queue, X);
@@ -226,7 +251,7 @@ scylla_blas::routine_scheduler::dtrsv(const enum UPLO Uplo, const enum TRANSPOSE
         sum = 0;
 
         add_segments_as_queue_tasks(this->_subtask_queue, X);
-        error = produce_mixed_tasks<double>(proto::DTRSV, NONE, NONE, Uplo, Diag, A.id, TransA, NONE, HELPER_FLOAT_VECTOR_ID, NONE, X.id,
+        error = produce_mixed_tasks<double>(proto::DTRSV, NONE, NONE, Uplo, Diag, A.id, TransA, NONE, HELPER_DOUBLE_VECTOR_ID, NONE, X.id,
                                            0, [&sum](double &result, const proto::response &r) {
                                                 result += r.result_double_pair.first;
                                                 sum += r.result_double_pair.second;
@@ -247,6 +272,8 @@ scylla_blas::routine_scheduler::stbsv(const enum UPLO Uplo, const enum TRANSPOSE
 
     float error, sum;
     do {
+        sum = 0;
+
         add_segments_as_queue_tasks(this->_subtask_queue, X);
         error = produce_mixed_tasks<float>(proto::STBSV, K, K, Uplo, Diag, A.id, TransA, NONE, HELPER_FLOAT_VECTOR_ID, NONE, X.id,
                                            0, [&sum](float &result, const proto::response &r) {
@@ -271,7 +298,7 @@ scylla_blas::routine_scheduler::dtbsv(const enum UPLO Uplo, const enum TRANSPOSE
         sum = 0;
 
         add_segments_as_queue_tasks(this->_subtask_queue, X);
-        error = produce_mixed_tasks<double>(proto::DTBSV, K, K, Uplo, Diag, A.id, TransA, NONE, HELPER_FLOAT_VECTOR_ID, NONE, X.id,
+        error = produce_mixed_tasks<double>(proto::DTBSV, K, K, Uplo, Diag, A.id, TransA, NONE, HELPER_DOUBLE_VECTOR_ID, NONE, X.id,
                                            0, [&sum](double &result, const proto::response &r) {
                                                 result += r.result_double_pair.first;
                                                 sum += r.result_double_pair.second;

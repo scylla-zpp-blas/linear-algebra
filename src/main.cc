@@ -73,9 +73,9 @@ void parse_arguments(int ac, char *av[], options &options) {
 
 void init(const struct options& op) {
     std::cerr << "Connecting to " << op.host << ":" << op.port << "..." << std::endl;
+    auto session = std::make_shared<scmd::session>(op.host, std::to_string(op.port));
 
     std::cerr << "Initializing blas namespace..." << std::endl;
-    auto session = std::make_shared<scmd::session>(op.host, std::to_string(op.port));
     std::string init_namespace = "CREATE KEYSPACE IF NOT EXISTS blas WITH REPLICATION = {"
                                  "  'class' : 'SimpleStrategy',"
                                  "  'replication_factor' : 1"

@@ -79,10 +79,6 @@ public:
         return *this;
     }
 
-    const vector_of_values& get_raw() const {
-        return _values;
-    }
-
     matrix_block &operator*=(const matrix_block &other) {
         auto row_map = values_to_rows(_values);
         auto transposed_other = transpose_row_map(values_to_rows(other._values));

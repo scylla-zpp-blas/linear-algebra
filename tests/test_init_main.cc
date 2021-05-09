@@ -9,8 +9,8 @@
 void init_matrices(const std::shared_ptr<scmd::session> &session) {
     std::cerr << "Initializing containers for test matrices..." << std::endl;
 
-    scylla_blas::index_type A = 2 * BLOCK_SIZE + 3;
-    scylla_blas::index_type B = 2 * BLOCK_SIZE + 6;
+    scylla_blas::index_type A = test_const::matrix_A;
+    scylla_blas::index_type B = test_const::matrix_B;
     
     scylla_blas::matrix<float>::init(session, test_const::float_matrix_AxB_id, A, B);
     scylla_blas::matrix<float>::init(session, test_const::float_matrix_BxA_id, B, A);
@@ -26,15 +26,20 @@ void init_matrices(const std::shared_ptr<scmd::session> &session) {
 void init_vectors(const std::shared_ptr<scmd::session> &session) {
     std::cerr << "Initializing containers for test vectors..." << std::endl;
     
-    scylla_blas::index_type len = test_const::test_vector_len;
+    scylla_blas::index_type len_A = test_const::test_vector_len_A;
+    scylla_blas::index_type len_B = test_const::test_vector_len_B;
 
-    scylla_blas::vector<float>::init(session, test_const::float_vector_1_id, len);
-    scylla_blas::vector<float>::init(session, test_const::float_vector_2_id, len);
-    scylla_blas::vector<float>::init(session, test_const::float_vector_3_id, len);
+    scylla_blas::vector<float>::init(session, test_const::float_vector_1_id, len_A);
+    scylla_blas::vector<float>::init(session, test_const::float_vector_2_id, len_A);
+
+    scylla_blas::vector<float>::init(session, test_const::float_vector_3_id, len_B);
+    scylla_blas::vector<float>::init(session, test_const::float_vector_4_id, len_B);
     
-    scylla_blas::vector<double>::init(session, test_const::double_vector_1_id, len);
-    scylla_blas::vector<double>::init(session, test_const::double_vector_2_id, len);
-    scylla_blas::vector<double>::init(session, test_const::double_vector_3_id, len);
+    scylla_blas::vector<double>::init(session, test_const::double_vector_1_id, len_A);
+    scylla_blas::vector<double>::init(session, test_const::double_vector_2_id, len_A);
+
+    scylla_blas::vector<double>::init(session, test_const::double_vector_3_id, len_B);
+    scylla_blas::vector<double>::init(session, test_const::double_vector_4_id, len_B);
 
     std::cerr << "Containers for test vectors initialized!" << std::endl;
 }

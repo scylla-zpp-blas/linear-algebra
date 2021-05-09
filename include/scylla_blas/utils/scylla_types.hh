@@ -18,7 +18,7 @@ enum TRANSPOSE {
     NoTrans = 111, Trans = 112 //, ConjTrans = 113
 };
 
-TRANSPOSE anti_trans(TRANSPOSE trans) {
+static TRANSPOSE anti_trans(TRANSPOSE trans) {
     return trans == NoTrans ? Trans : NoTrans;
 }
 
