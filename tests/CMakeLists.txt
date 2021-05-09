@@ -4,7 +4,7 @@ set(TEST_SRC
         fixture.hh
         test_utils.hh
 
-        multiply.cc
+        blas_level_3/multiply.cc
         queue.cc
         structure_test.cc
         blas_level_1/vector_copy.cc

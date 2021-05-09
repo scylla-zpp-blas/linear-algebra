@@ -2,10 +2,10 @@
 
 #include <scmd.hh>
 
-#include "generators/value_factory.hh"
-#include "generators/sparse_matrix_value_generator.hh"
-#include "test_utils.hh"
-#include "fixture.hh"
+#include "../generators/value_factory.hh"
+#include "../generators/sparse_matrix_value_generator.hh"
+#include "../test_utils.hh"
+#include "../fixture.hh"
 
 BOOST_FIXTURE_TEST_SUITE(multiply_tests, matrix_fixture)
 
