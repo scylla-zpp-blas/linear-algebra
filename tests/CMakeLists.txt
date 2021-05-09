@@ -10,6 +10,7 @@ set(TEST_SRC
         blas_level_1/vector_const_op.cc
         blas_level_1/vector_swap.cc
         blas_level_1/vector_scale.cc
+        blas_level_1/vector_utilities.hh
 
         generators/sparse_matrix_value_generator.hh
         generators/random_value_factory.hh

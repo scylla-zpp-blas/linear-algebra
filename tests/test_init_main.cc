@@ -28,13 +28,12 @@ void init_vectors(const std::shared_ptr<scmd::session> &session) {
     
     scylla_blas::index_type len = test_const::test_vector_len;
 
-    scylla_blas::vector<float>::init(session, test_const::float_vector_1_id, len);
-    scylla_blas::vector<float>::init(session, test_const::float_vector_2_id, len);
-    scylla_blas::vector<float>::init(session, test_const::float_vector_3_id, len);
-    
-    scylla_blas::vector<double>::init(session, test_const::double_vector_1_id, len);
-    scylla_blas::vector<double>::init(session, test_const::double_vector_2_id, len);
-    scylla_blas::vector<double>::init(session, test_const::double_vector_3_id, len);
+    for (scylla_blas::index_type vector_id : test_const::float_vector_indexes) {
+        scylla_blas::vector<float>::init(session, vector_id, len);
+    }
+    for (scylla_blas::index_type vector_id : test_const::double_vector_indexes) {
+        scylla_blas::vector<float>::init(session, vector_id, len);
+    }
 
     std::cerr << "Containers for test vectors initialized!" << std::endl;
 }

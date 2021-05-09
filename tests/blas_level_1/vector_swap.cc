@@ -18,19 +18,19 @@ void print_vector(const scylla_blas::vector<T>& vec) {
 
 BOOST_FIXTURE_TEST_CASE(vector_swap, vector_fixture)
 {
-    print_vector(*float_A);
-    print_vector(*float_B);
-
-    scheduler->sswap(*float_A, *float_B);
-
-    print_vector(*float_A);
-    print_vector(*float_B);
-
-    print_vector(*double_A);
-    print_vector(*double_B);
-
-    scheduler->dswap(*double_A, *double_B);
-
-    print_vector(*double_A);
-    print_vector(*double_B);
+//    print_vector(*float_A);
+//    print_vector(*float_B);
+//
+//    scheduler->sswap(*float_A, *float_B);
+//
+//    print_vector(*float_A);
+//    print_vector(*float_B);
+//
+//    print_vector(*double_A);
+//    print_vector(*double_B);
+//
+//    scheduler->dswap(*double_A, *double_B);
+//
+//    print_vector(*double_A);
+//    print_vector(*double_B);
 }

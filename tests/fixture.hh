@@ -106,43 +106,61 @@ private:
         }
     }
 public:
-    std::shared_ptr<scylla_blas::vector<float>> float_A;
-    std::shared_ptr<scylla_blas::vector<float>> float_B;
-    std::shared_ptr<scylla_blas::vector<float>> float_C;
+    std::map<scylla_blas::index_type, std::shared_ptr<scylla_blas::vector<float>>> float_vectors;
+    std::map<scylla_blas::index_type, std::shared_ptr<scylla_blas::vector<double>>> double_vectors;
 
-    std::shared_ptr<scylla_blas::vector<double>> double_A;
-    std::shared_ptr<scylla_blas::vector<double>> double_B;
-    std::shared_ptr<scylla_blas::vector<double>> double_C;
-
-    vector_fixture() :
-            scylla_fixture(),
-            float_A(nullptr),
-            float_B(nullptr),
-            float_C(nullptr),
-            double_A(nullptr),
-            double_B(nullptr),
-            double_C(nullptr) {
+    vector_fixture() : scylla_fixture() {
+        for (auto index : test_const::float_vector_indexes) {
+            float_vectors[index] = nullptr;
+        }
+        for (auto index : test_const::double_vector_indexes) {
+            double_vectors[index] = nullptr;
+        }
         init_vectors(session);
     }
 
-    std::shared_ptr<scylla_blas::vector<float>> getScyllaVectorOf(std::vector<float> values) {
-        std::shared_ptr<scylla_blas::value_factory<float>> factory =
-                std::make_shared<scylla_blas::preset_value_factory<float>>(values);
-        init_vector(float_A,
-                    values.size(),
-                    test_const::float_vector_1_id,
-                    factory);
-        return float_A;
+    std::shared_ptr<scylla_blas::vector<float>> getScyllaVector(std::size_t index) {
+        scylla_blas::index_type vector_id = test_const::getScyllaIndexOfFloatVector(index);
+        return float_vectors[vector_id];
     }
 
-    std::shared_ptr<scylla_blas::vector<double>> getScyllaVectorOf(std::vector<double> values) {
+    std::shared_ptr<scylla_blas::vector<double>> getScyllaDoubleVector(std::size_t index) {
+        scylla_blas::index_type vector_id = test_const::getScyllaIndexOfDoubleVector(index);
+        return double_vectors[vector_id];
+    }
+
+    /** Sets values of vector of id `test_const::<T>_vector_indexes[index]`.
+     *
+     * @param values - values to init the vector with.
+     * @param index - index for float_vector_indexes array.
+     * @return shared_ptr of the initialized vector.
+     */
+    std::shared_ptr<scylla_blas::vector<float>> getScyllaVectorOf(std::vector<float> values, std::size_t index) {
+        std::shared_ptr<scylla_blas::value_factory<float>> factory =
+                std::make_shared<scylla_blas::preset_value_factory<float>>(values);
+        scylla_blas::index_type vector_id = test_const::getScyllaIndexOfFloatVector(index);
+        init_vector(float_vectors[vector_id],
+                    values.size(),
+                    vector_id,
+                    factory);
+        return float_vectors[vector_id];
+    }
+
+    /** Sets values of vector of id `test_const::<T>_vector_indexes[index]`.
+     *
+     * @param values - values to init the vector with.
+     * @param index - index for float_vector_indexes array.
+     * @return shared_ptr of the initialized vector.
+     */
+    std::shared_ptr<scylla_blas::vector<double>> getScyllaVectorOf(std::vector<double> values, std::size_t index) {
         std::shared_ptr<scylla_blas::value_factory<double>> factory =
                 std::make_shared<scylla_blas::preset_value_factory<double>>(values);
-        init_vector(double_A,
+        scylla_blas::index_type vector_id = test_const::getScyllaIndexOfDoubleVector(index);
+        init_vector(double_vectors[vector_id],
                     values.size(),
-                    test_const::double_vector_1_id,
+                    vector_id,
                     factory);
-        return double_A;
+        return double_vectors[vector_id];
     }
 
     void init_vectors(const std::shared_ptr<scmd::session> &session) {
@@ -151,15 +169,14 @@ public:
 
         std::shared_ptr<scylla_blas::value_factory<float>> f =
                 std::make_shared<scylla_blas::random_value_factory<float>>(0, 9, 142);
-        init_vector(this->float_A, len, test_const::float_vector_1_id, f);
-        init_vector(this->float_B, len, test_const::float_vector_2_id,  f);
-        init_vector(this->float_C, len, test_const::float_vector_3_id);
-
+        for (auto index : test_const::float_vector_indexes) {
+            init_vector(float_vectors[index], len, index, f);;
+        }
         std::shared_ptr<scylla_blas::value_factory<double>> d =
                 std::make_shared<scylla_blas::random_value_factory<double>>(0, 9, 242);
-        init_vector(this->double_A, len, test_const::double_vector_1_id, d);
-        init_vector(this->double_B, len, test_const::double_vector_2_id, d);
-        init_vector(this->double_C, len, test_const::double_vector_3_id);
+        for (auto index : test_const::double_vector_indexes) {
+            init_vector(double_vectors[index], len, index, d);;
+        }
 
         std::cerr << "Test vectors initialized!" << std::endl;
     }
