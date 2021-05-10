@@ -60,9 +60,13 @@ BOOST_FIXTURE_TEST_CASE(float_vector_alpha_sum_copy, vector_fixture)
     scheduler->saxpy(alpha, *vector1, *vector2);
 
     // Then the second vector has the result.
+    while (values2.size() < values1.size()) {
+        values2.push_back(0);
+    }
     for (int i = 0; i < values1.size(); i++) {
         values2[i] += values1[i] * alpha;
     }
+
     print_vector(*vector2);
     std::optional<scylla_blas::vector_value<float>> difference = cmp_vector(*vector2, values2);
     BOOST_CHECK(!difference.has_value());
@@ -72,26 +76,36 @@ BOOST_FIXTURE_TEST_CASE(float_vector_alpha_sum_copy, vector_fixture)
                                 difference->value,
                                 values2[difference->index - 1]));
     }
-//    print_vector(*float_B);
-//    scheduler->saxpy(3.14, *float_A, *float_B);
-//    print_vector(*float_A);
-//    print_vector(*float_B);
-//
-//    print_vector(*double_B);
-//    scheduler->daxpy(3.14, *double_A, *double_B);
-//    print_vector(*double_A);
-//    print_vector(*double_B);
 }
 
 BOOST_FIXTURE_TEST_CASE(double_vector_alpha_sum_copy, vector_fixture)
 {
-//    print_vector(*float_B);
-//    scheduler->saxpy(3.14, *float_A, *float_B);
-//    print_vector(*float_A);
-//    print_vector(*float_B);
-//
-//    print_vector(*double_B);
-//    scheduler->daxpy(3.14, *double_A, *double_B);
-//    print_vector(*double_A);
-//    print_vector(*double_B);
+    // Given two vectors with some values and alpha.
+    std::vector<double> values1 = {4.4327805450, 3214.4243, 290342.0, 0.0, 1.23456789};
+    std::vector<double> values2 = {4.5, 324.4243, 342.29, 0.0, 23442.252526, 1.2346981958};
+    auto vector1 = getScyllaVectorOf(test_const::double_vector_1_id, values1);
+    auto vector2 = getScyllaVectorOf(test_const::double_vector_2_id, values2);
+    float alpha = 1000.0f;
+
+    // When performing daxpy from first vector to another.
+    // daxpy - constant times a vector plus a vector.
+    scheduler->daxpy(alpha, *vector1, *vector2);
+
+    // Then the second vector has the result.
+    while (values2.size() < values1.size()) {
+        values2.push_back(0);
+    }
+    for (int i = 0; i < values1.size(); i++) {
+        values2[i] += values1[i] * alpha;
+    }
+
+    print_vector(*vector2);
+    std::optional<scylla_blas::vector_value<double>> difference = cmp_vector(*vector2, values2);
+    BOOST_CHECK(!difference.has_value());
+    if (difference.has_value()) {
+        BOOST_ERROR(fmt::format("Difference at position {0}, {1} - {2}",
+                                difference->index,
+                                difference->value,
+                                values2[difference->index - 1]));
+    }
 }

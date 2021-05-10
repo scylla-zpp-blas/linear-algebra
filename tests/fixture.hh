@@ -179,3 +179,18 @@ public:
         std::cerr << "Test vectors initialized!" << std::endl;
     }
 };
+
+class vector_fixture_large : public vector_fixture {
+};
+
+class mixed_fixture : public vector_fixture_large, public matrix_fixture {
+public:
+    std::shared_ptr<scylla_blas::routine_scheduler> scheduler;
+    std::shared_ptr<scmd::session> session;
+
+    mixed_fixture() :
+            vector_fixture_large(),
+            matrix_fixture(),
+            session(matrix_fixture::session),
+            scheduler(matrix_fixture::scheduler) {}
+};

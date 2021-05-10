@@ -40,7 +40,9 @@ template<class T>
 inline std::optional<scylla_blas::vector_value<T>> cmp_vector(const scylla_blas::vector<T> &vec, std::vector<T> values) {
     scylla_blas::vector_segment<T> whole = vec.get_whole();
 
-    if (values.size() < vec.length) {}
+    if (values.size() < whole.back().index) {
+        throw std::runtime_error("Not enough values in vector. Fill with zeroes.");
+    }
 
     int last = -1;
     for (scylla_blas::vector_value entry : whole) {
