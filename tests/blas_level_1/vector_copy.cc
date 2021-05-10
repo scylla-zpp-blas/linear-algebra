@@ -30,7 +30,7 @@ BOOST_FIXTURE_TEST_CASE(double_vector_copy, vector_fixture)
     // Given vector of six values and and vector with different id.
     std::vector<double> values = {5355.939194952, 4.234, 3214.4243, 290342.0, 0.0, 1.23456789};
     auto vector1 = getScyllaVectorOf(test_const::double_vector_1_id, values);
-    auto vector2 = getScyllaDoubleVector(test_const::float_vector_2_id);
+    auto vector2 = getScyllaDoubleVector(test_const::double_vector_2_id);
 
     // When performing copy from first vector to another.
     scheduler->dcopy(*vector1, *vector2);
