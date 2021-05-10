@@ -9,7 +9,7 @@ BOOST_FIXTURE_TEST_CASE(float_vector_scale_IT, vector_fixture)
 {
     // Given vector of 4 floats
     std::vector<float> vals = {1.6f, 2.9999f, 3.0f, 0.0f};
-    auto vector = getScyllaVectorOf(vals, 0);
+    auto vector = getScyllaVectorOf(test_const::float_vector_1_id, vals);
 
     // When performing scaling by 2
     scheduler->sscal(2, *vector);
@@ -30,7 +30,7 @@ BOOST_FIXTURE_TEST_CASE(double_vector_scale_IT, vector_fixture)
 {
     // Given vector of 4 doubles
     std::vector<double> vals = {1.6, 2.999999, 3.0, 3.141592653589793238462643383};
-    auto vector = getScyllaVectorOf(vals, 0);
+    auto vector = getScyllaVectorOf(test_const::double_vector_1_id, vals);
 
     // When performing scaling by 59.49
     const double alpha = 59.05;

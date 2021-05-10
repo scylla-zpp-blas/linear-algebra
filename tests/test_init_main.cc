@@ -32,10 +32,10 @@ void init_vectors(const std::shared_ptr<scmd::session> &session) {
     scylla_blas::vector<float>::init(session, test_const::float_vector_1_id, len_A);
     scylla_blas::vector<float>::init(session, test_const::float_vector_2_id, len_A);
 
-    for (scylla_blas::index_type vector_id : test_const::float_vector_indexes) {
+    for (scylla_blas::index_type vector_id : test_const::float_vector_props) {
         scylla_blas::vector<float>::init(session, vector_id, len);
     }
-    for (scylla_blas::index_type vector_id : test_const::double_vector_indexes) {
+    for (scylla_blas::index_type vector_id : test_const::double_vector_props) {
         scylla_blas::vector<float>::init(session, vector_id, len);
     }
 

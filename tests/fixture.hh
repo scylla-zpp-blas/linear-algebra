@@ -111,72 +111,69 @@ public:
     std::map<scylla_blas::index_type, std::shared_ptr<scylla_blas::vector<double>>> double_vectors;
 
     vector_fixture() : scylla_fixture() {
-        for (auto index : test_const::float_vector_indexes) {
-            float_vectors[index] = nullptr;
+        for (auto props : test_const::float_vector_props) {
+            float_vectors[props.id] = nullptr;
         }
-        for (auto index : test_const::double_vector_indexes) {
-            double_vectors[index] = nullptr;
+        for (auto props : test_const::double_vector_props) {
+            double_vectors[props.id] = nullptr;
         }
         init_vectors(session);
     }
 
-    std::shared_ptr<scylla_blas::vector<float>> getScyllaVector(std::size_t index) {
-        scylla_blas::index_type vector_id = test_const::getScyllaIndexOfFloatVector(index);
-        return float_vectors[vector_id];
+    std::shared_ptr<scylla_blas::vector<float>> getScyllaVector(scylla_blas::index_type id) {
+        return float_vectors[id];
     }
 
-    std::shared_ptr<scylla_blas::vector<double>> getScyllaDoubleVector(std::size_t index) {
-        scylla_blas::index_type vector_id = test_const::getScyllaIndexOfDoubleVector(index);
-        return double_vectors[vector_id];
+    std::shared_ptr<scylla_blas::vector<double>> getScyllaDoubleVector(scylla_blas::index_type id) {
+        return double_vectors[id];
     }
 
     /** Sets values of vector of id `test_const::<T>_vector_indexes[index]`.
      *
      * @param values - values to init the vector with.
-     * @param index - index for float_vector_indexes array.
+     * @param index - index for float_vector_props array.
      * @return shared_ptr of the initialized vector.
      */
-    std::shared_ptr<scylla_blas::vector<float>> getScyllaVectorOf(std::vector<float> values, std::size_t index) {
+    std::shared_ptr<scylla_blas::vector<float>> getScyllaVectorOf(scylla_blas::index_type id,
+                                                                  std::vector<float> values) {
         std::shared_ptr<value_factory<float>> factory =
                 std::make_shared<preset_value_factory<float>>(values);
-        scylla_blas::index_type vector_id = test_const::getScyllaIndexOfFloatVector(index);
-        init_vector(float_vectors[vector_id],
+        init_vector(float_vectors[id],
                     values.size(),
-                    vector_id,
+                    id,
                     factory);
-        return float_vectors[vector_id];
+        return float_vectors[id];
     }
 
     /** Sets values of vector of id `test_const::<T>_vector_indexes[index]`.
      *
      * @param values - values to init the vector with.
-     * @param index - index for float_vector_indexes array.
+     * @param index - index for float_vector_props array.
      * @return shared_ptr of the initialized vector.
      */
-    std::shared_ptr<scylla_blas::vector<double>> getScyllaVectorOf(std::vector<double> values, std::size_t index) {
+    std::shared_ptr<scylla_blas::vector<double>> getScyllaVectorOf(scylla_blas::index_type id,
+                                                                   std::vector<double> values) {
         std::shared_ptr<value_factory<double>> factory =
                 std::make_shared<preset_value_factory<double>>(values);
-        scylla_blas::index_type vector_id = test_const::getScyllaIndexOfDoubleVector(index);
-        init_vector(double_vectors[vector_id],
+        init_vector(double_vectors[id],
                     values.size(),
-                    vector_id,
+                    id,
                     factory);
-        return double_vectors[vector_id];
+        return double_vectors[id];
     }
 
     void init_vectors(const std::shared_ptr<scmd::session> &session) {
         std::cerr << "Initializing test vectors..." << std::endl;
-        scylla_blas::index_type len = test_const::test_vector_len_B;
 
         std::shared_ptr<value_factory<float>> f =
                 std::make_shared<random_value_factory<float>>(0, 9, 142);
-        for (auto index : test_const::float_vector_indexes) {
-            init_vector(float_vectors[index], len, index, f);;
+        for (auto props : test_const::float_vector_props) {
+            init_vector(float_vectors[props.id], props.size, props.id, f);;
         }
         std::shared_ptr<value_factory<double>> d =
                 std::make_shared<random_value_factory<double>>(0, 9, 242);
-        for (auto index : test_const::double_vector_indexes) {
-            init_vector(double_vectors[index], len, index, d);;
+        for (auto props : test_const::double_vector_props) {
+            init_vector(double_vectors[props.id], props.size, props.id, d);;
         }
 
         std::cerr << "Test vectors initialized!" << std::endl;
