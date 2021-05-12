@@ -37,6 +37,7 @@ set(BLAS_INCLUDE
         ${INCLUDE_DIR}/structure/matrix_block.hh
         ${INCLUDE_DIR}/structure/matrix_value.hh
 
+        ${INCLUDE_DIR}/utils/logging.hh
         ${INCLUDE_DIR}/utils/scylla_types.hh
         ${INCLUDE_DIR}/utils/utils.hh)
 
