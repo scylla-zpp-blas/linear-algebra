@@ -166,7 +166,7 @@ public:
         std::cerr << "Initializing test vectors..." << std::endl;
 
         std::shared_ptr<value_factory<float>> f =
-                std::make_shared<random_value_factory<float>>(0, 9, 142);
+                std::make_shared<random_value_factory<float>>(0, 9, 323);
         for (auto props : test_const::float_vector_props) {
             init_vector(float_vectors[props.id], props.size, props.id, f);;
         }

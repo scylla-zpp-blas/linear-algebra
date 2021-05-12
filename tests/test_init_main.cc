@@ -25,12 +25,6 @@ void init_matrices(const std::shared_ptr<scmd::session> &session) {
 
 void init_vectors(const std::shared_ptr<scmd::session> &session) {
     std::cerr << "Initializing containers for test vectors..." << std::endl;
-    
-    scylla_blas::index_type len_A = test_const::test_vector_len_A;
-    scylla_blas::index_type len_B = test_const::test_vector_len_B;
-
-    scylla_blas::vector<float>::init(session, test_const::float_vector_1_id, len_A);
-    scylla_blas::vector<float>::init(session, test_const::float_vector_2_id, len_A);
 
     for (auto props : test_const::float_vector_props) {
         scylla_blas::vector<float>::init(session, props.id, props.size);

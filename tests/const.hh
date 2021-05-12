@@ -40,13 +40,6 @@ public:
             vector_props(float_vector_3_id, test_vector_len_B),
             vector_props(float_vector_4_id, test_vector_len_B)
     };
-//    const static inline std::size_t float_vector_props_size =
-//            std::size(float_vector_props);
-//    static vector_props getPropsOfFloatVector(std::size_t index) {
-//        if (index >= float_vector_props_size)
-//            throw std::runtime_error("Index out of bounds.");
-//        return float_vector_props[index];
-//    }
 
     const static inline vector_props double_vector_props[] = {
             vector_props(double_vector_1_id, test_vector_len_A),
@@ -54,12 +47,5 @@ public:
             vector_props(double_vector_3_id, test_vector_len_B),
             vector_props(double_vector_4_id, test_vector_len_B)
     };
-//    const static inline std::size_t double_vector_props_size =
-//            std::size(double_vector_props);
-//    static vector_props getPropsOfDoubleVector(std::size_t index) {
-//        if (index >= double_vector_props_size)
-//            throw std::runtime_error("Index out of bounds.");
-//        return double_vector_props[index];
-//    }
 
 };
