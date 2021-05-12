@@ -8,6 +8,8 @@
 
 #include "config.hh"
 #include "generators/sparse_matrix_value_generator.hh"
+#include "generators/preset_value_factory.hh"
+#include "generators/random_value_factory.hh"
 
 class scylla_fixture {
 public:
@@ -71,13 +73,13 @@ public:
         scylla_blas::index_type B = test_const::matrix_B;
 
         std::shared_ptr<value_factory<float>> f =
-                std::make_shared<value_factory<float>>(0, 9, 142);
+                std::make_shared<random_value_factory<float>>(0, 9, 142);
         init_matrix(this->float_AxB, A, B, test_const::float_matrix_AxB_id, f);
         init_matrix(this->float_BxA, B, A, test_const::float_matrix_BxA_id, f);
         init_matrix(this->float_BxB, B, B, test_const::float_matrix_BxB_id, f);
 
         std::shared_ptr<value_factory<double>> d =
-                std::make_shared<value_factory<double>>(0, 9, 242);
+                std::make_shared<random_value_factory<double>>(0, 9, 242);
         init_matrix(this->double_AxB, A, B, test_const::double_matrix_AxB_id, d);
         init_matrix(this->double_BxA, B, A, test_const::double_matrix_BxA_id, d);
         init_matrix(this->double_BxB, B, B, test_const::double_matrix_BxB_id, d);
@@ -89,7 +91,7 @@ public:
 class vector_fixture : public scylla_fixture {
 protected:
     template<class T>
-    void init_vector(std::shared_ptr<scylla_blas::vector<T>>& vector_ptr,
+    void init_vector(std::shared_ptr<scylla_blas::vector<T>> &vector_ptr,
                      scylla_blas::index_type len, int64_t id,
                      std::shared_ptr<value_factory<T>> value_factory = nullptr) {
         scylla_blas::vector<T>::clear(session, id);
@@ -105,74 +107,80 @@ protected:
         }
     }
 public:
-    std::shared_ptr<scylla_blas::vector<float>> float_A;
-    std::shared_ptr<scylla_blas::vector<float>> float_A2;
+    std::map<scylla_blas::index_type, std::shared_ptr<scylla_blas::vector<float>>> float_vectors;
+    std::map<scylla_blas::index_type, std::shared_ptr<scylla_blas::vector<double>>> double_vectors;
 
-    std::shared_ptr<scylla_blas::vector<double>> double_A;
-    std::shared_ptr<scylla_blas::vector<double>> double_A2;
-
-    vector_fixture() :
-            scylla_fixture(),
-            float_A(nullptr),
-            float_A2(nullptr),
-            double_A(nullptr),
-            double_A2(nullptr) {
+    vector_fixture() : scylla_fixture() {
+        for (auto props : test_const::float_vector_props) {
+            float_vectors[props.id] = nullptr;
+        }
+        for (auto props : test_const::double_vector_props) {
+            double_vectors[props.id] = nullptr;
+        }
         init_vectors(session);
+    }
+
+    std::shared_ptr<scylla_blas::vector<float>> getScyllaVector(scylla_blas::index_type id) {
+        return float_vectors[id];
+    }
+
+    std::shared_ptr<scylla_blas::vector<double>> getScyllaDoubleVector(scylla_blas::index_type id) {
+        return double_vectors[id];
+    }
+
+    /** Sets values of vector of id `test_const::<T>_vector_indexes[index]`.
+     *
+     * @param values - values to init the vector with.
+     * @param index - index for float_vector_props array.
+     * @return shared_ptr of the initialized vector.
+     */
+    std::shared_ptr<scylla_blas::vector<float>> getScyllaVectorOf(scylla_blas::index_type id,
+                                                                  std::vector<float> values) {
+        std::shared_ptr<value_factory<float>> factory =
+                std::make_shared<preset_value_factory<float>>(values);
+        init_vector(float_vectors[id],
+                    values.size(),
+                    id,
+                    factory);
+        return float_vectors[id];
+    }
+
+    /** Sets values of vector of id `test_const::<T>_vector_indexes[index]`.
+     *
+     * @param values - values to init the vector with.
+     * @param index - index for float_vector_props array.
+     * @return shared_ptr of the initialized vector.
+     */
+    std::shared_ptr<scylla_blas::vector<double>> getScyllaVectorOf(scylla_blas::index_type id,
+                                                                   std::vector<double> values) {
+        std::shared_ptr<value_factory<double>> factory =
+                std::make_shared<preset_value_factory<double>>(values);
+        init_vector(double_vectors[id],
+                    values.size(),
+                    id,
+                    factory);
+        return double_vectors[id];
     }
 
     void init_vectors(const std::shared_ptr<scmd::session> &session) {
         std::cerr << "Initializing test vectors..." << std::endl;
-        scylla_blas::index_type len_A = test_const::test_vector_len_A;
 
         std::shared_ptr<value_factory<float>> f =
-                std::make_shared<value_factory<float>>(0, 9, 142);
-        init_vector(this->float_A, len_A, test_const::float_vector_1_id, f);
-        init_vector(this->float_A2, len_A, test_const::float_vector_2_id,  f);
-
+                std::make_shared<random_value_factory<float>>(0, 9, 142);
+        for (auto props : test_const::float_vector_props) {
+            init_vector(float_vectors[props.id], props.size, props.id, f);;
+        }
         std::shared_ptr<value_factory<double>> d =
-                std::make_shared<value_factory<double>>(0, 9, 242);
-        init_vector(this->double_A, len_A, test_const::double_vector_1_id, d);
-        init_vector(this->double_A2, len_A, test_const::double_vector_2_id, d);
+                std::make_shared<random_value_factory<double>>(0, 9, 242);
+        for (auto props : test_const::double_vector_props) {
+            init_vector(double_vectors[props.id], props.size, props.id, d);;
+        }
 
         std::cerr << "Test vectors initialized!" << std::endl;
     }
 };
 
 class vector_fixture_large : public vector_fixture {
-public:
-    std::shared_ptr<scylla_blas::vector<float>> float_B;
-    std::shared_ptr<scylla_blas::vector<float>> float_B2;
-
-    std::shared_ptr<scylla_blas::vector<double>> double_B;
-    std::shared_ptr<scylla_blas::vector<double>> double_B2;
-
-    vector_fixture_large() :
-            vector_fixture(),
-            float_B(nullptr),
-            float_B2(nullptr),
-            double_B(nullptr),
-            double_B2(nullptr) {
-        init_vectors(session);
-    }
-
-    void init_vectors(const std::shared_ptr<scmd::session> &session) {
-        std::cerr << "Initializing extra test vectors..." << std::endl;
-        scylla_blas::index_type len_B = test_const::test_vector_len_B;
-
-        std::shared_ptr<value_factory<float>> f =
-                std::make_shared<value_factory<float>>(0, 9, 323);
-
-        init_vector(this->float_B, len_B, test_const::float_vector_3_id,  f);
-        init_vector(this->float_B2, len_B, test_const::float_vector_4_id,  f);
-
-        std::shared_ptr<value_factory<double>> d =
-                std::make_shared<value_factory<double>>(0, 9, 323);
-
-        init_vector(this->double_B, len_B, test_const::double_vector_3_id, d);
-        init_vector(this->double_B2, len_B, test_const::double_vector_4_id, d);
-
-        std::cerr << "Test vectors initialized!" << std::endl;
-    }
 };
 
 class mixed_fixture : public vector_fixture_large, public matrix_fixture {
@@ -181,9 +189,8 @@ public:
     std::shared_ptr<scmd::session> session;
 
     mixed_fixture() :
-        vector_fixture_large(),
-        matrix_fixture(),
-        session(matrix_fixture::session),
-        scheduler(matrix_fixture::scheduler)
-    {}
+            vector_fixture_large(),
+            matrix_fixture(),
+            session(matrix_fixture::session),
+            scheduler(matrix_fixture::scheduler) {}
 };
