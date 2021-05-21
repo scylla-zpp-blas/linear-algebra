@@ -39,7 +39,7 @@ public:
     const index_type id;
     const index_type length;
 
-    /* 
+    /*
      * Length measured in segments is equal to the index of the last segment.
      */
     index_type get_segment_count() const {
@@ -95,11 +95,6 @@ class vector : public basic_vector {
         return result_vector;
     }
 
-    template<class... Args>
-    void exec_query(const scmd::prepared_query &query, Args... args) const {
-        _session->execute(query.get_statement().bind(args...));
-    }
-
 public:
     vector(const std::shared_ptr<scmd::session> &session, int64_t id) : basic_vector(session, id)
         { std::cerr << "A handle created to vector " << id << std::endl; }
@@ -121,7 +116,7 @@ public:
                 value   {1},
                 PRIMARY KEY (segment, idx));
         )", id, get_type_name<T>()));
-        
+
         session->execute(create_table.set_timeout(0));
 
         if (force_new) {
@@ -132,7 +127,7 @@ public:
 
         std::cerr << "Initialized vector " << id << std::endl;
     }
-    
+
     static vector init_and_return(const std::shared_ptr<scmd::session> &session,
                                   int64_t id, index_type length, bool force_new = true) {
         init(session, id, length, force_new);
@@ -178,11 +173,13 @@ public:
     }
 
     void clear_value(index_type x) {
-        exec_query(_clear_value_prepared, get_segment_index(x), x);
+        _session->execute(_clear_value_prepared.get_statement()
+                                  .bind (get_segment_index(x), x));
     }
 
     void clear_segment(index_type x) {
-        exec_query(_clear_segment_prepared, x);
+        _session->execute(_clear_segment_prepared.get_statement()
+                                  .bind(x));
     }
 
     void update_value(index_type x, T value) {
@@ -194,26 +191,21 @@ public:
         _session->execute(_insert_value_prepared.get_statement()
                                   .bind(get_segment_index(x), x, value));
     }
-    
+
     void update_values(const std::vector<vector_value<T>> &values) {
-        std::string updates = "";
-        
+        scmd::batch_query batch(CASS_BATCH_TYPE_UNLOGGED);
+
         for (auto &val: values) {
             if (std::abs(val.value) < EPSILON) {
-                updates += fmt::format( // If the inserted value is zero we delete the corresponding row.
-                        "DELETE FROM blas.vector_{} WHERE segment = {} AND idx = {} ; ",
-                        id, get_segment_index(val.index), val.index);
+                auto stmt = _clear_value_prepared.get_statement();
+                batch.add_statement(stmt.bind(get_segment_index(val.index), val.index));
             } else {
-                updates += fmt::format(
-                        "INSERT INTO blas.vector_{} (segment, idx, value) VALUES ({}, {}, {}); ",
-                        id, get_segment_index(val.index), val.index, val.value);
+                auto stmt = _insert_value_prepared.get_statement();
+                batch.add_statement(stmt.bind(get_segment_index(val.index), val.index, val.value));
             }
         }
 
-        /* Don't send a query if there's no need to do so. */
-        if (updates == "") return;
-
-        _session->execute("BEGIN BATCH " + updates + "APPLY BATCH;");
+        _session->execute(batch);
     }
 
     void update_segment(index_type x, vector_segment<T> segment_data) {
