@@ -14,8 +14,8 @@ void assert_height_length_equal(const scylla_blas::matrix<T> &A,
                                 const scylla_blas::vector<T> &Y,
                                 scylla_blas::TRANSPOSE transA = scylla_blas::NoTrans) {
     if (A.get_row_count(transA) != Y.length) {
-        throw (fmt::format("Matrix {0} of height {1} incompatible with vector {2} of length {3}!",
-                           A.id, A.get_row_count(transA), Y.id, Y.length));
+        throw (std::runtime_error(fmt::format("Matrix {0} of height {1} incompatible with vector {2} of length {3}!",
+                           A.id, A.get_row_count(transA), Y.id, Y.length)));
     }
 }
 
@@ -24,8 +24,8 @@ void assert_width_length_equal(const scylla_blas::matrix<T> &A,
                                const scylla_blas::vector<T> &Y,
                                scylla_blas::TRANSPOSE transA = scylla_blas::NoTrans) {
     if (A.get_column_count(transA) != Y.length) {
-        throw (fmt::format("Matrix {0} of width {1} incompatible with vector {2} of length {3}!",
-                           A.id, A.get_column_count(transA), Y.id, Y.length));
+        throw (std::runtime_error(fmt::format("Matrix {0} of width {1} incompatible with vector {2} of length {3}!",
+                           A.id, A.get_column_count(transA), Y.id, Y.length)));
     }
 }
 

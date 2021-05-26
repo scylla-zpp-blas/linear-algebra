@@ -13,8 +13,8 @@ template<class T>
 void assert_length_equal(const scylla_blas::vector<T> &X,
                          const scylla_blas::vector<T> &Y) {
     if (X.length != Y.length) {
-        throw (fmt::format("Vector {0} of length {1} incompatible with vector {2} of length {3}!",
-                           X.id, X.length, Y.id, Y.length));
+        throw (std::runtime_error(fmt::format("Vector {0} of length {1} incompatible with vector {2} of length {3}!",
+                           X.id, X.length, Y.id, Y.length)));
     }
 }
 
