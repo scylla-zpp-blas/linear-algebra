@@ -3,7 +3,6 @@
 
 #include "../test_utils.hh"
 #include "../fixture.hh"
-#include "../vector_utils.hh"
 
 BOOST_FIXTURE_TEST_CASE(vector_dot_float, vector_fixture)
 {
@@ -19,6 +18,26 @@ BOOST_FIXTURE_TEST_CASE(vector_dot_float, vector_fixture)
     float sum = 0;
     for (int i = 0; i < values1.size(); i++) {
         sum += values1[i] * values2[i];
+    }
+    std::cout << std::setprecision(20) << sum << "=sum\n";
+    std::cout << std::setprecision(20) << res << "=res\n";
+
+    // Then the dot product is correctly calculated and equal to sum.
+    BOOST_CHECK(abs(sum - res) < scylla_blas::epsilon);
+}
+
+BOOST_FIXTURE_TEST_CASE(vector_dot_float_same_obj, vector_fixture)
+{
+    // Given one vector of five values.
+    std::vector<float> values1 = {4.234f, 214.4243f, 342.0f, 0.0f, -1.0f};
+    auto vector1 = getScyllaVectorOf(test_const::float_vector_1_id, values1);
+
+    // When performing dot product of this vector x this vector.
+    float res = scheduler->sdot(*vector1, *vector1);
+
+    float sum = 0;
+    for (float v : values1) {
+        sum += v * v;
     }
     std::cout << std::setprecision(20) << sum << "=sum\n";
     std::cout << std::setprecision(20) << res << "=res\n";
