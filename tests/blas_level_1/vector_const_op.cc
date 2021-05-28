@@ -62,15 +62,15 @@ BOOST_FIXTURE_TEST_CASE(vector_sdsdot_float, vector_fixture)
     // of these two vectors.
     float res = scheduler->sdsdot(0.5f, *vector1, *vector2);
 
-    float sum = 0.5f;
+    double sum = 0.5f;
     for (int i = 0; i < values1.size(); i++) {
-        sum += values1[i] * values2[i];
+        sum += (double)values1[i] * (double)values2[i];
     }
     std::cout << std::setprecision(20) << sum << "=sum\n";
     std::cout << std::setprecision(20) << res << "=res\n";
 
     // Then the dot product is correctly calculated and equal to sum + value.
-    BOOST_CHECK(abs(sum - res) < scylla_blas::epsilon);
+    BOOST_CHECK(abs((float)sum - res) < scylla_blas::epsilon);
 }
 
 BOOST_FIXTURE_TEST_CASE(vector_dsdot_float, vector_fixture)
