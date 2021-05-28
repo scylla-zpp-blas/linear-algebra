@@ -97,7 +97,7 @@ U dot(const std::shared_ptr<scmd::session> &session, auto &task_details) {
         auto X_segm = X.get_segment(subtask.index);
         auto Y_segm = Y.get_segment(subtask.index);
 
-        return X_segm.dot_prod(Y_segm);
+        acc += X_segm.dot_prod(Y_segm);
     };
 
     consume_tasks(task_queue, dot_segment);

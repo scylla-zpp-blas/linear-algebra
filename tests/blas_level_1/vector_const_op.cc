@@ -3,6 +3,7 @@
 
 #include "../test_utils.hh"
 #include "../fixture.hh"
+#include "../vector_utils.hh"
 
 BOOST_FIXTURE_TEST_CASE(vector_dot_float, vector_fixture)
 {
@@ -19,6 +20,9 @@ BOOST_FIXTURE_TEST_CASE(vector_dot_float, vector_fixture)
     for (int i = 0; i < values1.size(); i++) {
         sum += values1[i] * values2[i];
     }
+
+    print_vector(*vector1);
+    print_vector(*vector2);
     std::cout << std::setprecision(20) << sum << "=sum\n";
     std::cout << std::setprecision(20) << res << "=res\n";
 
@@ -82,7 +86,7 @@ BOOST_FIXTURE_TEST_CASE(vector_dsdot_float, vector_fixture)
 
     double sum = 0.0f;
     for (int i = 0; i < values1.size(); i++) {
-        sum += values1[i] * values2[i];
+        sum += (double)values1[i] * (double)values2[i];
     }
     std::cout << std::setprecision(20) << sum << "=sum\n";
     std::cout << std::setprecision(20) << res << "=res\n";
