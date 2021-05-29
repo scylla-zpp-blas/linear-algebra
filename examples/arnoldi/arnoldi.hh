@@ -25,7 +25,7 @@ private:
     }
 
 public:
-    arnoldi(std::shared_ptr <scmd::session> session) : _session(session), _scheduler(session) {}
+    arnoldi(std::shared_ptr<scmd::session> session) : _session(session), _scheduler(session) {}
 
     /**
      *
@@ -46,16 +46,15 @@ public:
                  std::shared_ptr<scylla_blas::vector<float>> v,
                  std::shared_ptr<scylla_blas::vector<float>> q,
                  std::shared_ptr<scylla_blas::vector<float>> t) {
-        auto m = A->get_row_count();
         h->clear_all();
         Q->clear_all();
         _scheduler.scopy(*b, *q);
-        _scheduler.sscal(_scheduler.snrm2(*q), *q);
-        transfer_vector_to_row(Q, 0, q);
+        _scheduler.sscal(1.0f / _scheduler.snrm2(*q), *q);
+        transfer_vector_to_row(Q, 1, q);
 
-        for (scylla_blas::index_type k = 0; k < n; k++) {
+        for (scylla_blas::index_type k = 1; k <= n; k++) {
             _scheduler.sgemv(scylla_blas::NoTrans, 1.0f, *A, *q, 0, *v);
-            for (scylla_blas::index_type j = 0; j < k + 1; j++) {
+            for (scylla_blas::index_type j = 1; j <= k; j++) {
                 transfer_row_to_vector(Q, j, t);
                 h->insert_value(j, k, _scheduler.sdot(*t, *v));
                 transfer_row_to_vector(Q, j, t);
@@ -75,48 +74,55 @@ public:
         return; // Q, h;
     }
 
+    template<class T>
     struct containers {
-        std::shared_ptr<scylla_blas::matrix<float>> A;
-        std::shared_ptr<scylla_blas::vector<float>> b;
-        std::shared_ptr<scylla_blas::matrix<float>> h;
-        std::shared_ptr<scylla_blas::matrix<float>> Q;
-        std::shared_ptr<scylla_blas::vector<float>> v;
-        std::shared_ptr<scylla_blas::vector<float>> q;
-        std::shared_ptr<scylla_blas::vector<float>> t;
+        std::shared_ptr<scylla_blas::matrix<T>> A;
+        std::shared_ptr<scylla_blas::vector<T>> b;
+        std::shared_ptr<scylla_blas::matrix<T>> h;
+        std::shared_ptr<scylla_blas::matrix<T>> Q;
+        std::shared_ptr<scylla_blas::vector<T>> v;
+        std::shared_ptr<scylla_blas::vector<T>> q;
+        std::shared_ptr<scylla_blas::vector<T>> t;
 
-        containers(scylla_blas::index_type m, scylla_blas::index_type n) {
-            A = std::make_shared<scylla_blas::matirx>();
+        int64_t A_id,
+            b_id,
+            h_id,
+            Q_id,
+            v_id,
+            q_id,
+            t_id;
+
+        void init(std::shared_ptr<scmd::session> session, int64_t initial_id) {
+            A_id = initial_id++;
+            A = std::make_shared<scylla_blas::matrix<T>>(session, A_id);
+            b_id = initial_id++;
+            b = std::make_shared<scylla_blas::vector<T>>(session, b_id);
+            h_id = initial_id++;
+            h = std::make_shared<scylla_blas::matrix<T>>(session, h_id);
+            Q_id = initial_id++;
+            Q = std::make_shared<scylla_blas::matrix<T>>(session, Q_id);
+            v_id = initial_id++;
+            v = std::make_shared<scylla_blas::vector<T>>(session, v_id);
+            q_id = initial_id++;
+            q = std::make_shared<scylla_blas::vector<T>>(session, q_id);
+            t_id = initial_id++;
+            t = std::make_shared<scylla_blas::vector<T>>(session, t_id);
+        }
+
+        containers(std::shared_ptr<scmd::session> session, int64_t initial_id) {
+            init(session, initial_id);
+        }
+
+        containers(std::shared_ptr<scmd::session> session, int64_t initial_id, scylla_blas::index_type m, scylla_blas::index_type n) {
+            int64_t initial_id_bak = initial_id;
+            scylla_blas::matrix<T>::init(session, initial_id++, m, m);
+            scylla_blas::vector<T>::init(session, initial_id++, m);
+            scylla_blas::matrix<T>::init(session, initial_id++, n + 1, n);
+            scylla_blas::matrix<T>::init(session, initial_id++, m, n + 1);
+            scylla_blas::vector<T>::init(session, initial_id++, m);
+            scylla_blas::vector<T>::init(session, initial_id++, m);
+            scylla_blas::vector<T>::init(session, initial_id++, m);
+            init(session, initial_id_bak);
         }
     };
-
-
-    template<class T>
-    void init_vector(std::shared_ptr<scylla_blas::vector<T>> &vector_ptr,
-                     scylla_blas::index_type len, int64_t id,
-                     std::shared_ptr<value_factory<T>> value_factory = nullptr) {
-        scylla_blas::vector<T>::clear(_session, id);
-        vector_ptr = std::make_shared<scylla_blas::vector<T>>(_session, id);
-
-        if (value_factory != nullptr) {
-            std::vector<scylla_blas::vector_value<T>> values;
-
-            for (scylla_blas::index_type i = 1; i <= len; i++)
-                values.emplace_back(i, value_factory->next());
-
-            vector_ptr->update_values(values);
-        }
-    }
-
-    template<class T>
-    void init_matrix(std::shared_ptr<scylla_blas::matrix<T>>& matrix_ptr,
-                     scylla_blas::index_type w, scylla_blas::index_type h, int64_t id,
-                     std::shared_ptr<value_factory<T>> value_factory = nullptr) {
-        matrix_ptr = std::make_shared<scylla_blas::matrix<T>>(_session, id);
-        matrix_ptr->clear_all();
-
-        if (value_factory != nullptr) {
-            sparse_matrix_value_generator<T> gen(w, h, 5 * h, id, value_factory);
-            load_matrix_from_generator(_session, gen, *matrix_ptr);
-        }
-    }
 };
