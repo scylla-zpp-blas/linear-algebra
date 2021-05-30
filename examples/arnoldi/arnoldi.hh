@@ -10,22 +10,15 @@ private:
     scylla_blas::routine_scheduler _scheduler;
 
     static void transfer_row_to_vector(std::shared_ptr<scylla_blas::matrix<float>> mat,
-                                scylla_blas::index_type row_index,
-                                std::shared_ptr<scylla_blas::vector<float>> vec) {
-        scylla_blas::vector_segment<float> row = mat->get_row(row_index);
-        vec->clear_all();
-        vec->update_values(row);
-    }
+                                       scylla_blas::index_type row_index,
+                                       std::shared_ptr<scylla_blas::vector<float>> vec);
 
     static void transfer_vector_to_row(std::shared_ptr<scylla_blas::matrix<float>> mat,
                                        scylla_blas::index_type row_index,
-                                       std::shared_ptr<scylla_blas::vector<float>> vec) {
-        scylla_blas::vector_segment<float> row = vec->get_whole();
-        mat->update_row(row_index, row);
-    }
+                                       std::shared_ptr<scylla_blas::vector<float>> vec);
 
 public:
-    arnoldi(std::shared_ptr<scmd::session> session) : _session(session), _scheduler(session) {}
+    explicit arnoldi(std::shared_ptr<scmd::session> session);
 
     /**
      *
@@ -45,34 +38,7 @@ public:
                  std::shared_ptr<scylla_blas::matrix<float>> Q,
                  std::shared_ptr<scylla_blas::vector<float>> v,
                  std::shared_ptr<scylla_blas::vector<float>> q,
-                 std::shared_ptr<scylla_blas::vector<float>> t) {
-        h->clear_all();
-        Q->clear_all();
-        _scheduler.scopy(*b, *q);
-        _scheduler.sscal(1.0f / _scheduler.snrm2(*q), *q);
-        transfer_vector_to_row(Q, 1, q);
-
-        for (scylla_blas::index_type k = 1; k <= n; k++) {
-            _scheduler.sgemv(scylla_blas::NoTrans, 1.0f, *A, *q, 0, *v);
-            for (scylla_blas::index_type j = 1; j <= k; j++) {
-                transfer_row_to_vector(Q, j, t);
-                h->insert_value(j, k, _scheduler.sdot(*t, *v));
-                transfer_row_to_vector(Q, j, t);
-                _scheduler.saxpy(-h->get_value(j, k), *t, *v); // v = v - h[j, k] * Q[:, j]
-            }
-            h->insert_value(k + 1, k, _scheduler.snrm2(*v));
-            const float eps = 1e-12;
-            if (h->get_value(k + 1, k) > eps) {
-                _scheduler.scopy(*v, *q);
-                _scheduler.sscal(1.0f / h->get_value(k + 1, k), *q);
-                transfer_vector_to_row(Q, k + 1, q);
-            }
-            else {
-                return; // Q, h;
-            }
-        }
-        return; // Q, h;
-    }
+                 std::shared_ptr<scylla_blas::vector<float>> t);
 
     template<class T>
     struct containers {
@@ -85,12 +51,12 @@ public:
         std::shared_ptr<scylla_blas::vector<T>> t;
 
         int64_t A_id,
-            b_id,
-            h_id,
-            Q_id,
-            v_id,
-            q_id,
-            t_id;
+                b_id,
+                h_id,
+                Q_id,
+                v_id,
+                q_id,
+                t_id;
 
         void init(std::shared_ptr<scmd::session> session, int64_t initial_id) {
             A_id = initial_id++;
