@@ -1,6 +1,6 @@
 #pragma once
 
-#include <boost/thread/thread.hpp>
+#include <thread>
 #include <chrono>
 
 namespace scylla_blas {
@@ -12,7 +12,7 @@ inline int64_t get_timestamp() {
 }
 
 inline void wait_seconds(int64_t count) {
-    boost::this_thread::sleep(boost::posix_time::seconds(count));
+    std::this_thread::sleep_for(std::chrono::seconds(count));
 }
 
 }

@@ -47,7 +47,7 @@ target_link_libraries(scylla_blas PUBLIC scylla_modern_cpp_driver fmt::fmt)
 set(EXEC_SRC
         src/main.cc)
 
-find_package(Boost 1.60.0 COMPONENTS system thread filesystem unit_test_framework program_options REQUIRED )
+find_package(Boost 1.60.0 COMPONENTS system filesystem unit_test_framework program_options REQUIRED )
 add_executable(scylla_blas_worker "${EXEC_SRC}")
 target_include_directories(scylla_blas_worker PUBLIC "${Boost_INCLUDE_DIRS}")
 target_link_libraries(scylla_blas_worker PUBLIC scylla_blas "${Boost_LIBRARIES}")
