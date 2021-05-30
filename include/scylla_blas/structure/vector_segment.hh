@@ -82,8 +82,9 @@ public:
         return result;
     }
 
-    const T prod(const vector_segment &other) {
-        T ret = 0;
+    template<class ACC=T>
+    ACC dot_prod(const vector_segment &other) const {
+        ACC ret = 0;
 
         auto it_1 = this->begin();
         auto it_2 = other.begin();
@@ -94,13 +95,33 @@ public:
             } else if (it_1->index > it_2->index) {
                 it_2++;
             } else {
-                ret += it_1->value * it_2->value;
+                ret += (ACC)it_1->value * (ACC)it_2->value;
                 it_1++;
                 it_2++;
             }
         }
 
         return ret;
+    }
+
+    T mod2 () const {
+        T result = 0;
+
+        for (auto &val : *this) {
+            result += std::abs(val.value * val.value);
+        }
+
+        return result;
+    }
+
+    T nrminf () const {
+        T result = 0;
+
+        for (auto &val : *this) {
+            result += std::abs(val.value);
+        }
+
+        return result;
     }
 };
 

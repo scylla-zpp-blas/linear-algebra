@@ -9,70 +9,66 @@
 #include "scylla_queue.hh"
 
 #include "scylla_blas/matrix.hh"
-
-namespace scylla_blas {
-
-template<class T>
-using binary_consumer_t = void(const proto::task&, const matrix<T>&, const matrix<T>&, matrix<T>&);
-
-template<class T>
-void compute_product_block(const proto::task &task_info,
-                           const matrix<T> &A, const matrix<T> &B, matrix<T> &C) {
-    auto [row, column] = task_info.coord;
-    index_type blocks_to_multiply = A.get_blocks_width();
-    matrix_block<T> result_block({}, C.id, row, column);
-
-    for (index_type i = 1; i <= blocks_to_multiply; i++) {
-        matrix_block block_A = A.get_block(row, i);
-        matrix_block block_B = B.get_block(i, column);
-
-        result_block += block_A * block_B;
-    }
-
-    C.insert_block(row, column, result_block);
-}
-
-template<class T>
-void consume_binary(const std::shared_ptr<scmd::session> &session,
-                    const proto::task &task,
-                    binary_consumer_t<T>* consume) {
-    auto [task_queue_id, A_id, B_id, C_id] = task.blas_binary;
-
-    matrix<T> A(session, A_id);
-    matrix<T> B(session, B_id);
-    matrix<T> C(session, C_id);
-    auto task_queue = scylla_queue(session, task_queue_id);
-    std::cerr << "Linked to queue " << task_queue_id << std::endl;
-
-    while (true) {
-        auto opt = task_queue.consume();
-        if (!opt.has_value()) {
-            // The task queue is empty – nothing left to do.
-            break;
-        }
-        auto [task_id, binary_subtask] = opt.value();
-        std::cerr << "New secondary task obtained; id = " << task_id << std::endl;
-        consume(binary_subtask, A, B, C);
-    }
-}
-
-}
+#include "scylla_blas/vector.hh"
 
 namespace scylla_blas::worker {
 
-using procedure_t = void(const std::shared_ptr<scmd::session>&, const proto::task&);
+using procedure_t = std::optional<proto::response>(const std::shared_ptr<scmd::session>&, const proto::task&);
 
-template<class T>
-void gemm(const std::shared_ptr<scmd::session> &session, const proto::task &task) {
-    consume_binary(session, task, &compute_product_block<T>);
-}
+/* LEVEL 1 */
+procedure_t sswap, sscal, scopy, saxpy, sdot, sdsdot, snrm2, sasum, isamax;
+procedure_t dswap, dscal, dcopy, daxpy, ddot, dsdot, dnrm2, dasum, idamax;
 
-constexpr std::array<std::pair<proto::task_type, const procedure_t&>, 2> task_to_procedure = {{
-        { proto::SGEMM, gemm<float> },
-        { proto::DGEMM, gemm<double> }
-}};
+/* LEVEL 2 */
+procedure_t sgemv, sgbmv, strsv, stbsv, sger;
+procedure_t dgemv, dgbmv, dtrsv, dtbsv, dger;
 
-constexpr procedure_t& get_procedure_for_task(proto::task t) {
+/* LEVEL 3 */
+procedure_t sgemm, ssyrk, ssyr2k;
+procedure_t dgemm, dsyrk, dsyr2k;
+
+constexpr std::array<std::pair<proto::task_type, const procedure_t &>, 34> task_to_procedure =
+{{
+         {proto::SSWAP, sswap},
+         {proto::SSCAL, sscal},
+         {proto::SCOPY, scopy},
+         {proto::SAXPY, saxpy},
+         {proto::SDOT, sdot},
+         {proto::SDSDOT, sdsdot},
+         {proto::SNRM2, snrm2},
+         {proto::SASUM, sasum},
+         {proto::ISAMAX, isamax},
+
+         {proto::DSWAP, dswap},
+         {proto::DSCAL, dscal},
+         {proto::DCOPY, dcopy},
+         {proto::DAXPY, daxpy},
+         {proto::DDOT, ddot},
+         {proto::DSDOT, dsdot},
+         {proto::DNRM2, dnrm2},
+         {proto::DASUM, dasum},
+         {proto::IDAMAX, idamax},
+
+         {proto::SGEMV, sgemv},
+         {proto::DGEMV, dgemv},
+         {proto::SGBMV, sgemv},
+         {proto::DGBMV, dgemv},
+         {proto::STRSV, strsv},
+         {proto::DTRSV, dtrsv},
+         {proto::STBSV, stbsv},
+         {proto::DTBSV, dtbsv},
+         {proto::SGER, sger},
+         {proto::DGER, dger},
+
+         {proto::SGEMM, sgemm},
+         {proto::DGEMM, dgemm},
+         {proto::SSYRK, ssyrk},
+         {proto::DSYRK, dsyrk},
+         {proto::SSYR2K, ssyr2k},
+         {proto::DSYR2K, dsyr2k}
+ }};
+
+constexpr procedure_t& get_procedure_for_task(const proto::task &t) {
     auto pred = [=](auto &val){ return val.first == t.type; };
 
     auto it = std::find_if(task_to_procedure.begin(), task_to_procedure.end(), pred);
@@ -82,18 +78,6 @@ constexpr procedure_t& get_procedure_for_task(proto::task t) {
     }
 
     return it->second;
-}
-
-constexpr proto::task_type get_task_type_for_procedure(const procedure_t &proc) {
-    auto pred = [=](auto &val){ return val.second == proc; };
-
-    auto it = std::find_if(task_to_procedure.begin(), task_to_procedure.end(), pred);
-
-    if (it == task_to_procedure.end()) {
-        throw std::runtime_error("Procedure not implemented!");
-    }
-
-    return it->first;
 }
 
 }

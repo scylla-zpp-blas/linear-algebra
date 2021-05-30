@@ -1,6 +1,7 @@
 #pragma once
 
 #include "scylla_blas/config.hh"
+#include "const.hh"
 
 class global_config {
 public:

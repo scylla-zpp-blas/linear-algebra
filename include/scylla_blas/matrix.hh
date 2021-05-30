@@ -33,11 +33,27 @@ protected:
     scmd::prepared_query _get_row_prepared;
     scmd::prepared_query _get_block_prepared;
     scmd::prepared_query _insert_value_prepared;
+    scmd::prepared_query _clear_all_prepared;
+    scmd::prepared_query _clear_row_prepared;
 
     std::pair<index_type, index_type> get_dimensions() const;
 
+    /* Removes all values inserted into the matrix up to the point of execution.
+     * Doesn't remove the matrix itself or modify its metadata, so it doesn't need
+     * to be reinitialized for further usage.
+     *
+     * This static private method works same as the object-specific, public method "clear_all".
+     * The only difference is that a separate object needs not be initialized.
+     */
+    static void clear(const std::shared_ptr<scmd::session> &session, int64_t id);
+
+    /* Changes matrices' dimensions in the database.
+     * Those can be used by the user for custom assertions, although the class itself
+     * doesn't make ANY validity checks concerning dimensions of stored or returned data.
+     */
+    static void resize(const std::shared_ptr<scmd::session> &session,
+                       int64_t id, int64_t new_row_count, int64_t new_column_count);
 public:
-    // Should we make these private, with accessors?
     const index_type id;
     const index_type row_count;
     const index_type column_count;
@@ -45,12 +61,71 @@ public:
     /* Height/width measured in blocks is equal to the block index of terminal blocks.
      * E.g. in a matrix that is 2 blocks wide the rightmost column belongs to the block number 2.
      */
-    index_type get_blocks_width() const { return get_block_col(column_count); }
-    index_type get_blocks_height() const { return get_block_row(row_count); }
+    index_type get_blocks_width(TRANSPOSE trans = NoTrans) const {
+        if (trans != NoTrans) return get_blocks_height();
+
+        return get_block_col(column_count);
+    }
+    index_type get_blocks_height(TRANSPOSE trans = NoTrans) const {
+        if (trans != NoTrans) return get_blocks_width();
+
+        return get_block_row(row_count);
+    }
+
+    index_type get_column_count(TRANSPOSE trans = NoTrans) const {
+        if (trans != NoTrans) return get_row_count();
+        return column_count;
+    }
+    index_type get_row_count(TRANSPOSE trans = NoTrans) const {
+        if (trans != NoTrans) return get_column_count();
+        return row_count;
+    }
+
+    /* Returns the column range of possibly non-zero blocks for given block_row,
+     * assuming that the matrix is banded, with given KL and KU parameters
+     */
+    std::pair<index_type, index_type> get_banded_block_limits_for_row(index_type block_row, index_type KL,
+                                                                      index_type KU, TRANSPOSE trans = NoTrans) const {
+        index_type start = std::max(block_row - ceil_div(KL, BLOCK_SIZE), index_type(0));
+        index_type end = std::min(get_blocks_width(trans), block_row + ceil_div(KU, BLOCK_SIZE));
+
+        return {start, end};
+    }
+
+    /* Returns the row range of possibly non-zero blocks for given block_column,
+     * assuming that the matrix is banded, with given KL and KU parameters
+     */
+    std::pair<index_type, index_type> get_banded_block_limits_for_column(index_type block_column, index_type KL,
+                                                                         index_type KU, TRANSPOSE trans = NoTrans) const {
+        index_type start = std::max(block_column - ((KU - 1) / BLOCK_SIZE + 1), index_type(0));
+        index_type end = std::min(get_blocks_height(trans), block_column + KL / BLOCK_SIZE);
+
+        return {start, end};
+    }
 
     static void init_meta(const std::shared_ptr<scmd::session> &session);
 
     basic_matrix(const std::shared_ptr<scmd::session> &session, int64_t id);
+    basic_matrix(basic_matrix&& other) :
+        _session(std::move(other._session)),
+        _get_meta_prepared(std::move(other._get_meta_prepared)),
+        _get_value_prepared(std::move(other._get_value_prepared)),
+        _get_row_prepared(std::move(other._get_row_prepared)),
+        _get_block_prepared(std::move(other._get_block_prepared)),
+        _insert_value_prepared(std::move(other._insert_value_prepared)),
+        _clear_all_prepared(std::move(other._clear_all_prepared)),
+        _clear_row_prepared(std::move(other._clear_row_prepared)),
+        id (other.id),
+        row_count (other.row_count),
+        column_count(other.column_count)
+    { }
+
+    bool operator==(const basic_matrix &other) const {
+        return this->id == other.id;
+    }
+
+    void clear_row(index_type x);
+    void clear_all();
 };
 
 template<class T>
@@ -74,6 +149,8 @@ public:
     matrix(const std::shared_ptr<scmd::session> &session, int64_t id) : basic_matrix(session, id)
         { std::cerr << "A handle created to matrix " << id << std::endl; }
 
+    matrix(matrix &&other) : basic_matrix(other) {}
+
     /* We don't want to implicitly initialize a handle (somewhat costly) if it is discarded by the user.
      * Instead, let's have a version of init that does it explicitly, and a version that doesn't do it at all.
      * TODO: Can we do the same with one function and attributes for the compiler?
@@ -95,17 +172,10 @@ public:
         session->execute(create_table.set_timeout(0));
 
         if (force_new) {
-            std::cerr << "Clearing matrix contents..." << std::endl;
-            scmd::statement drop_table(fmt::format("TRUNCATE blas.matrix_{0};", id));
-            session->execute(drop_table.set_timeout(0));
+            clear(session, id);
         }
 
-        session->execute(fmt::format(R"(
-            UPDATE blas.matrix_meta
-                SET     row_count      = {1},
-                        column_count   = {2}
-                WHERE   id             = {0};
-        )", id, row_count, column_count));
+        resize(session, id, row_count, column_count);
 
         std::cerr << "Initialized matrix " << id << std::endl;
     }
@@ -116,7 +186,9 @@ public:
         return matrix<T>(session, id);
     }
 
-    T get_value(index_type x, index_type y) const {
+    T get_value(index_type x, index_type y, TRANSPOSE trans = NoTrans) const {
+        if (trans != NoTrans) std::swap(x, y);
+
         auto ans_vec = get_vals_for_query(_get_value_prepared, get_block_row(x), get_block_col(y), x, y);
 
         if (!ans_vec.empty()) {
@@ -137,7 +209,9 @@ public:
         return answer;
     }
 
-    matrix_block<T> get_block(index_type x, index_type y) const {
+    matrix_block<T> get_block(index_type x, index_type y, TRANSPOSE trans = NoTrans) const {
+        if (trans != NoTrans) std::swap(x, y);
+
         auto block_values = get_vals_for_query(_get_block_prepared, x, y);
 
         /* Move by offset – a block is an independent unit.
@@ -159,7 +233,7 @@ public:
             val.col_index -= offset_y;
         }
 
-        return scylla_blas::matrix_block(block_values, id, x, y);
+        return scylla_blas::matrix_block(block_values, id, x, y, trans);
     }
 
     void insert_value(index_type x, index_type y, T value) {
@@ -180,6 +254,7 @@ public:
         std::string inserts = "";
 
         for (auto &val: values) {
+            /* We do not want to store values equal or close to 0 */
             if (std::abs(val.value) < EPSILON) continue;
 
             inserts += fmt::format(
@@ -194,6 +269,7 @@ public:
         _session->execute("BEGIN BATCH " + inserts + "APPLY BATCH;");
     }
 
+    /* Inserts a given block into the matrix. Old values will not be modified or deleted */
     void insert_row(index_type x, const vector_segment<T> &row_data) {
         std::vector<matrix_value<T>> values;
 
@@ -203,6 +279,13 @@ public:
         insert_values(values);
     }
 
+    void update_row(index_type x, const vector_segment<T> &row_data) {
+        clear_row(x);
+        insert_row(x, row_data);
+    }
+
+    /* Inserts a given block into the matrix. Old values will not be modified or deleted */
+    /* TODO: investigate */
     void insert_block(index_type row, index_type column, const matrix_block<T> &block) {
         std::vector<matrix_value<T>> values = block.get_values_raw();
         index_type offset_row = (row - 1) * BLOCK_SIZE;

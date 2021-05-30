@@ -7,13 +7,17 @@
 namespace {
 
 void assert_multiplication_compatible(const enum scylla_blas::TRANSPOSE TransA, const scylla_blas::basic_matrix &A,
-                                      const scylla_blas::basic_matrix &B, const enum scylla_blas::TRANSPOSE TransB) {
+                                      const scylla_blas::basic_matrix &B, const enum scylla_blas::TRANSPOSE TransB,
+                                      const scylla_blas::basic_matrix &C) {
     using namespace scylla_blas;
 
-    index_type dim_a = (TransA == NoTrans ? A.column_count : A.row_count);
-    index_type dim_b = (TransB == NoTrans ? B.row_count : B.column_count);
+    int row_a = A.row_count; int col_a = A.column_count;
+    if (TransA != NoTrans) std::swap(row_a, col_a);
 
-    if (dim_a != dim_b) {
+    int row_b = B.row_count; int col_b = B.column_count;
+    if (TransB != NoTrans) std::swap(row_b, col_b);
+
+    if (row_b != col_a) {
         throw std::runtime_error(
             fmt::format(
                     "Incompatible matrices {} of size {}x{}{} and {} of size {}x{}{}: multiplication impossible!",
@@ -22,70 +26,152 @@ void assert_multiplication_compatible(const enum scylla_blas::TRANSPOSE TransA, 
             )
         );
     }
-}
 
+    if (row_a != C.row_count || col_b != C.column_count) {
+        throw std::runtime_error(
+                fmt::format(
+                        "Matrix {} of size {}x{} incompatible with multiplication result of matrices sized {}x{} and {}x{}!",
+                        C.id, C.row_count, C.column_count, row_a, col_a, row_b, col_b
+                )
+        );
+    }
 }
 
 template<class T>
-scylla_blas::matrix<T>
-scylla_blas::routine_scheduler::gemm(const enum scylla_blas::ORDER Order,
-                                     const enum scylla_blas::TRANSPOSE TransA,
-                                     const enum scylla_blas::TRANSPOSE TransB,
-                                     const T alpha, const scylla_blas::matrix<T> &A,
-                                     const scylla_blas::matrix<T> &B, const T beta) {
-    assert_multiplication_compatible(TransA, A, B, TransB);
-
-    int64_t base_id = get_timestamp();
-    int64_t C_id = base_id;
-
-    matrix<T> C = matrix<T>::init_and_return(this->_session, C_id, A.row_count, B.column_count);
-
+void add_blocks_as_queue_tasks(scylla_blas::scylla_queue &queue,
+                               const scylla_blas::matrix<T> &C) {
     std::cerr << "Preparing multiplication task..." << std::endl;
-    for (index_type i = 1; i <= C.get_blocks_height(); i++) {
-        for (index_type j = 1; j <= C.get_blocks_width(); j++) {
-            this->_subtask_queue.produce({
-                 .type = proto::NONE,
+    for (scylla_blas::index_type i = 1; i <= C.get_blocks_height(); i++) {
+        for (scylla_blas::index_type j = 1; j <= C.get_blocks_width(); j++) {
+            queue.produce({
+                 .type = scylla_blas::proto::NONE,
                  .coord {
                      .block_row = i,
                      .block_column = j
                  }});
         }
     }
+}
 
-    std::cerr << "Ordering multiplication to the workers" << std::endl;
-    std::vector<int64_t> task_ids;
-    for (index_type i = 0; i < LIMIT_WORKER_CONCURRENCY; i++) {
-        task_ids.push_back(_main_worker_queue.produce({
-             .type = worker::get_task_type_for_procedure(worker::gemm<T>),
-             .blas_binary {
-                 .task_queue_id = this->_subtask_queue_id,
-                 .A_id = A.id,
-                 .B_id = B.id,
-                 .C_id = C_id
-             }}));
-    }
+}
 
-    std::cerr << "Waiting for workers to complete the order..." << std::endl;
-    for (int64_t id : task_ids) {
-        while (!_main_worker_queue.is_finished(id)) {
-            scylla_blas::wait_seconds(WORKER_SLEEP_TIME_SECONDS);
-        }
-    }
+template<>
+float scylla_blas::routine_scheduler::produce_matrix_tasks(const proto::task_type type,
+                                                           const int64_t A_id, const enum TRANSPOSE TransA, const float alpha,
+                                                           const int64_t B_id, const enum TRANSPOSE TransB, const float beta,
+                                                           const int64_t C_id, float acc, updater<float> update) {
+    return produce_and_wait(this->_main_worker_queue, proto::task {
+        .type = type,
+        .matrix_task_float = {
+            .task_queue_id = this->_subtask_queue_id,
+
+            .A_id = A_id,
+            .TransA = TransA,
+            .alpha = alpha,
+
+            .B_id = B_id,
+            .TransB = TransB,
+            .beta = beta,
+
+            .C_id = C_id
+        }}, LIMIT_WORKER_CONCURRENCY, WORKER_SLEEP_TIME_SECONDS, acc, update);
+}
+
+template<>
+double scylla_blas::routine_scheduler::produce_matrix_tasks(const proto::task_type type,
+                                                            const int64_t A_id, const enum TRANSPOSE TransA, const double alpha,
+                                                            const int64_t B_id, const enum TRANSPOSE TransB, const double beta,
+                                                            const int64_t C_id, double acc, updater<double> update) {
+    return produce_and_wait(this->_main_worker_queue, proto::task{
+        .type = type,
+        .matrix_task_double = {
+            .task_queue_id = this->_subtask_queue_id,
+
+            .A_id = A_id,
+            .TransA = TransA,
+            .alpha = alpha,
+
+            .B_id = B_id,
+            .TransB = TransB,
+            .beta = beta,
+
+            .C_id = C_id
+        }}, LIMIT_WORKER_CONCURRENCY, WORKER_SLEEP_TIME_SECONDS, acc, update);
+}
+
+#define NONE 0
+
+scylla_blas::matrix<float>&
+scylla_blas::routine_scheduler::sgemm(const enum TRANSPOSE TransA, const enum TRANSPOSE TransB,
+                                      const float alpha, const matrix<float> &A,
+                                      const matrix<float> &B,
+                                      const float beta, scylla_blas::matrix<float> &C) {
+    assert_multiplication_compatible(TransA, A, B, TransB, C);
+    add_blocks_as_queue_tasks(this->_subtask_queue, C);
+
+    produce_matrix_tasks<float>(proto::SGEMM, A.id, TransA, alpha, B.id, TransB, beta, C.id);
 
     return C;
 }
 
-/* TODO: Can we use define? Or in any other way avoid these boilerplatey signatures? */
-scylla_blas::matrix<float>
-scylla_blas::routine_scheduler::sgemm(const enum ORDER Order, const enum TRANSPOSE TransA, const enum TRANSPOSE TransB,
-                                      const float alpha, const matrix<float> &A,
-                                      const matrix<float> &B, const float beta) {
-    return gemm<float>(Order, TransA, TransB, alpha, A, B, beta);
+scylla_blas::matrix<double>&
+scylla_blas::routine_scheduler::dgemm(const enum TRANSPOSE TransA, const enum TRANSPOSE TransB,
+                                      const double alpha, const matrix<double> &A,
+                                      const matrix<double> &B, const double beta, scylla_blas::matrix<double> &C) {
+    assert_multiplication_compatible(TransA, A, B, TransB, C);
+    add_blocks_as_queue_tasks(this->_subtask_queue, C);
+
+    produce_matrix_tasks<double>(proto::DGEMM, A.id, TransA, alpha, B.id, TransB, beta, C.id);
+
+    return C;
 }
 
-scylla_blas::matrix<double>
-scylla_blas::routine_scheduler::dgemm(const enum ORDER Order, const enum TRANSPOSE TransA, const enum TRANSPOSE TransB,
-                                      const double alpha, const matrix<double> &A,
-                                      const matrix<double> &B, const double beta) {
-    return gemm<double>(Order, TransA, TransB, alpha, A, B, beta);
+scylla_blas::matrix<float>&
+scylla_blas::routine_scheduler::ssyrk(__attribute__((unused)) const enum UPLO Uplo,
+                                      const enum TRANSPOSE TransA, const float alpha, const matrix<float> &A,
+                                      const float beta, matrix<float> &C) {
+    assert_multiplication_compatible(TransA, A, A, anti_trans(TransA), C);
+    add_blocks_as_queue_tasks(this->_subtask_queue, C);
+
+    produce_matrix_tasks<float>(proto::SSYRK, A.id, TransA, alpha, NONE, NoTrans, beta, C.id);
+
+    return C;
+}
+
+scylla_blas::matrix<double>&
+scylla_blas::routine_scheduler::dsyrk(__attribute__((unused)) const enum UPLO Uplo,
+                                      const enum TRANSPOSE TransA, const double alpha, const matrix<double> &A,
+                                      const double beta, matrix<double> &C) {
+    assert_multiplication_compatible(TransA, A, A, anti_trans(TransA), C);
+    add_blocks_as_queue_tasks(this->_subtask_queue, C);
+
+    produce_matrix_tasks<float>(proto::DSYRK, A.id, TransA, alpha, NONE, NoTrans, beta, C.id);
+
+    return C;
+}
+
+scylla_blas::matrix<float>&
+scylla_blas::routine_scheduler::ssyr2k(__attribute__((unused)) const enum UPLO Uplo,
+                                      const enum TRANSPOSE Trans, const float alpha, const matrix<float> &A,
+                                      const float beta, const matrix<float> &B, matrix<float> &C) {
+    assert_multiplication_compatible(Trans, A, B, anti_trans(Trans), C);
+    assert_multiplication_compatible(anti_trans(Trans), A, B, Trans, C);
+    add_blocks_as_queue_tasks(this->_subtask_queue, C);
+
+    produce_matrix_tasks<float>(proto::SSYR2K, A.id, Trans, alpha, B.id, NoTrans, beta, C.id);
+
+    return C;
+}
+
+scylla_blas::matrix<double>&
+scylla_blas::routine_scheduler::dsyr2k(__attribute__((unused)) const enum UPLO Uplo,
+                                      const enum TRANSPOSE TransA, const double alpha, const matrix<double> &A,
+                                      const double beta, const matrix<double> &B, matrix<double> &C) {
+    assert_multiplication_compatible(Trans, A, B, anti_trans(Trans), C);
+    assert_multiplication_compatible(anti_trans(Trans), A, B, Trans, C);
+    add_blocks_as_queue_tasks(this->_subtask_queue, C);
+
+    produce_matrix_tasks<float>(proto::DSYR2K, A.id, Trans, alpha, B.id, NoTrans, beta, C.id);
+
+    return C;
 }

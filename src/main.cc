@@ -12,6 +12,7 @@ namespace po = boost::program_options;
 
 #include "scylla_blas/config.hh"
 #include "scylla_blas/matrix.hh"
+#include "scylla_blas/vector.hh"
 #include "scylla_blas/structure/matrix_block.hh"
 
 struct options {
@@ -72,9 +73,9 @@ void parse_arguments(int ac, char *av[], options &options) {
 
 void init(const struct options& op) {
     std::cerr << "Connecting to " << op.host << ":" << op.port << "..." << std::endl;
+    auto session = std::make_shared<scmd::session>(op.host, std::to_string(op.port));
 
     std::cerr << "Initializing blas namespace..." << std::endl;
-    auto session = std::make_shared<scmd::session>(op.host, std::to_string(op.port));
     std::string init_namespace = "CREATE KEYSPACE IF NOT EXISTS blas WITH REPLICATION = {"
                                  "  'class' : 'SimpleStrategy',"
                                  "  'replication_factor' : 1"
@@ -86,6 +87,11 @@ void init(const struct options& op) {
 
     std::cerr << "Initializing matrix database..." << std::endl;
     scylla_blas::basic_matrix::init_meta(session);
+    
+    std::cerr << "Initializing vector database..." << std::endl;
+    scylla_blas::basic_vector::init_meta(session);
+    scylla_blas::vector<float>::init(session, HELPER_FLOAT_VECTOR_ID, 0);
+    scylla_blas::vector<double>::init(session, HELPER_DOUBLE_VECTOR_ID, 0);
 
     std::cerr << "Creating main task queue..." << std::endl;
     scylla_blas::scylla_queue::create_queue(session, DEFAULT_WORKER_QUEUE_ID, true, true);
@@ -112,7 +118,7 @@ void worker(const struct options& op) {
     std::cerr << "Accessing default task queue..." << std::endl;
     auto base_queue = scylla_blas::scylla_queue(session, DEFAULT_WORKER_QUEUE_ID);
 
-    std::cerr << "Starting worker loop...\n";
+    std::cerr << "Starting worker loop..." << std::endl;
     for (;;) {
         auto opt = base_queue.consume();
         if (!opt.has_value()) {
@@ -124,12 +130,21 @@ void worker(const struct options& op) {
 
         int64_t attempts;
         for (attempts = 0; attempts <= MAX_WORKER_RETRIES; attempts++) {
+            scylla_blas::worker::procedure_t& proc = scylla_blas::worker::get_procedure_for_task(task_data);
+
             /* Keep trying until the task is finished – otherwise it will be lost and never marked as finished */
             /* TODO: scylla_queue.mark_as_failed()? */
             try {
-                auto proc = scylla_blas::worker::get_procedure_for_task(task_data);
-                proc(session, task_data);
-                base_queue.mark_as_finished(task_id);
+                auto result = proc(session, task_data);
+
+                if (result.has_value()) {
+                    /* The procedure has generated a partial result to be returned */
+                    result.value().type = scylla_blas::proto::R_SOME; /* We don't really need result types beyond NONE and SOME */
+                    base_queue.mark_as_finished(task_id, result.value());
+                } else {
+                    base_queue.mark_as_finished(task_id);
+                }
+
                 break;
             } catch (const std::exception &e) {
                 std::cerr << "Task " << task_id << " failed. Reason: " << e.what() << std::endl;
