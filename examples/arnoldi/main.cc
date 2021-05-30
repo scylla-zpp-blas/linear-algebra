@@ -8,7 +8,6 @@
 #include <scylla_blas/vector.hh>
 #include "generators/sparse_matrix_value_generator.hh"
 #include "generators/random_value_factory.hh"
-#include <iostream>
 #include <iomanip>
 
 template<class T>
@@ -28,25 +27,31 @@ void init_matrix(std::shared_ptr<scmd::session> session,
                  int64_t id,
                  std::shared_ptr<value_factory<T>> value_factory = nullptr);
 
+const int64_t INITIAL_MATRIX_ID = 123456;
+
 int main(int argc, char **argv) {
-    if (argc <= 1) {
-        throw std::runtime_error("You need to specify ip in the command line: " + std::string(argv[0]) + " scylla_ip [scylla_port] [m] [n]");
+    if (argc <= 4) {
+        throw std::runtime_error("You need to specify ip in the command line: " + std::string(argv[0]) + " scylla_ip scylla_port m n");
     }
-    scylla_blas::index_type m = 20, n = 18;
+    scylla_blas::index_type m, n;
     std::string scylla_ip = argv[1];
-    std::string scylla_port = argc > 2 ? argv[2] : std::to_string(SCYLLA_DEFAULT_PORT);
-    m = argc > 4 ? std::stoi(argv[3]) : 20;
-    n = argc > 4 ? std::stoi(argv[4]) : 18;
+    std::string scylla_port = argv[2];
+    m = std::stoi(argv[3]);
+    n = std::stoi(argv[4]);
     if (n > m) {
         throw std::runtime_error("n cannot be greater than m");
     }
 
     auto session = std::make_shared<scmd::session>(scylla_ip, scylla_port);
 
-    arnoldi::containers c = arnoldi::containers<float>(session, 123456, m, n);
+    arnoldi::containers c = arnoldi::containers<float>(session, INITIAL_MATRIX_ID, m, n);
+
+    // Initialize matrix A with random values.
     std::shared_ptr<value_factory<float>> f =
             std::make_shared<random_value_factory<float>>(0, 9, 142);
     init_matrix<float>(session, c.A, m, m, c.A_id, f);
+
+    // Set vector to (1, 0, 0 ... 0).
     c.b->update_value(1, 1.0f);
 
     auto arnoldi_iteration = arnoldi(session);
@@ -108,6 +113,11 @@ void load_matrix_from_generator(const std::shared_ptr<scmd::session> &session, m
     std::cerr << "Loaded a matrix: " << matrix.id << " from a generator" << std::endl;
 }
 
+size_t suggest_number_of_values(scylla_blas::index_type w, scylla_blas::index_type h) {
+    size_t ret = w * h / 5; // 20% load
+    return (ret > 0 ? ret : 1);
+}
+
 template<class T>
 void init_matrix(std::shared_ptr<scmd::session> session,
                  std::shared_ptr<scylla_blas::matrix<T>> &matrix_ptr,
@@ -119,7 +129,7 @@ void init_matrix(std::shared_ptr<scmd::session> session,
     matrix_ptr->clear_all();
 
     if (value_factory != nullptr) {
-        sparse_matrix_value_generator<T> gen(w, h, w * h / 5, id, value_factory);
+        sparse_matrix_value_generator<T> gen = sparse_matrix_value_generator<T>(w, h, suggest_number_of_values(w, h), id, value_factory);
         load_matrix_from_generator(session, gen, *matrix_ptr);
     }
 }
