@@ -46,7 +46,6 @@ void arnoldi::compute(std::shared_ptr<scylla_blas::matrix<float>> A,
             std::cout << "Value insert\n";
             h->insert_value(j, k, _scheduler.sdot(*t, *v));
             std::cout << "Value insert done\n";
-            transfer_row_to_vector(Q, j, t);
             std::cout << "Saxpy\n";
             _scheduler.saxpy(-h->get_value(j, k), *t, *v); // v = v - h[j, k] * Q[:, j]
             std::cout << "Saxpy DONE\n";
