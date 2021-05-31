@@ -56,3 +56,5 @@ target_link_libraries(scylla_blas_worker PUBLIC scylla_blas "${Boost_LIBRARIES}"
 if (CMAKE_CURRENT_SOURCE_DIR STREQUAL CMAKE_SOURCE_DIR)
     add_subdirectory(tests)
 endif ()
+
+add_subdirectory(examples)
