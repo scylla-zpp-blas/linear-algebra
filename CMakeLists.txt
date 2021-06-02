@@ -88,3 +88,6 @@ endif ()
 if (BUILD_EXAMPLES)
     add_subdirectory(examples)
 endif ()
+
+# Use default or specified value (https://stackoverflow.com/questions/53159371/how-to-create-a-cmake-variable-that-takes-a-default-value-unless-explicitly-over)
+unset(CMAKE_BUILD_TYPE CACHE)
