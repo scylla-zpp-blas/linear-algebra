@@ -8,7 +8,7 @@
 #include <fmt/format.h>
 #include <scmd.hh>
 
-#include "scylla_blas/utils/logging.hh"
+#include "scylla_blas/logging/logging.hh"
 #include "scylla_blas/structure/matrix_block.hh"
 #include "scylla_blas/structure/matrix_value.hh"
 #include "scylla_blas/structure/vector_segment.hh"

@@ -7,7 +7,7 @@
 #include "scylla_blas/utils/scylla_types.hh"
 #include "scylla_blas/utils/utils.hh"
 
-#include "generators/matrix_value_generator.hh"
+#include "matrix_value_generator.hh"
 
 template <class T>
 void load_matrix_from_generator(const std::shared_ptr<scmd::session> &session,

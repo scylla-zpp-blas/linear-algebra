@@ -8,7 +8,7 @@
 
 #include "scylla_blas/queue/worker_proc.hh"
 #include "scylla_blas/queue/scylla_queue.hh"
-#include "scylla_blas/utils/logging.hh"
+#include "scylla_blas/logging/logging.hh"
 
 #include "scylla_blas/config.hh"
 #include "scylla_blas/matrix.hh"

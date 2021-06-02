@@ -121,7 +121,7 @@ scylla_blas::routine_scheduler::sgemv(const enum TRANSPOSE TransA,
                                      const vector<float> &X, const float beta,
                                      vector<float> &Y) {
     if (X == Y) {
-        throw("Invalid operation: const vector X passed equal to non-const vector Y in sgemv");
+        throw std::runtime_error("Invalid operation: const vector X passed equal to non-const vector Y in sgemv");
     }
 
     assert_width_length_equal(A, X, TransA);
@@ -139,7 +139,7 @@ scylla_blas::routine_scheduler::dgemv(const enum TRANSPOSE TransA,
                                      const vector<double> &X, const double beta,
                                      vector<double> &Y) {
     if (X == Y) {
-        throw("Invalid operation: const vector X passed equal to non-const vector Y in dgemv");
+        throw std::runtime_error("Invalid operation: const vector X passed equal to non-const vector Y in dgemv");
     }
 
     assert_width_length_equal(A, X, TransA);
@@ -157,7 +157,7 @@ scylla_blas::routine_scheduler::sgbmv(const enum TRANSPOSE TransA,
                                       const vector<float> &X, const float beta,
                                       vector<float> &Y) {
     if (X == Y) {
-        throw("Invalid operation: const vector X passed equal to non-const vector Y in sgbmv");
+        throw std::runtime_error("Invalid operation: const vector X passed equal to non-const vector Y in sgbmv");
     }
 
     assert_width_length_equal(A, X, TransA);
@@ -175,7 +175,7 @@ scylla_blas::routine_scheduler::dgbmv(const enum TRANSPOSE TransA,
                                       const vector<double> &X, const double beta,
                                       vector<double> &Y) {
     if (X == Y) {
-        throw("Invalid operation: const vector X passed equal to non-const vector Y in dgbmv");
+        throw std::runtime_error("Invalid operation: const vector X passed equal to non-const vector Y in dgbmv");
     }
 
     assert_width_length_equal(A, X, TransA);

@@ -7,7 +7,7 @@
 #include <fmt/format.h>
 #include <scmd.hh>
 
-#include "scylla_blas/utils/logging.hh"
+#include "scylla_blas/logging/logging.hh"
 #include "scylla_blas/structure/vector_segment.hh"
 #include "scylla_blas/structure/vector_value.hh"
 #include "scylla_blas/utils/scylla_types.hh"

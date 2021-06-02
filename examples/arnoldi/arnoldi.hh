@@ -1,7 +1,7 @@
 #pragma once
 
-#include "generators/value_factory.hh"
-#include "generators/sparse_matrix_value_generator.hh"
+#include "value_factory.hh"
+#include "sparse_matrix_value_generator.hh"
 #include <scylla_blas/routines.hh>
 
 class arnoldi {
