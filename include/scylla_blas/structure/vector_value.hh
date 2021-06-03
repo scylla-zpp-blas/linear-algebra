@@ -6,11 +6,11 @@ namespace scylla_blas {
 
 template<class T>
 struct vector_value {
-    index_type index;
+    index_t index;
     T value;
 
-    constexpr vector_value(const index_type index, const T value) : index(index), value(value) { }
-    constexpr explicit vector_value(const std::pair<index_type, T>& p) : index(p.first), value(p.second) { }
+    constexpr vector_value(const index_t index, const T value) : index(index), value(value) { }
+    constexpr explicit vector_value(const std::pair<index_t, T>& p) : index(p.first), value(p.second) { }
 };
 
 }

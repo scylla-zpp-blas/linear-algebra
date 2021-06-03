@@ -189,15 +189,15 @@ struct task {
     task_type type;
 
     union {
-        index_type index;
+        index_t index;
 
         struct {
             int64_t data;
         } basic;
 
         struct {
-            index_type block_row;
-            index_type block_column;
+            index_t block_row;
+            index_t block_column;
         } coord;
 
         struct {
@@ -223,7 +223,7 @@ struct task {
         struct {
             int64_t task_queue_id;
 
-            index_type KL, KU;
+            index_t KL, KU;
 
             UPLO Uplo;
             DIAG Diag;
@@ -241,7 +241,7 @@ struct task {
         struct {
             int64_t task_queue_id;
 
-            index_type KL, KU;
+            index_t KL, KU;
 
             int64_t A_id;
             TRANSPOSE TransA;
@@ -298,7 +298,7 @@ struct response {
         double result_double;
 
         struct {
-            index_type index;
+            index_t index;
             float value;
         } result_max_float_index;
 
@@ -313,7 +313,7 @@ struct response {
         } result_double_pair;
 
         struct {
-            index_type index;
+            index_t index;
             double value;
         } result_max_double_index;
 

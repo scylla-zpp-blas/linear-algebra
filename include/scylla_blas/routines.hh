@@ -27,6 +27,15 @@ class routine_scheduler {
     template<class T>
     using updater = std::function<void(T&, const proto::response&)>;
 
+    std::shared_ptr <scmd::session> _session;
+
+    const int64_t _subtask_queue_id;
+    scylla_queue _subtask_queue;
+    scylla_queue _main_worker_queue;
+
+    int64_t _max_used_workers;
+    int64_t _scheduler_sleep_time;
+
     /* Produces `cnt` copies of `task`, waits until all of them are completed.
      * Partial results from completion reports are accumulated in `acc`
      * with `update`, and returned in the end.
@@ -37,7 +46,7 @@ class routine_scheduler {
     template<class T>
     T produce_and_wait(scylla_blas::scylla_queue &queue,
                        const scylla_blas::proto::task &task,
-                       scylla_blas::index_type cnt, int64_t sleep_time,
+                       scylla_blas::index_t cnt, int64_t sleep_time,
                        T acc, updater<T> update);
 
     /* Produces a number of vector-only primary tasks for workers, waits
@@ -55,7 +64,7 @@ class routine_scheduler {
      */
     template<class T>
     T produce_mixed_tasks(const proto::task_type type,
-                          const index_type KL, const index_type KU,
+                          const index_t KL, const index_t KU,
                           const UPLO Uplo, const DIAG Diag,
                           const int64_t A_id, const TRANSPOSE TransA, const T alpha,
                           const int64_t X_id, const T beta,
@@ -71,12 +80,6 @@ class routine_scheduler {
                            const int64_t B_id, const enum TRANSPOSE TransB, const T beta,
                            const int64_t C_id, T acc = 0, updater<T> update = nullptr);
 
-    std::shared_ptr <scmd::session> _session;
-
-    const int64_t _subtask_queue_id;
-    scylla_queue _subtask_queue;
-    scylla_queue _main_worker_queue;
-
     scylla_queue prepare_queue() const {
         scylla_queue::create_queue(_session, _subtask_queue_id, false, true);
         return scylla_queue(_session, _subtask_queue_id);
@@ -87,8 +90,26 @@ public:
         _session(session),
         _subtask_queue_id(get_timestamp()),
         _subtask_queue(prepare_queue()),
-        _main_worker_queue(_session, DEFAULT_WORKER_QUEUE_ID)
+        _main_worker_queue(_session, DEFAULT_WORKER_QUEUE_ID),
+        _max_used_workers(DEFAULT_LIMIT_WORKER_CONCURRENCY),
+        _scheduler_sleep_time(DEFAULT_SCHEDULER_SLEEP_TIME_MICROSECONDS)
     {}
+
+    int64_t get_max_used_workers() {
+        return this->_max_used_workers;
+    }
+
+    void set_max_used_workers(int64_t new_max_used_workers) {
+        this->_max_used_workers = new_max_used_workers;
+    }
+
+    int64_t get_scheduler_sleep_time() {
+        return this->_scheduler_sleep_time;
+    }
+
+    void set_scheduler_sleep_time(int64_t new_scheduler_sleep_time) {
+        this->_scheduler_sleep_time = new_scheduler_sleep_time;
+    }
 
 // TODO: shouldn't we ignore N, incX, incY? Maybe skip them altogether for the sake of simplification?
 
@@ -108,8 +129,8 @@ public:
     double dnrm2(const vector<double> &X);
     double dasum(const vector<double> &X);
 
-    index_type isamax(const vector<float> &X);
-    index_type idamax(const vector<double> &X);
+    index_t isamax(const vector<float> &X);
+    index_t idamax(const vector<double> &X);
 
 /*
 * ===========================================================================

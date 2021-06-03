@@ -22,18 +22,18 @@ void load_matrix_from_generator(const std::shared_ptr<scmd::session> &session,
 template<class T>
 void init_matrix(std::shared_ptr<scmd::session> session,
                  std::shared_ptr<scylla_blas::matrix<T>>& matrix_ptr,
-                 scylla_blas::index_type w,
-                 scylla_blas::index_type h,
-                 int64_t id,
+                 scylla_blas::index_t w,
+                 scylla_blas::index_t h,
+                 id_t id,
                  std::shared_ptr<value_factory<T>> value_factory = nullptr);
 
-const int64_t INITIAL_MATRIX_ID = 123456;
+const id_t INITIAL_MATRIX_ID = 123456;
 
 int main(int argc, char **argv) {
     if (argc <= 4) {
         throw std::runtime_error("You need to specify ip in the command line: " + std::string(argv[0]) + " scylla_ip scylla_port m n");
     }
-    scylla_blas::index_type m, n;
+    scylla_blas::index_t m, n;
     std::string scylla_ip = argv[1];
     std::string scylla_port = argv[2];
     m = std::stoi(argv[3]);
@@ -66,14 +66,14 @@ void print_matrix_octave(const scylla_blas::matrix<T> &matrix) {
     auto default_precision = std::cout.precision();
 
     std::cout << std::setprecision(4);
-    std::cout << "Matrix " << matrix.id << ": " << std::endl;
+    std::cout << "Matrix " << matrix.get_id() << ": " << std::endl;
 
     std::cout << "[\n";
 
-    for (scylla_blas::index_type i = 1; i <= matrix.row_count; i++) {
+    for (scylla_blas::index_t i = 1; i <= matrix.get_row_count(); i++) {
         auto vec = matrix.get_row(i);
         auto it = vec.begin();
-        for (scylla_blas::index_type j = 1; j <= matrix.column_count; j++) {
+        for (scylla_blas::index_t j = 1; j <= matrix.get_column_count(); j++) {
             if (it != vec.end() && it->index == j) {
                 std::cout << it->value << ", ";
                 it++;
@@ -110,10 +110,10 @@ void load_matrix_from_generator(const std::shared_ptr<scmd::session> &session, m
         matrix.insert_row(prev_val.row_index, next_row);
     }
 
-    std::cerr << "Loaded a matrix: " << matrix.id << " from a generator" << std::endl;
+    std::cerr << "Loaded a matrix: " << matrix.get_id() << " from a generator" << std::endl;
 }
 
-size_t suggest_number_of_values(scylla_blas::index_type w, scylla_blas::index_type h) {
+size_t suggest_number_of_values(scylla_blas::index_t w, scylla_blas::index_t h) {
     size_t ret = w * h / 5; // 20% load
     return (ret > 0 ? ret : 1);
 }
@@ -121,9 +121,9 @@ size_t suggest_number_of_values(scylla_blas::index_type w, scylla_blas::index_ty
 template<class T>
 void init_matrix(std::shared_ptr<scmd::session> session,
                  std::shared_ptr<scylla_blas::matrix<T>> &matrix_ptr,
-                 scylla_blas::index_type w,
-                 scylla_blas::index_type h,
-                 int64_t id,
+                 scylla_blas::index_t w,
+                 scylla_blas::index_t h,
+                 id_t id,
                  std::shared_ptr<value_factory <T>> value_factory) {
     //    matrix_ptr = std::make_shared<scylla_blas::matrix<T>>(session, id);
     matrix_ptr->clear_all();

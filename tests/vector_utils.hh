@@ -6,9 +6,9 @@ void print_vector(const scylla_blas::vector<T> &vec) {
     auto whole = vec.get_whole();
 
     std::cout << std::setprecision(4);
-    std::cout << "Vector " << vec.id << ": " << std::endl;
+    std::cout << "Vector " << vec.get_id() << ": " << std::endl;
 
-    scylla_blas::index_type expected = 1;
+    scylla_blas::index_t expected = 1;
     for (auto entry : whole) {
         while (expected < entry.index) {
             /* Show empty rows */
@@ -28,7 +28,7 @@ void print_vector(const scylla_blas::vector<T> &vec) {
 template <class T>
 inline std::optional<scylla_blas::vector_value<T>> assert_zeros(std::vector<T> &values, int start, int end) {
     for (int i = start; i < end; i++) {
-        if (abs(values[i]) > scylla_blas::epsilon) {
+        if (std::abs(values[i]) > scylla_blas::epsilon) {
             return std::make_optional<scylla_blas::vector_value<T>>(i + 1, 0);
         }
     }
@@ -52,7 +52,7 @@ inline std::optional<scylla_blas::vector_value<T>> cmp_vector(const scylla_blas:
                 return opt;
             }
         }
-        if (abs(entry.value - values[entry.index - 1]) > scylla_blas::epsilon) {
+        if (std::abs(entry.value - values[entry.index - 1]) > scylla_blas::epsilon) {
             return std::optional(entry);
         }
         last = entry.index - 1;

@@ -6,7 +6,8 @@
 
 namespace scylla_blas {
 
-using index_type = int64_t;
+using index_t = int64_t;
+using id_t = int64_t;
 
 template<class T>
 static std::string get_type_name() {

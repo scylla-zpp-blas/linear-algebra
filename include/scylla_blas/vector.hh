@@ -20,9 +20,6 @@ namespace scylla_blas {
  */
 class basic_vector {
 protected:
-    inline static constexpr index_type ceil_div (index_type a, index_type b) { return 1 + (a - 1) / b; }
-    inline static constexpr index_type get_segment_index(index_type i) { return ceil_div(i, BLOCK_SIZE); }
-
     std::shared_ptr<scmd::session> _session;
 
     scmd::prepared_query _get_meta_prepared;
@@ -32,82 +29,76 @@ protected:
     scmd::prepared_query _insert_value_prepared;
     scmd::prepared_query _clear_value_prepared;
     scmd::prepared_query _clear_segment_prepared;
+    scmd::prepared_query _resize_prepared;
+    scmd::prepared_query _set_block_size_prepared;
 
-    index_type get_length() const;
+    // Should we make these private, with accessors?
+    id_t id;
+    index_t length;
+    index_t block_size;
+
+    inline static constexpr index_t ceil_div (index_t a, index_t b) { return 1 + (a - 1) / b; }
+    index_t get_segment_index(index_t i) const { return ceil_div(i, block_size); }
+
+    void update_meta();
 
 public:
-    // Should we make these private, with accessors?
-    const index_type id;
-    const index_type length;
-
-    /*
-     * Length measured in segments is equal to the index of the last segment.
-     */
-    index_type get_segment_count() const {
-        return get_segment_index(length);
-    }
-
-    index_type get_segment_offset(index_type segment_number) const {
-        return (segment_number - 1) * BLOCK_SIZE;
-    }
-
+    static void clear(const std::shared_ptr<scmd::session> &session, id_t id);
+    static void resize(const std::shared_ptr<scmd::session> &session,
+                       id_t id, index_t new_length);
+    static void set_block_size(const std::shared_ptr<scmd::session> &session,
+                               id_t id, index_t new_block_size);
+    static void drop(const std::shared_ptr<scmd::session> &session, id_t id);
     static void init_meta(const std::shared_ptr<scmd::session> &session);
 
-    basic_vector(const std::shared_ptr<scmd::session> &session, int64_t id);
-
-    basic_vector(basic_vector&& other) :
-        _session(std::move(other._session)),
-        _get_meta_prepared(std::move(other._get_meta_prepared)),
-        _get_value_prepared(std::move(other._get_value_prepared)),
-        _get_segment_prepared(std::move(other._get_segment_prepared)),
-        _get_vector_prepared(std::move(other._get_vector_prepared)),
-        _insert_value_prepared(std::move(other._insert_value_prepared)),
-        _clear_value_prepared(std::move(other._clear_value_prepared)),
-        _clear_segment_prepared(std::move(other._clear_segment_prepared)),
-        id (other.id),
-        length (other.length)
-    { }
+    basic_vector(const std::shared_ptr<scmd::session> &session, id_t id);
+    basic_vector(const basic_vector& other) = delete;
+    basic_vector& operator=(const basic_vector &other) = delete;
+    basic_vector(basic_vector&& other) noexcept = default;
+    basic_vector& operator=(basic_vector&& other) noexcept = default;
 
     bool operator==(const basic_vector &other) const {
         return this->id == other.id;
     }
 
-    static void clear(const std::shared_ptr<scmd::session> &session, int64_t id);
-    static void resize(const std::shared_ptr<scmd::session> &session,
-                       int64_t id, int64_t new_legnth);
+    id_t get_id() const {
+        return this->id;
+    }
+
+    index_t get_block_size() const {
+        return this->block_size;
+    }
+
+    index_t get_length() const {
+        return this->length;
+    }
+
+    /*
+     * Length measured in segments is equal to the index of the last segment.
+     */
+    index_t get_segment_count() const {
+        return get_segment_index(length);
+    }
+
+    index_t get_segment_offset(index_t segment_number) const {
+        return (segment_number - 1) * block_size;
+    }
 
     void clear_all() { clear(_session, id); }
+    void resize(index_t new_length);
+    void set_block_size(index_t new_block_size);
 };
 
 template<class T>
 class vector : public basic_vector {
-    template<class... Args>
-    std::vector<vector_value<T>> get_vals_for_query(const scmd::prepared_query &query, Args... args) const {
-        scmd::query_result result = _session->execute(query.get_statement().bind(args...));
-
-        std::vector<vector_value<T>> result_vector;
-        while (result.next_row()) {
-            result_vector.emplace_back(
-                    result.get_column<index_type>("idx"),
-                    result.get_column<T>("value")
-            );
-        }
-
-        return result_vector;
-    }
-
 public:
-    vector(const std::shared_ptr<scmd::session> &session, int64_t id) : basic_vector(session, id)
-        { LogInfo("A handle created to vector {}", id); }
-
-    vector(vector &&other) : basic_vector(other) {}
-
     /* We don't want to implicitly initialize a handle (somewhat costly) if it is discarded by the user.
      * Instead, let's have a version of init that does it explicitly, and a version that doesn't do it at all.
      * TODO: Can we do the same with one function and attributes for the compiler?
      */
     static void init(const std::shared_ptr<scmd::session> &session,
-                     int64_t id, index_type length, bool force_new = true) {
+                     id_t id, index_t length,
+                     bool force_new = true, index_t block_size = DEFAULT_BLOCK_SIZE) {
         LogInfo("initializing vector {}...", id);
 
         scmd::statement create_table(fmt::format(R"(
@@ -125,17 +116,26 @@ public:
         }
 
         resize(session, id, length);
+        set_block_size(session, id, block_size);
 
         LogInfo("Initialized vector {}", id);
     }
 
     static vector init_and_return(const std::shared_ptr<scmd::session> &session,
-                                  int64_t id, index_type length, bool force_new = true) {
-        init(session, id, length, force_new);
+                                  id_t id, index_t length,
+                                  bool force_new = true, index_t block_size = DEFAULT_BLOCK_SIZE) {
+        init(session, id, length, force_new, block_size);
         return vector<T>(session, id);
     }
 
-    T get_value(index_type x) const {
+    vector(const std::shared_ptr<scmd::session> &session, id_t id) : basic_vector(session, id)
+    { LogInfo("A handle created to matrix {}", id); }
+    vector(const vector& other) = delete;
+    vector& operator=(const vector &other) = delete;
+    vector(vector&& other) noexcept = default;
+    vector& operator=(vector&& other) noexcept = default;
+
+    T get_value(index_t x) const {
         auto ans_vec = get_vals_for_query(_get_value_prepared, get_segment_index(x), x);
 
         if (!ans_vec.empty()) {
@@ -145,13 +145,13 @@ public:
         }
     }
 
-    vector_segment<T> get_segment(index_type x) const {
+    vector_segment<T> get_segment(index_t x) const {
         std::vector<vector_value<T>> segment_values = get_vals_for_query(_get_segment_prepared, x);
 
         /*
          * Segments are moved by offset similarly to matrix blocks.
          */
-        index_type offset = get_segment_offset(x);
+        index_t offset = get_segment_offset(x);
 
         vector_segment<T> answer;
         for (auto &val : segment_values) {
@@ -173,24 +173,21 @@ public:
         return answer;
     }
 
-    void clear_value(index_type x) {
-        _session->execute(_clear_value_prepared.get_statement()
-                                  .bind (get_segment_index(x), x));
+    void clear_value(index_t x) {
+        _session->execute(_clear_value_prepared, get_segment_index(x), x);
     }
 
-    void clear_segment(index_type x) {
-        _session->execute(_clear_segment_prepared.get_statement()
-                                  .bind(x));
+    void clear_segment(index_t x) {
+        _session->execute(_clear_segment_prepared, x);
     }
 
-    void update_value(index_type x, T value) {
+    void update_value(index_t x, T value) {
         if (std::abs(value) < EPSILON) {
             clear_value(x);
             return;
         }
 
-        _session->execute(_insert_value_prepared.get_statement()
-                                  .bind(get_segment_index(x), x, value));
+        _session->execute(_insert_value_prepared, get_segment_index(x), x, value);
     }
 
     void update_values(const std::vector<vector_value<T>> &values) {
@@ -209,8 +206,8 @@ public:
         _session->execute(batch);
     }
 
-    void update_segment(index_type x, vector_segment<T> segment_data) {
-        index_type offset = (x - 1) * BLOCK_SIZE;
+    void update_segment(index_t x, vector_segment<T> segment_data) {
+        index_t offset = (x - 1) * block_size;
 
         for (auto &val : segment_data) {
             val.index += offset;
@@ -219,7 +216,21 @@ public:
         clear_segment(x);
         update_values(segment_data);
     }
+private:
+    template<class... Args>
+    std::vector<vector_value<T>> get_vals_for_query(const scmd::prepared_query &query, Args... args) const {
+        scmd::query_result result = _session->execute(query, args...);
 
+        std::vector<vector_value<T>> result_vector;
+        while (result.next_row()) {
+            result_vector.emplace_back(
+                    result.get_column<index_t>("idx"),
+                    result.get_column<T>("value")
+            );
+        }
+
+        return result_vector;
+    }
 };
 
 }

@@ -32,7 +32,7 @@ void load_matrix_from_generator(const std::shared_ptr<scmd::session> &session,
         matrix.insert_row(prev_val.row_index, next_row);
     }
 
-    std::cerr << "Loaded a matrix: " << matrix.id << " from a generator" << std::endl;
+    std::cerr << "Loaded a matrix: " << matrix.get_id() << " from a generator" << std::endl;
 }
 
 /** DEBUG **/
@@ -45,15 +45,15 @@ void print_matrix(const scylla_blas::matrix<T> &matrix) {
 
     /* Show column numbering */
     std::cout << " \\ \t";
-    for (scylla_blas::index_type j = 1; j <= matrix.column_count; j++)
+    for (scylla_blas::index_t j = 1; j <= matrix.column_count; j++)
         std::cout << std::setw(6) << j << " ";
     std::cout << std::endl;
 
-    for (scylla_blas::index_type i = 1; i <= matrix.row_count; i++) {
+    for (scylla_blas::index_t i = 1; i <= matrix.row_count; i++) {
         std::cout  << i << " ->\t";
         auto vec = matrix.get_row(i);
         auto it = vec.begin();
-        for (scylla_blas::index_type j = 1; j <= matrix.column_count; j++) {
+        for (scylla_blas::index_t j = 1; j <= matrix.column_count; j++) {
             if (it != vec.end() && it->index == j) {
                 std::cout << std::setw(6) << it->value << " ";
                 it++;

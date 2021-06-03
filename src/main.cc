@@ -23,6 +23,8 @@ struct options {
     bool is_worker = false;
     bool is_deinit = false;
     bool is_init = false;
+    int64_t worker_sleep_time;
+    int64_t worker_retries;
 };
 
 template<typename ...T>
@@ -45,7 +47,11 @@ void parse_arguments(int ac, char *av[], options &options) {
             ("deinit", "Deinitialize Scylla keyspace and tables")
             ("worker", "Connect to Scylla and process incoming requests")
             ("host,H", po::value<std::string>(&options.host)->required(), "Address on which Scylla can be reached")
-            ("port,P", po::value<uint16_t>(&options.port)->default_value(SCYLLA_DEFAULT_PORT), "port number on which Scylla can be reached");
+            ("port,P", po::value<uint16_t>(&options.port)->default_value(SCYLLA_DEFAULT_PORT), "port number on which Scylla can be reached")
+            ("worker_sleep,s", po::value<int64_t>(&options.worker_sleep_time)->default_value(DEFAULT_WORKER_SLEEP_TIME_MICROSECONDS),
+                    "Worker sleep time after queue is empty, in microseconds")
+            ("worker_retries,r", po::value<int64_t>(&options.worker_retries)->default_value(DEFAULT_MAX_WORKER_RETRIES),
+                    "How many time worker should attempt to do a task");
     desc.add(opt);
     try {
         auto parsed = po::command_line_parser(ac, av)
@@ -124,14 +130,14 @@ void worker(const struct options& op) {
     for (;;) {
         auto opt = base_queue.consume();
         if (!opt.has_value()) {
-            scylla_blas::wait_seconds(WORKER_SLEEP_TIME_SECONDS);
+            scylla_blas::wait_microseconds(op.worker_sleep_time);
             continue;
         }
         auto [task_id, task_data] = opt.value();
         LogInfo("A new task received! task_id: {}", task_id);
 
         int64_t attempts;
-        for (attempts = 0; attempts <= MAX_WORKER_RETRIES; attempts++) {
+        for (attempts = 0; attempts <= op.worker_retries; attempts++) {
             scylla_blas::worker::procedure_t& proc = scylla_blas::worker::get_procedure_for_task(task_data);
 
             /* Keep trying until the task is finished – otherwise it will be lost and never marked as finished */
@@ -153,7 +159,7 @@ void worker(const struct options& op) {
             }
         }
 
-        if (attempts <= MAX_WORKER_RETRIES) {
+        if (attempts <= op.worker_retries) {
             LogInfo("Task {} completed succesfully.", task_id);
         } else {
             LogError("Abandoned task {} due to too many failures.", task_id);

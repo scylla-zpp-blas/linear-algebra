@@ -6,10 +6,10 @@
 namespace {
 
 template<class T>
-void trim_to_banded(auto matrix, scylla_blas::index_type KL, scylla_blas::index_type KU) {
+void trim_to_banded(auto matrix, scylla_blas::index_t KL, scylla_blas::index_t KU) {
     using namespace scylla_blas;
 
-    for (index_type i = 1; i <= matrix->row_count; i++) {
+    for (index_t i = 1; i <= matrix->row_count; i++) {
         scylla_blas::vector_segment<T> old_row = matrix->get_row(i);
         scylla_blas::vector_segment<T> new_row;
         for (auto &val : old_row) {

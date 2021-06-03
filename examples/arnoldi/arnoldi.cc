@@ -1,6 +1,6 @@
 #include "arnoldi.hh"
 
-void arnoldi::transfer_row_to_vector(std::shared_ptr<scylla_blas::matrix<float>> mat, scylla_blas::index_type row_index,
+void arnoldi::transfer_row_to_vector(std::shared_ptr<scylla_blas::matrix<float>> mat, scylla_blas::index_t row_index,
                                      std::shared_ptr<scylla_blas::vector<float>> vec) {
     LogTrace("Transfering row to vector.");
     scylla_blas::vector_segment<float> row = mat->get_row(row_index);
@@ -11,7 +11,7 @@ void arnoldi::transfer_row_to_vector(std::shared_ptr<scylla_blas::matrix<float>>
     LogTrace("Transfering row to vector DONE.");
 }
 
-void arnoldi::transfer_vector_to_row(std::shared_ptr<scylla_blas::matrix<float>> mat, scylla_blas::index_type row_index,
+void arnoldi::transfer_vector_to_row(std::shared_ptr<scylla_blas::matrix<float>> mat, scylla_blas::index_t row_index,
                                      std::shared_ptr<scylla_blas::vector<float>> vec) {
     LogTrace("Transfering vector to row.");
     scylla_blas::vector_segment<float> row = vec->get_whole();
@@ -23,7 +23,7 @@ arnoldi::arnoldi(std::shared_ptr<scmd::session> session) : _session(session), _s
 
 void arnoldi::compute(std::shared_ptr<scylla_blas::matrix<float>> A,
                       std::shared_ptr<scylla_blas::vector<float>> b,
-                      scylla_blas::index_type n,
+                      scylla_blas::index_t n,
                       std::shared_ptr<scylla_blas::matrix<float>> h,
                       std::shared_ptr<scylla_blas::matrix<float>> Q,
                       std::shared_ptr<scylla_blas::vector<float>> v,
@@ -36,12 +36,12 @@ void arnoldi::compute(std::shared_ptr<scylla_blas::matrix<float>> A,
     _scheduler.sscal(1.0f / _scheduler.snrm2(*q), *q);
     transfer_vector_to_row(Q, 1, q);
     LogTrace("INITIAL DONE, ENTERING LOOPS");
-    for (scylla_blas::index_type k = 1; k <= n; k++) {
+    for (scylla_blas::index_t k = 1; k <= n; k++) {
         LogTrace("MATRIX MULTIPLY");
         _scheduler.sgemv(scylla_blas::NoTrans, 1.0f, *A, *q, 0, *v);
         LogTrace("MATRIX MULTIPLY DONE");
         LogTrace("INNER LOOP:");
-        for (scylla_blas::index_type j = 1; j <= k; j++) {
+        for (scylla_blas::index_t j = 1; j <= k; j++) {
             transfer_row_to_vector(Q, j, t);
             LogTrace("\tValue insert");
             h->insert_value(j, k, _scheduler.sdot(*t, *v));

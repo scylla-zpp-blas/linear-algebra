@@ -36,7 +36,7 @@ public:
 class matrix_fixture : public scylla_fixture {
     template<class T>
     void init_matrix(std::shared_ptr<scylla_blas::matrix<T>>& matrix_ptr,
-                     scylla_blas::index_type w, scylla_blas::index_type h, int64_t id,
+                     scylla_blas::index_t w, scylla_blas::index_t h, int64_t id,
                      std::shared_ptr<value_factory<T>> value_factory = nullptr) {
         matrix_ptr = std::make_shared<scylla_blas::matrix<T>>(session, id);
         matrix_ptr->clear_all();
@@ -69,8 +69,8 @@ public:
     void init_matrices(const std::shared_ptr<scmd::session> &session) {
         std::cerr << "Initializing test matrices..." << std::endl;
 
-        scylla_blas::index_type A = test_const::matrix_A;
-        scylla_blas::index_type B = test_const::matrix_B;
+        scylla_blas::index_t A = test_const::matrix_A;
+        scylla_blas::index_t B = test_const::matrix_B;
 
         std::shared_ptr<value_factory<float>> f =
                 std::make_shared<random_value_factory<float>>(0, 9, 142);
@@ -92,7 +92,7 @@ class vector_fixture : public scylla_fixture {
 protected:
     template<class T>
     void init_vector(std::shared_ptr<scylla_blas::vector<T>> &vector_ptr,
-                     scylla_blas::index_type len, int64_t id,
+                     scylla_blas::index_t len, int64_t id,
                      std::shared_ptr<value_factory<T>> value_factory = nullptr) {
         scylla_blas::vector<T>::clear(session, id);
         vector_ptr = std::make_shared<scylla_blas::vector<T>>(session, id);
@@ -100,15 +100,15 @@ protected:
         if (value_factory != nullptr) {
             std::vector<scylla_blas::vector_value<T>> values;
 
-            for (scylla_blas::index_type i = 1; i <= len; i++)
+            for (scylla_blas::index_t i = 1; i <= len; i++)
                 values.emplace_back(i, value_factory->next());
 
             vector_ptr->update_values(values);
         }
     }
 public:
-    std::map<scylla_blas::index_type, std::shared_ptr<scylla_blas::vector<float>>> float_vectors;
-    std::map<scylla_blas::index_type, std::shared_ptr<scylla_blas::vector<double>>> double_vectors;
+    std::map<scylla_blas::index_t, std::shared_ptr<scylla_blas::vector<float>>> float_vectors;
+    std::map<scylla_blas::index_t, std::shared_ptr<scylla_blas::vector<double>>> double_vectors;
 
     vector_fixture() : scylla_fixture() {
         for (auto props : test_const::float_vector_props) {
@@ -120,11 +120,11 @@ public:
         init_vectors(session);
     }
 
-    std::shared_ptr<scylla_blas::vector<float>> getScyllaVector(scylla_blas::index_type id) {
+    std::shared_ptr<scylla_blas::vector<float>> getScyllaVector(scylla_blas::index_t id) {
         return float_vectors[id];
     }
 
-    std::shared_ptr<scylla_blas::vector<double>> getScyllaDoubleVector(scylla_blas::index_type id) {
+    std::shared_ptr<scylla_blas::vector<double>> getScyllaDoubleVector(scylla_blas::index_t id) {
         return double_vectors[id];
     }
 
@@ -134,7 +134,7 @@ public:
      * @param index - index for float_vector_props array.
      * @return shared_ptr of the initialized vector.
      */
-    std::shared_ptr<scylla_blas::vector<float>> getScyllaVectorOf(scylla_blas::index_type id,
+    std::shared_ptr<scylla_blas::vector<float>> getScyllaVectorOf(scylla_blas::index_t id,
                                                                   std::vector<float> values) {
         std::shared_ptr<value_factory<float>> factory =
                 std::make_shared<preset_value_factory<float>>(values);
@@ -151,7 +151,7 @@ public:
      * @param index - index for float_vector_props array.
      * @return shared_ptr of the initialized vector.
      */
-    std::shared_ptr<scylla_blas::vector<double>> getScyllaVectorOf(scylla_blas::index_type id,
+    std::shared_ptr<scylla_blas::vector<double>> getScyllaVectorOf(scylla_blas::index_t id,
                                                                    std::vector<double> values) {
         std::shared_ptr<value_factory<double>> factory =
                 std::make_shared<preset_value_factory<double>>(values);

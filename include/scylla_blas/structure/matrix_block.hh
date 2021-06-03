@@ -13,8 +13,8 @@ namespace scylla_blas {
 
 template<class T>
 class matrix_block {
-    using row_map_t = std::map<scylla_blas::index_type, scylla_blas::vector_segment<T>>;
-    using row_hashmap_t = std::unordered_map<scylla_blas::index_type, scylla_blas::vector_segment<T>>;
+    using row_map_t = std::map<scylla_blas::index_t, scylla_blas::vector_segment<T>>;
+    using row_hashmap_t = std::unordered_map<scylla_blas::index_t, scylla_blas::vector_segment<T>>;
     using vector_of_values = std::vector<scylla_blas::matrix_value<T>>;
 
     /* TODO: this may be worth optimising by direct vector construction from values. */
@@ -61,15 +61,14 @@ class matrix_block {
     vector_of_values _values;
 
 public:
-    const int64_t matrix_id = 0;
-    const index_type i;
-    const index_type j;
+    const index_t i;
+    const index_t j;
 
     matrix_block(vector_of_values values) :
             _values(values), i(-1), j(-1) {}
 
-    matrix_block(vector_of_values values, int64_t matrix_id, index_type i, index_type j, TRANSPOSE trans = NoTrans) :
-            _values(trans == NoTrans ? values : transpose_values(values)), matrix_id(matrix_id), i(i), j(j) {}
+    matrix_block(vector_of_values values, index_t i, index_t j, TRANSPOSE trans = NoTrans) :
+            _values(trans == NoTrans ? values : transpose_values(values)), i(i), j(j) {}
 
     matrix_block &transpose(TRANSPOSE trans) {
         if (trans != NoTrans) {
@@ -99,7 +98,7 @@ public:
         return *this;
     }
 
-    /* Returned block has undefined values of matrix_id, i, j */
+    /* Returned block has undefined values of i, j */
     const matrix_block operator*(const matrix_block &other) const {
         matrix_block result = *this;
         result *= other;
@@ -129,7 +128,7 @@ public:
         return *this;
     }
 
-    /* Returned block has undefined values of matrix_id, i, j */
+    /* Returned block has undefined values of i, j */
     const matrix_block operator+(const matrix_block &other) const {
         matrix_block result = *this;
         result += other;

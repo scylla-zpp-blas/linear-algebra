@@ -10,11 +10,11 @@ private:
     scylla_blas::routine_scheduler _scheduler;
 
     static void transfer_row_to_vector(std::shared_ptr<scylla_blas::matrix<float>> mat,
-                                       scylla_blas::index_type row_index,
+                                       scylla_blas::index_t row_index,
                                        std::shared_ptr<scylla_blas::vector<float>> vec);
 
     static void transfer_vector_to_row(std::shared_ptr<scylla_blas::matrix<float>> mat,
-                                       scylla_blas::index_type row_index,
+                                       scylla_blas::index_t row_index,
                                        std::shared_ptr<scylla_blas::vector<float>> vec);
 
 public:
@@ -33,7 +33,7 @@ public:
      */
     void compute(std::shared_ptr<scylla_blas::matrix<float>> A,
                  std::shared_ptr<scylla_blas::vector<float>> b,
-                 scylla_blas::index_type n,
+                 scylla_blas::index_t n,
                  std::shared_ptr<scylla_blas::matrix<float>> h,
                  std::shared_ptr<scylla_blas::matrix<float>> Q,
                  std::shared_ptr<scylla_blas::vector<float>> v,
@@ -50,7 +50,7 @@ public:
         std::shared_ptr<scylla_blas::vector<T>> q;
         std::shared_ptr<scylla_blas::vector<T>> t;
 
-        int64_t A_id,
+        id_t    A_id,
                 b_id,
                 h_id,
                 Q_id,
@@ -58,7 +58,7 @@ public:
                 q_id,
                 t_id;
 
-        void init(std::shared_ptr<scmd::session> session, int64_t initial_id) {
+        void init(std::shared_ptr<scmd::session> session, id_t initial_id) {
             A_id = initial_id++;
             A = std::make_shared<scylla_blas::matrix<T>>(session, A_id);
             b_id = initial_id++;
@@ -75,11 +75,11 @@ public:
             t = std::make_shared<scylla_blas::vector<T>>(session, t_id);
         }
 
-        containers(std::shared_ptr<scmd::session> session, int64_t initial_id) {
+        containers(std::shared_ptr<scmd::session> session, id_t initial_id) {
             init(session, initial_id);
         }
 
-        containers(std::shared_ptr<scmd::session> session, int64_t initial_id, scylla_blas::index_type m, scylla_blas::index_type n) {
+        containers(std::shared_ptr<scmd::session> session, id_t initial_id, scylla_blas::index_t m, scylla_blas::index_t n) {
             int64_t initial_id_bak = initial_id;
             scylla_blas::matrix<T>::init(session, initial_id++, m, m);
             scylla_blas::vector<T>::init(session, initial_id++, m);

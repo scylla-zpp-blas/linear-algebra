@@ -6,10 +6,10 @@
 namespace {
 
 template<class T>
-void trim_to_triangular(auto matrix, scylla_blas::index_type K = -1) {
+void trim_to_triangular(auto matrix, scylla_blas::index_t K = -1) {
     using namespace scylla_blas;
 
-    for (index_type i = 1; i <= matrix->row_count; i++) {
+    for (index_t i = 1; i <= matrix->get_row_count(); i++) {
         scylla_blas::vector_segment<T> old_row = matrix->get_row(i);
         scylla_blas::vector_segment<T> new_row;
         for (auto &val : old_row) {
@@ -25,7 +25,7 @@ void trim_to_triangular(auto matrix, scylla_blas::index_type K = -1) {
         matrix->update_row(i, new_row);
     }
 
-    for (index_type i = 1; i <= matrix->row_count; i++) {
+    for (index_t i = 1; i <= matrix->get_row_count(); i++) {
         matrix->insert_value(i, i, 10);
     }
 }
@@ -66,7 +66,7 @@ BOOST_FIXTURE_TEST_CASE(triangular_solver, mixed_fixture)
 BOOST_FIXTURE_TEST_CASE(triangular_banded_solver, mixed_fixture)
 {
     using namespace scylla_blas;
-    index_type K = 2;
+    index_t K = 2;
 
     {
         auto float_B = getScyllaVector(test_const::float_vector_3_id);
