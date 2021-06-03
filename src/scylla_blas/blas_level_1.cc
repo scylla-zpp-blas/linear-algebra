@@ -21,7 +21,7 @@ void assert_length_equal(const scylla_blas::vector<T> &X,
 template<class T>
 void add_segments_as_queue_tasks(scylla_blas::scylla_queue &queue,
                                  const scylla_blas::vector<T> &X) {
-    std::cerr << "Scheduling subtasks..." << std::endl;
+    LogInfo("Scheduling subtasks...");
     for (scylla_blas::index_t i = 1; i <= X.get_segment_count(); i++) {
         queue.produce({
             .type = scylla_blas::proto::NONE,

@@ -1,14 +1,18 @@
 #include <string>
-#include <stdexcept>
-#include <scylla_blas/config.hh>
-#include <session.hh>
-#include "arnoldi.hh"
 #include <iostream>
+#include <stdexcept>
+#include <iomanip>
+
+#include <session.hh>
+
 #include <scylla_blas/matrix.hh>
 #include <scylla_blas/vector.hh>
+#include <scylla_blas/config.hh>
+
 #include "sparse_matrix_value_generator.hh"
 #include "random_value_factory.hh"
-#include <iomanip>
+
+#include "arnoldi.hh"
 
 template<class T>
 void print_matrix_octave(const scylla_blas::matrix<T> &matrix);
@@ -110,7 +114,7 @@ void load_matrix_from_generator(const std::shared_ptr<scmd::session> &session, m
         matrix.insert_row(prev_val.row_index, next_row);
     }
 
-    std::cerr << "Loaded a matrix: " << matrix.get_id() << " from a generator" << std::endl;
+    LogInfo("Loaded a matrix {} from a generator", matrix.get_id());
 }
 
 size_t suggest_number_of_values(scylla_blas::index_t w, scylla_blas::index_t h) {

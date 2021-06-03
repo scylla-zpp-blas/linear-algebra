@@ -40,7 +40,7 @@ void assert_multiplication_compatible(const enum scylla_blas::TRANSPOSE TransA, 
 template<class T>
 void add_blocks_as_queue_tasks(scylla_blas::scylla_queue &queue,
                                const scylla_blas::matrix<T> &C) {
-    std::cerr << "Preparing multiplication task..." << std::endl;
+    LogDebug("Preparing multiplication task...");
     for (scylla_blas::index_t i = 1; i <= C.get_blocks_height(); i++) {
         for (scylla_blas::index_t j = 1; j <= C.get_blocks_width(); j++) {
             queue.produce({

@@ -13,7 +13,7 @@ void consume_tasks(scylla_blas::scylla_queue &task_queue,
             break;
         }
 
-        std::cerr << "New secondary task obtained; id = " << opt.value().first << std::endl;
+        LogDebug("New secondary task obtained; id = {}", opt.value().first);
         consume(opt.value().second);
     }
 }

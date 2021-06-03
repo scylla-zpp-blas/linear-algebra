@@ -21,7 +21,7 @@ float scylla_blas::routine_scheduler::produce_and_wait(scylla_queue &queue, cons
         try {
             update(acc, response.value());
         } catch(std::exception &e) {
-            std::cerr << "Result update failed: " << e.what() << std::endl;
+            LogError("Result update failed: {}", e.what());
         }
     }
 
@@ -49,7 +49,7 @@ double scylla_blas::routine_scheduler::produce_and_wait(scylla_queue &queue, con
         try {
             update(acc, response.value());
         } catch(std::exception &e) {
-            std::cerr << "Result update failed: " << e.what() << std::endl;
+            LogError("Result update failed: {}", e.what());
         }
     }
 

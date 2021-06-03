@@ -129,7 +129,7 @@ public:
     }
 
     vector(const std::shared_ptr<scmd::session> &session, id_t id) : basic_vector(session, id)
-    { LogInfo("A handle created to matrix {}", id); }
+    { LogDebug("A handle created to matrix {}", id); }
     vector(const vector& other) = delete;
     vector& operator=(const vector &other) = delete;
     vector(vector&& other) noexcept = default;
@@ -181,6 +181,9 @@ public:
         _session->execute(_clear_segment_prepared, x);
     }
 
+    /* Replaces the old value. With a new one
+     * If abs(new value) is less than EPSILON, deletes the value.
+     */
     void update_value(index_t x, T value) {
         if (std::abs(value) < EPSILON) {
             clear_value(x);
@@ -190,6 +193,10 @@ public:
         _session->execute(_insert_value_prepared, get_segment_index(x), x, value);
     }
 
+    /* Behaves exactly like update_value, but for multiple values.
+     * Each value in @values will be inserted into vector.
+     * If abs(value) is less than EPSILON, old value will be deleted instead.
+     */
     void update_values(const std::vector<vector_value<T>> &values) {
         scmd::batch_query batch(CASS_BATCH_TYPE_UNLOGGED);
 
@@ -206,6 +213,8 @@ public:
         _session->execute(batch);
     }
 
+    /* Clear the whole segment. Then inserts new values (but only those that are >= EPSILON).
+     */
     void update_segment(index_t x, vector_segment<T> segment_data) {
         index_t offset = (x - 1) * block_size;
 
@@ -216,6 +225,21 @@ public:
         clear_segment(x);
         update_values(segment_data);
     }
+
+    /* Inserts values into segment WITHOUT clearing segment beforehand.
+     * If there were values in segment before the call,
+     * values not present in segment_data will not be replaced or deleted.
+     */
+    void insert_segment(index_t x, vector_segment<T> segment_data) {
+        index_t offset = (x - 1) * block_size;
+
+        for (auto &val : segment_data) {
+            val.index += offset;
+        }
+
+        update_values(segment_data);
+    }
+
 private:
     template<class... Args>
     std::vector<vector_value<T>> get_vals_for_query(const scmd::prepared_query &query, Args... args) const {
