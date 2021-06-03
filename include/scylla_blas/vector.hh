@@ -213,6 +213,27 @@ public:
         _session->execute(batch);
     }
 
+    /* Inserts values from @values into the vector, but only those that are >= EPSILON
+     * If the value is less than epsilon, and there is already value at given index,
+     * it won't be replaced/deleted.
+     */
+    void insert_values(const std::vector<vector_value<T>> &values) {
+        scmd::batch_query batch(CASS_BATCH_TYPE_UNLOGGED);
+
+        size_t i = 0;
+        for (auto &val: values) {
+            if (std::abs(val.value) >= EPSILON) {
+                auto stmt = _insert_value_prepared.get_statement();
+                stmt.bind(get_segment_index(val.index), val.index, val.value);
+                batch.add_statement(stmt);
+                i++;
+            }
+        }
+        LogDebug("Vector insert values: {} elements in batch", i);
+
+        _session->execute(batch);
+    }
+
     /* Clear the whole segment. Then inserts new values (but only those that are >= EPSILON).
      */
     void update_segment(index_t x, vector_segment<T> segment_data) {
@@ -237,7 +258,7 @@ public:
             val.index += offset;
         }
 
-        update_values(segment_data);
+        insert_values(segment_data);
     }
 
 private:

@@ -10,7 +10,7 @@
 
 constexpr int64_t BATCH_SIZE = 512;
 constexpr int64_t MAX_QUEUE_SIZE = 10000;
-constexpr int64_t MAX_BATCH_QUEUE_SIZE = 10000;
+constexpr int64_t MAX_BATCH_QUEUE_SIZE = 100;
 
 template<typename F, typename... Args>
 double measure_time(F callable, Args... args) {
@@ -149,7 +149,7 @@ void benchmark_async(const std::shared_ptr<scmd::session> &session, int n) {
 }
 
 void benchmark_batch_async(const std::shared_ptr<scmd::session> &session, int n) {
-    auto prepared = session->prepare("INSERT INTO insert_benchmark.test_sync(a, b, c, d, e) VALUES (?, ?, ?, ?, ?);");
+    auto prepared = session->prepare("INSERT INTO insert_benchmark.test_batch_async(a, b, c, d, e) VALUES (?, ?, ?, ?, ?);");
     srand(0x1337);
     double result = measure_time([&](){
         std::mutex m;
@@ -168,7 +168,7 @@ void benchmark_batch_async(const std::shared_ptr<scmd::session> &session, int n)
             scmd::batch_query batch(CASS_BATCH_TYPE_UNLOGGED);
             for(int i = 0; i < batch_size; i++) {
                 auto stmt = prepared.get_statement();
-                stmt.bind(pkey, (int64_t)rand(), (int64_t)rand(), (int64_t)rand(), (int64_t)rand());
+                stmt.bind((int64_t)rand(), (int64_t)rand(), (int64_t)rand(), (int64_t)rand(), (int64_t)rand());
             }
             auto future = session->execute_async(batch);
             std::unique_lock<std::mutex> lk(m);
@@ -198,7 +198,7 @@ void benchmark_batch_async(const std::shared_ptr<scmd::session> &session, int n)
             cv.wait(lk, [&]{return list.empty();});
         }
     });
-    fmt::print("Async test: {}ms\n", result);
+    fmt::print("Batch async test: {}ms\n", result);
     double seconds = result / 1000;
     double inserts_per_sec = (double)n / seconds;
     fmt::print("Average speed {} inserts/s\n", inserts_per_sec);
@@ -264,6 +264,16 @@ int main(int argc, char *argv[]) {
                                             PRIMARY KEY (a, c, d)
                                         ))");
     session->execute(create_batch_table_unp);
+
+    scmd::statement create_batch_table_async(R"(CREATE TABLE IF NOT EXISTS insert_benchmark.test_batch_async (
+                                            a BIGINT,
+                                            b BIGINT,
+                                            c BIGINT,
+                                            d BIGINT,
+                                            e BIGINT,
+                                            PRIMARY KEY (a, c, d)
+                                        ))");
+    session->execute(create_batch_table_async);
 
 
 //    fmt::print("Benchmark sync\n");

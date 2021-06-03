@@ -148,7 +148,7 @@ benchmark_result perform_benchmark(std::unique_ptr<base_benchmark> tester, const
     for(int64_t block_size : block_sizes) {
         for(int64_t problem_size : problem_sizes) {
             benchmark_result::result_t r{};
-            LogInfo("Block size: {}, problem size: {}\n", block_size, problem_size);
+            LogInfo("Block size: {}, problem size: {}", block_size, problem_size);
 
             LogInfo("\tStarting setup");
             r.setup_time = measure_time([&](int64_t b, int64_t l){tester->setup(b, l);}, block_size, problem_size);
