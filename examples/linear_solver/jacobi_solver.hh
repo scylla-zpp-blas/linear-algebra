@@ -10,26 +10,24 @@
 #include <scylla_blas/matrix.hh>
 #include <scylla_blas/vector.hh>
 
-// TODO fix CMakeLists
-
 class jacobi_solver {
 private:
-#define CONVERGENCE_THRESHOLD (1e-6)
-#define NUM_OF_ITERATIONS 1000
+    static constexpr double CONVERGENCE_THRESHOLD = 1e-6;
+    static constexpr size_t NUM_OF_ITERATIONS = 1000;
 
-std::shared_ptr<scmd::session> _session;
-std::shared_ptr<scylla_blas::routine_scheduler> _scheduler;
-std::shared_ptr<scylla_blas::matrix<double>> _A;
-std::shared_ptr<scylla_blas::matrix<double>> _D_inverted;
-std::shared_ptr<scylla_blas::matrix<double>> _L_plus_U;
-std::shared_ptr<scylla_blas::vector<double>> _aux_vector;
-scylla_blas::index_type _dimensions;
+    std::shared_ptr<scmd::session> _session;
+    std::shared_ptr<scylla_blas::routine_scheduler> _scheduler;
+    std::shared_ptr<scylla_blas::matrix<double>> _A;
+    std::shared_ptr<scylla_blas::matrix<double>> _D_inverted;
+    std::shared_ptr<scylla_blas::matrix<double>> _L_plus_U;
+    std::shared_ptr<scylla_blas::vector<double>> _aux_vector;
+    scylla_blas::index_type _dimensions;
 
-void init_auxiliaries(scylla_blas::index_type initial_id);
-void build_matrices();
+    void init_auxiliaries(scylla_blas::index_type initial_id);
+    void build_matrices();
 
-bool check_convergence(scylla_blas::vector<double> &x, scylla_blas::vector<double> &b, double threshold);
-void jacobi_iteration(scylla_blas::vector<double> &x, scylla_blas::vector<double> &b);
+    bool check_convergence(scylla_blas::vector<double> &x, scylla_blas::vector<double> &b, double threshold);
+    void jacobi_iteration(scylla_blas::vector<double> &x, scylla_blas::vector<double> &b);
 
 public:
     /* Initializes solver used for solving systems of linear equations with matrix A.
@@ -43,7 +41,6 @@ public:
      * @param num_of_iterations - maximal number of iterations before terminating
      * @param threshold - convergence threshold
      */
-
     void solve(scylla_blas::vector<double> &x, scylla_blas::vector<double> &b,
                size_t num_of_iterations = NUM_OF_ITERATIONS, double threshold = CONVERGENCE_THRESHOLD);
 };

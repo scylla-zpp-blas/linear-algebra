@@ -42,7 +42,6 @@ void jacobi_solver::build_matrices() {
 
 /* We use a simple convergence rule and check whether ||b - Ax||_inf < threshold.
  * A more sophisticated stopping rule might be better for practical applications */
-
 bool jacobi_solver::check_convergence(scylla_blas::vector<double> &x, scylla_blas::vector<double> &b, double threshold) {
     _scheduler->dcopy(b, *_aux_vector);
     _scheduler->dgemv(scylla_blas::NoTrans, -1, *_A, x, 1, *_aux_vector);
