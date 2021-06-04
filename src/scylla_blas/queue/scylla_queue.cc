@@ -1,4 +1,5 @@
-#include "scylla_blas/queue/scylla_queue.hh"
+#include <scylla_blas/logging/logging.hh>
+#include <scylla_blas/queue/scylla_queue.hh>
 
 using task = scylla_blas::scylla_queue::task;
 using response = scylla_blas::scylla_queue::response;
@@ -133,11 +134,16 @@ void scylla_blas::scylla_queue::mark_as_finished(int64_t id, const response &res
 }
 
 bool scylla_blas::scylla_queue::is_finished(int64_t id) {
-    auto result = _session->execute(*check_task_finished_prepared, queue_id, id);
-    if (!result.next_row()) {
-        throw std::runtime_error("No task with given id");
+    try{
+        auto result = _session->execute(*check_task_finished_prepared, queue_id, id);
+        if (!result.next_row()) {
+            throw std::runtime_error("No task with given id");
+        }
+        return result.get_column<bool>("is_finished");
+    } catch (const scmd::exception &ex) {
+        LogWarn("Received exception while checking if task is finished: {}", ex.what());
+        return false;
     }
-    return result.get_column<bool>("is_finished");
 }
 
 std::optional<response> scylla_blas::scylla_queue::get_response(int64_t id) {

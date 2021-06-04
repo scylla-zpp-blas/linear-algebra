@@ -79,7 +79,7 @@ void benchmark_mv::setup(int64_t block_size, int64_t length) {
 }
 
 void benchmark_mv::proc() {
-    scheduler.sgemv(scylla_blas::NoTrans, 1.0, *lm, *rv, 0.0, *rv);
+    scheduler.sgemv(scylla_blas::NoTrans, 1.0, *lm, *rv, 0.0, *wv);
 }
 
 void benchmark_mv::teardown() {
