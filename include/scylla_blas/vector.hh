@@ -229,8 +229,8 @@ public:
                 i++;
             }
         }
-        LogDebug("Vector insert values: {} elements in batch", i);
 
+        LogDebug("Vector insert values: {} elements in batch", i);
         _session->execute(batch);
     }
 

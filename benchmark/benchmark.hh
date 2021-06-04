@@ -39,18 +39,18 @@ void load_matrix_from_generator(matrix_value_generator<T> &gen, scylla_blas::mat
 template<class T>
 void load_vector_from_generator(value_factory<T> &gen, scylla_blas::vector<T> &vector) {
     scylla_blas::vector_segment<T> next_segment;
-    scylla_blas::index_t in_segment_index = 0;
+    scylla_blas::index_t in_segment_index = 1;
     scylla_blas::index_t segment_number = 1;
     scylla_blas::index_t segment_offset = 0;
 
     LogDebug("Filling vector with length {} and block size {}", vector.get_length(), vector.get_block_size());
     for(size_t i = 0; i < vector.get_length(); i++) {
-        if (in_segment_index == vector.get_block_size()) {
+        if (in_segment_index > vector.get_block_size()) {
             LogDebug("Inserting segment of size {}", next_segment.size());
             vector.insert_segment(segment_number, next_segment);
             next_segment.clear();
 
-            in_segment_index = 0;
+            in_segment_index = 1;
             segment_number++;
             segment_offset += vector.get_block_size();
         }
@@ -59,7 +59,7 @@ void load_vector_from_generator(value_factory<T> &gen, scylla_blas::vector<T> &v
         in_segment_index++;
     }
 
-    if (in_segment_index != 0) {
+    if (in_segment_index != 1) {
         LogDebug("Inserting segment of size {}", next_segment.size());
         vector.insert_segment(segment_number, next_segment);
         next_segment.clear();

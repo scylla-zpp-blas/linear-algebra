@@ -54,6 +54,7 @@ void benchmark_batch(const std::shared_ptr<scmd::session> &session, int n) {
             for(int i = 0; i < batch_size; i++) {
                 auto stmt = prepared.get_statement();
                 stmt.bind(pkey, (int64_t)rand(), (int64_t)rand(), (int64_t)rand(), (int64_t)rand());
+                batch.add_statement(stmt);
             }
             session->execute(batch);
             if (pkey % 32 == 0) {
@@ -70,7 +71,7 @@ void benchmark_batch(const std::shared_ptr<scmd::session> &session, int n) {
 }
 
 void benchmark_batch_unprepared(const std::shared_ptr<scmd::session> &session, int n) {
-    std::string insert_query("INSERT INTO insert_benchmark.test_batch(a, b, c, d, e) VALUES ({}, {}, {}, {}, {});");
+    std::string insert_query("INSERT INTO insert_benchmark.test_batch_unp(a, b, c, d, e) VALUES ({}, {}, {}, {}, {});");
     srand(0x1337);
     double result = measure_time([&](){
         int rest = n;
@@ -97,7 +98,7 @@ void benchmark_batch_unprepared(const std::shared_ptr<scmd::session> &session, i
 }
 
 void benchmark_async(const std::shared_ptr<scmd::session> &session, int n) {
-    auto prepared = session->prepare("INSERT INTO insert_benchmark.test_sync(a, b, c, d, e) VALUES (?, ?, ?, ?, ?);");
+    auto prepared = session->prepare("INSERT INTO insert_benchmark.test_async(a, b, c, d, e) VALUES (?, ?, ?, ?, ?);");
     srand(0x1337);
     double result = measure_time([&](){
         std::mutex m;
@@ -168,7 +169,8 @@ void benchmark_batch_async(const std::shared_ptr<scmd::session> &session, int n)
             scmd::batch_query batch(CASS_BATCH_TYPE_UNLOGGED);
             for(int i = 0; i < batch_size; i++) {
                 auto stmt = prepared.get_statement();
-                stmt.bind((int64_t)rand(), (int64_t)rand(), (int64_t)rand(), (int64_t)rand(), (int64_t)rand());
+                stmt.bind(pkey, (int64_t)rand(), (int64_t)rand(), (int64_t)rand(), 1337.0f);
+                batch.add_statement(stmt);
             }
             auto future = session->execute_async(batch);
             std::unique_lock<std::mutex> lk(m);
@@ -218,6 +220,9 @@ int main(int argc, char *argv[]) {
     auto session = std::make_shared<scmd::session>(scylla_ip, scylla_port);
 
     fmt::print("Preparing keyspace and tables\n");
+
+    std::string deinit_namespace = "DROP KEYSPACE IF EXISTS insert_benchmark;";
+    session->execute(deinit_namespace);
 
     std::string init_namespace = "CREATE KEYSPACE IF NOT EXISTS insert_benchmark WITH REPLICATION = {"
                                  "  'class' : 'SimpleStrategy',"
@@ -270,24 +275,23 @@ int main(int argc, char *argv[]) {
                                             b BIGINT,
                                             c BIGINT,
                                             d BIGINT,
-                                            e BIGINT,
+                                            e float,
                                             PRIMARY KEY (a, c, d)
                                         ))");
     session->execute(create_batch_table_async);
 
 
-//    fmt::print("Benchmark sync\n");
-//    benchmark_sync(session, n);
-//    fmt::print("Benchmark batch\n");
-//    benchmark_batch(session, n);
-//    fmt::print("Benchmark batch unprepared\n");
-//    benchmark_batch_unprepared(session, n);
-//    fmt::print("Benchmark async\n");
-//    benchmark_async(session, n);
+    fmt::print("Benchmark sync\n");
+    benchmark_sync(session, n);
+    fmt::print("Benchmark batch\n");
+    benchmark_batch(session, n);
+    fmt::print("Benchmark batch unprepared\n");
+    benchmark_batch_unprepared(session, n);
+    fmt::print("Benchmark async\n");
+    benchmark_async(session, n);
     fmt::print("Benchmark batch async\n");
     benchmark_batch_async(session, n);
 
-    std::string deinit_namespace = "DROP KEYSPACE insert_benchmark;";
     session->execute(deinit_namespace);
 
 }
