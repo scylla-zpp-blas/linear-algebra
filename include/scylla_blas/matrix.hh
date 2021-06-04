@@ -257,28 +257,24 @@ public:
     }
 
     void insert_values(const std::vector<matrix_value<T>> &values) {
-        std::string inserts = "";
+        scmd::batch_query batch(CASS_BATCH_TYPE_UNLOGGED);
 
         for (auto &val: values) {
             /* We do not want to store values equal or close to 0 */
             if (std::abs(val.value) < EPSILON) continue;
-
-            inserts += fmt::format(
-                    "INSERT INTO blas.matrix_{} (block_x, block_y, id_x, id_y, value) VALUES ({}, {}, {}, {}, {}); ",
-                    id, get_block_row(val.row_index), get_block_col(val.col_index),
-                    val.row_index, val.col_index, val.value);
+            auto stmt = _insert_value_prepared.get_statement();
+            stmt.bind(get_block_row(val.row_index), get_block_col(val.col_index),
+                      val.row_index, val.col_index, val.value);
+            batch.add_statement(stmt);
         }
 
-        /* Don't send a query if there's no need to do so. */
-        if (inserts == "") return;
-
-        _session->execute("BEGIN BATCH " + inserts + "APPLY BATCH;");
+        _session->execute(batch);
     }
 
     /* Inserts a given block into the matrix. Old values will not be modified or deleted */
     void insert_row(index_t x, const vector_segment<T> &row_data) {
         std::vector<matrix_value<T>> values;
-
+        values.reserve(row_data.size());
         for (auto &val : row_data)
             values.emplace_back(x, val.index, val.value);
 
@@ -311,6 +307,7 @@ private:
         scmd::query_result result = _session->execute(query, args...);
 
         std::vector<matrix_value<T>> result_vector;
+        result_vector.reserve(result.row_count());
         while (result.next_row()) {
             result_vector.emplace_back(
                     result.get_column<index_t>("id_x"),

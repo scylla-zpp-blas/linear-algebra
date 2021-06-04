@@ -25,6 +25,8 @@ struct options {
     scylla_blas::index_t n;
     scylla_blas::index_t block_size;
     int64_t workers;
+    int64_t scheduler_sleep_time;
+    bool print_matrices = false;
 };
 
 void parse_arguments(int ac, char *av[], options &options) {
@@ -34,6 +36,8 @@ void parse_arguments(int ac, char *av[], options &options) {
             ("help", "Show program help")
             ("block_size,B", po::value<scylla_blas::index_t>(&options.block_size)->default_value(DEFAULT_BLOCK_SIZE), "Block size to use")
             ("workers,W", po::value<int64_t>(&options.workers)->default_value(DEFAULT_LIMIT_WORKER_CONCURRENCY), "How many workers can we use")
+            ("sleep_time,S", po::value<int64_t>(&options.scheduler_sleep_time)->default_value(DEFAULT_SCHEDULER_SLEEP_TIME_MICROSECONDS), "How long should scheduler sleep waiting for task")
+            ("print", "Print matrices")
             (",n", po::value<scylla_blas::index_t>(&options.n)->required(), "How many iterations of algorithm should be performed")
             (",m", po::value<scylla_blas::index_t>(&options.m)->required(), "Dimension of input matrix")
             ("host,H", po::value<std::string>(&options.host)->required(), "Address on which Scylla can be reached")
@@ -48,6 +52,10 @@ void parse_arguments(int ac, char *av[], options &options) {
         if (vm.count("help") || ac == 1) {
             std::cout << desc << "\n";
             std::exit(0);
+        }
+
+        if (vm.count("print")) {
+            options.print_matrices = true;
         }
 
         po::notify(vm);
@@ -100,11 +108,11 @@ int main(int argc, char **argv) {
     // Set vector to (1, 0, 0 ... 0).
     c.b->update_value(1, 1.0f);
 
-    auto arnoldi_iteration = arnoldi(session, op.workers);
-    print_matrix_octave(*c.A);
+    auto arnoldi_iteration = arnoldi(session, op.workers, op.scheduler_sleep_time);
+    if(op.print_matrices) print_matrix_octave(*c.A);
     arnoldi_iteration.compute(c.A, c.b, op.n, c.h, c.Q, c.v, c.q, c.t);
-    print_matrix_octave(*c.Q);
-    print_matrix_octave(*c.h);
+    if(op.print_matrices) print_matrix_octave(*c.Q);
+    if(op.print_matrices) print_matrix_octave(*c.h);
 }
 
 template<class T>

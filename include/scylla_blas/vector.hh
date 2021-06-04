@@ -198,19 +198,27 @@ public:
      * If abs(value) is less than EPSILON, old value will be deleted instead.
      */
     void update_values(const std::vector<vector_value<T>> &values) {
-        scmd::batch_query batch(CASS_BATCH_TYPE_UNLOGGED);
-
-        for (auto &val: values) {
-            if (std::abs(val.value) < EPSILON) {
-                auto stmt = _clear_value_prepared.get_statement();
-                batch.add_statement(stmt.bind(get_segment_index(val.index), val.index));
-            } else {
-                auto stmt = _insert_value_prepared.get_statement();
-                batch.add_statement(stmt.bind(get_segment_index(val.index), val.index, val.value));
+        size_t idx = 0;
+        while(idx < values.size()) {
+            scmd::batch_query batch(CASS_BATCH_TYPE_UNLOGGED);
+            scylla_blas::index_t prev_seg = -1;
+            for(; idx < values.size(); idx++) {
+                auto &val = values[idx];
+                scylla_blas::index_t cur_seg = get_segment_index(val.index);
+                if (cur_seg != prev_seg && prev_seg != -1) {
+                    break;
+                }
+                if (std::abs(val.value) < EPSILON) {
+                    auto stmt = _clear_value_prepared.get_statement();
+                    batch.add_statement(stmt.bind(cur_seg, val.index));
+                } else {
+                    auto stmt = _insert_value_prepared.get_statement();
+                    batch.add_statement(stmt.bind(cur_seg, val.index, val.value));
+                }
+                prev_seg = cur_seg;
             }
+            _session->execute(batch);
         }
-
-        _session->execute(batch);
     }
 
     /* Inserts values from @values into the vector, but only those that are >= EPSILON
@@ -266,6 +274,7 @@ private:
         scmd::query_result result = _session->execute(query, args...);
 
         std::vector<vector_value<T>> result_vector;
+        result_vector.reserve(result.row_count());
         while (result.next_row()) {
             result_vector.emplace_back(
                     result.get_column<index_t>("idx"),

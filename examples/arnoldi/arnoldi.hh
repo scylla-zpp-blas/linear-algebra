@@ -18,7 +18,7 @@ private:
                                        std::shared_ptr<scylla_blas::vector<float>> vec);
 
 public:
-    explicit arnoldi(std::shared_ptr<scmd::session> session, int64_t workers);
+    explicit arnoldi(std::shared_ptr<scmd::session> session, int64_t workers, int64_t scheduler_sleep_time);
 
     /**
      *
