@@ -22,12 +22,15 @@ template<class T>
 void add_segments_as_queue_tasks(scylla_blas::scylla_queue &queue,
                                  const scylla_blas::vector<T> &X) {
     LogInfo("Scheduling subtasks...");
+    std::vector<scylla_blas::scylla_queue::task> tasks;
+    tasks.reserve(X.get_segment_count());
     for (scylla_blas::index_t i = 1; i <= X.get_segment_count(); i++) {
-        queue.produce({
+        tasks.push_back({
             .type = scylla_blas::proto::NONE,
             .index = i
         });
     }
+    queue.produce(tasks);
 }
 
 }
