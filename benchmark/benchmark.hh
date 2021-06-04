@@ -46,7 +46,6 @@ void load_vector_from_generator(value_factory<T> &gen, scylla_blas::vector<T> &v
     LogDebug("Filling vector with length {} and block size {}", vector.get_length(), vector.get_block_size());
     for(size_t i = 0; i < vector.get_length(); i++) {
         if (in_segment_index > vector.get_block_size()) {
-            LogDebug("Inserting segment of size {}", next_segment.size());
             vector.insert_segment(segment_number, next_segment);
             next_segment.clear();
 
@@ -60,7 +59,6 @@ void load_vector_from_generator(value_factory<T> &gen, scylla_blas::vector<T> &v
     }
 
     if (in_segment_index != 1) {
-        LogDebug("Inserting segment of size {}", next_segment.size());
         vector.insert_segment(segment_number, next_segment);
         next_segment.clear();
     }

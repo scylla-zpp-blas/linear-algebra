@@ -130,7 +130,9 @@ void worker(const struct options& op) {
     for (;;) {
         auto opt = base_queue.consume();
         if (!opt.has_value()) {
+            LogTrace("No task in queue, sleeping");
             scylla_blas::wait_microseconds(op.worker_sleep_time);
+            LogTrace("Sleeping done");
             continue;
         }
         auto [task_id, task_data] = opt.value();
