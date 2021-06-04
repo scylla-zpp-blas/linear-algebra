@@ -19,7 +19,9 @@ void arnoldi::transfer_vector_to_row(std::shared_ptr<scylla_blas::matrix<float>>
     LogTrace("Transfering vector to row DONE.");
 }
 
-arnoldi::arnoldi(std::shared_ptr<scmd::session> session) : _session(session), _scheduler(session) {}
+arnoldi::arnoldi(std::shared_ptr<scmd::session> session, int64_t workers) : _session(session), _scheduler(session) {
+    _scheduler.set_max_used_workers(workers);
+}
 
 void arnoldi::compute(std::shared_ptr<scylla_blas::matrix<float>> A,
                       std::shared_ptr<scylla_blas::vector<float>> b,

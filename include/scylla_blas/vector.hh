@@ -129,7 +129,7 @@ public:
     }
 
     vector(const std::shared_ptr<scmd::session> &session, id_t id) : basic_vector(session, id)
-    { LogDebug("A handle created to matrix {}", id); }
+    { LogTrace("A handle created to matrix {}", id); }
     vector(const vector& other) = delete;
     vector& operator=(const vector &other) = delete;
     vector(vector&& other) noexcept = default;

@@ -3,6 +3,8 @@
 #include <stdexcept>
 #include <iomanip>
 
+#include <boost/program_options.hpp>
+
 #include <session.hh>
 
 #include <scylla_blas/matrix.hh>
@@ -13,6 +15,51 @@
 #include "random_value_factory.hh"
 
 #include "arnoldi.hh"
+
+namespace po = boost::program_options;
+
+struct options {
+    std::string host{};
+    uint16_t port{};
+    scylla_blas::index_t m;
+    scylla_blas::index_t n;
+    scylla_blas::index_t block_size;
+    int64_t workers;
+};
+
+void parse_arguments(int ac, char *av[], options &options) {
+    po::options_description desc(fmt::format("Usage: {} [options]", av[0]));
+    po::options_description opt("Options");
+    opt.add_options()
+            ("help", "Show program help")
+            ("block_size,B", po::value<scylla_blas::index_t>(&options.block_size)->default_value(DEFAULT_BLOCK_SIZE), "Block size to use")
+            ("workers,W", po::value<int64_t>(&options.workers)->default_value(DEFAULT_LIMIT_WORKER_CONCURRENCY), "How many workers can we use")
+            (",n", po::value<scylla_blas::index_t>(&options.n)->required(), "How many iterations of algorithm should be performed")
+            (",m", po::value<scylla_blas::index_t>(&options.m)->required(), "Dimension of input matrix")
+            ("host,H", po::value<std::string>(&options.host)->required(), "Address on which Scylla can be reached")
+            ("port,P", po::value<uint16_t>(&options.port)->default_value(SCYLLA_DEFAULT_PORT), "port number on which Scylla can be reached");
+    desc.add(opt);
+    try {
+        auto parsed = po::command_line_parser(ac, av)
+                .options(desc)
+                .run();
+        po::variables_map vm;
+        po::store(parsed, vm);
+        if (vm.count("help") || ac == 1) {
+            std::cout << desc << "\n";
+            std::exit(0);
+        }
+
+        po::notify(vm);
+    } catch (std::exception &e) {
+        LogCritical("error: {}", e.what());
+        std::exit(1);
+    } catch (...) {
+        LogCritical("Exception of unknown type!");
+        std::exit(1);
+    }
+}
+
 
 template<class T>
 void print_matrix_octave(const scylla_blas::matrix<T> &matrix);
@@ -34,33 +81,28 @@ void init_matrix(std::shared_ptr<scmd::session> session,
 const id_t INITIAL_MATRIX_ID = 123456;
 
 int main(int argc, char **argv) {
-    if (argc <= 4) {
-        throw std::runtime_error("You need to specify ip in the command line: " + std::string(argv[0]) + " scylla_ip scylla_port m n");
-    }
-    scylla_blas::index_t m, n;
-    std::string scylla_ip = argv[1];
-    std::string scylla_port = argv[2];
-    m = std::stoi(argv[3]);
-    n = std::stoi(argv[4]);
-    if (n > m) {
+    struct options op;
+    parse_arguments(argc, argv, op);
+
+    if (op.n > op.m) {
         throw std::runtime_error("n cannot be greater than m");
     }
 
-    auto session = std::make_shared<scmd::session>(scylla_ip, scylla_port);
+    auto session = std::make_shared<scmd::session>(op.host, std::to_string(op.port));
 
-    arnoldi::containers c = arnoldi::containers<float>(session, INITIAL_MATRIX_ID, m, n);
+    arnoldi::containers c = arnoldi::containers<float>(session, INITIAL_MATRIX_ID, op.m, op.n, op.block_size);
 
     // Initialize matrix A with random values.
     std::shared_ptr<value_factory<float>> f =
             std::make_shared<random_value_factory<float>>(0, 9, 142);
-    init_matrix<float>(session, c.A, m, m, c.A_id, f);
+    init_matrix<float>(session, c.A, op.m, op.m, c.A_id, f);
 
     // Set vector to (1, 0, 0 ... 0).
     c.b->update_value(1, 1.0f);
 
-    auto arnoldi_iteration = arnoldi(session);
+    auto arnoldi_iteration = arnoldi(session, op.workers);
     print_matrix_octave(*c.A);
-    arnoldi_iteration.compute(c.A, c.b, n, c.h, c.Q, c.v, c.q, c.t);
+    arnoldi_iteration.compute(c.A, c.b, op.n, c.h, c.Q, c.v, c.q, c.t);
     print_matrix_octave(*c.Q);
     print_matrix_octave(*c.h);
 }

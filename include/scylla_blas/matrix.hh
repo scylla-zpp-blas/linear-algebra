@@ -188,7 +188,7 @@ public:
     }
 
     matrix(const std::shared_ptr<scmd::session> &session, id_t id) : basic_matrix(session, id)
-        { LogDebug("A handle created to matrix {}", id); }
+        { LogTrace("A handle created to matrix {}", id); }
     matrix(const matrix& other) = delete;
     matrix& operator=(const matrix &other) = delete;
     matrix(matrix&& other) noexcept = default;
