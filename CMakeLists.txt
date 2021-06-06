@@ -16,17 +16,19 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release)
 endif()
+
 option(BUILD_EXAMPLES "Should examples be built" ON)
 option(BUILD_BENCHMARK "Should benchmarks be built" ON)
-IF(CMAKE_BUILD_TYPE STREQUAL "Debug")
+
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     option(BUILD_TESTS "Should the tests be built" ON)
     set(SCYLLA_BLAS_LOGLEVEL "DEBUG" CACHE STRING "Scylla blas loglevel. Possible values: TRACE DEBUG INFO WARN ERROR CRITICAL")
     set(CMAKE_INTERPROCEDURAL_OPTIMIZATION FALSE)
-ELSE() # Release mode
+else() # Release mode
     option(BUILD_TESTS "Should the tests be built" OFF)
     set(SCYLLA_BLAS_LOGLEVEL "INFO" CACHE STRING "Scylla blas loglevel. Possible values: TRACE DEBUG INFO WARN ERROR CRITICAL")
     set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
-ENDIF()
+endif()
 
 message("Scylla blas: build type ${CMAKE_BUILD_TYPE}")
 message("Scylla blas configuration:")

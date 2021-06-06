@@ -29,9 +29,6 @@ void benchmark_sync(const std::shared_ptr<scmd::session> &session, int n) {
         for (int i = 0; i < n; i++) {
             session->execute(prepared, pkey, (int64_t)rand(), (int64_t)rand(), (int64_t)rand(), (int64_t)rand());
             if ((i+1) % BATCH_SIZE == 0) {
-                if (pkey % 32 == 0) {
-                    //fmt::print("Finished batch {} of {}\n", pkey, 1 + ((n - 1) / BATCH_SIZE));
-                }
                 pkey++;
             }
         }
@@ -57,9 +54,6 @@ void benchmark_batch(const std::shared_ptr<scmd::session> &session, int n) {
                 batch.add_statement(stmt);
             }
             session->execute(batch);
-            if (pkey % 32 == 0) {
-                //fmt::print("Finished batch {} of {}\n", pkey, 1 + ((n - 1) / BATCH_SIZE));
-            }
             pkey++;
             rest -= batch_size;
         }
@@ -84,9 +78,6 @@ void benchmark_batch_unprepared(const std::shared_ptr<scmd::session> &session, i
             }
             batch += "APPLY BATCH;";
             session->execute(batch);
-            if (pkey % 32 == 0) {
-                //fmt::print("Finished batch {} of {}\n", pkey, 1 + ((n - 1) / BATCH_SIZE));
-            }
             pkey++;
             rest -= batch_size;
         }
@@ -131,9 +122,6 @@ void benchmark_async(const std::shared_ptr<scmd::session> &session, int n) {
                 });
             }
             if ((i+1) % BATCH_SIZE == 0) {
-                if (pkey % 32 == 0) {
-                    //fmt::print("Finished batch {} of {}\n", pkey, 1 + ((n - 1) / BATCH_SIZE));
-                }
                 pkey++;
             }
         }
@@ -188,9 +176,6 @@ void benchmark_batch_async(const std::shared_ptr<scmd::session> &session, int n)
                     }
                 }
             });
-            if (pkey % 32 == 0) {
-                //fmt::print("Finished batch {} of {}\n", pkey, 1 + ((n - 1) / BATCH_SIZE));
-            }
             pkey++;
             rest -= batch_size;
         }

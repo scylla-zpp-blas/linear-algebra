@@ -1,6 +1,6 @@
 #include "scylla_blas/vector.hh"
 
-void scylla_blas::basic_vector::update_meta() {
+void scylla_blas::basic_vector::get_meta_from_database() {
     scmd::query_result result = _session->execute(_get_meta_prepared);
 
     if (!result.next_row()) {
@@ -72,7 +72,7 @@ scylla_blas::basic_vector::basic_vector(const std::shared_ptr<scmd::session> &se
                 "UPDATE blas.vector_meta SET block_size = ? WHERE id = ?;")
 #undef PREPARE
 {
-    update_meta();
+    get_meta_from_database();
 }
 
 void scylla_blas::basic_vector::resize(scylla_blas::index_t new_length) {

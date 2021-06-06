@@ -58,44 +58,37 @@ public:
                 q_id,
                 t_id;
 
-        void init(std::shared_ptr<scmd::session> session, id_t initial_id, scylla_blas::index_t block_size) {
+        void init(std::shared_ptr<scmd::session> session, id_t initial_id) {
             A_id = initial_id++;
             A = std::make_shared<scylla_blas::matrix<T>>(session, A_id);
-            A->set_block_size(block_size);
             b_id = initial_id++;
             b = std::make_shared<scylla_blas::vector<T>>(session, b_id);
-            b->set_block_size(block_size);
             h_id = initial_id++;
             h = std::make_shared<scylla_blas::matrix<T>>(session, h_id);
-            h->set_block_size(block_size);
             Q_id = initial_id++;
             Q = std::make_shared<scylla_blas::matrix<T>>(session, Q_id);
-            Q->set_block_size(block_size);
             v_id = initial_id++;
             v = std::make_shared<scylla_blas::vector<T>>(session, v_id);
-            v->set_block_size(block_size);
             q_id = initial_id++;
             q = std::make_shared<scylla_blas::vector<T>>(session, q_id);
-            q->set_block_size(block_size);
             t_id = initial_id++;
             t = std::make_shared<scylla_blas::vector<T>>(session, t_id);
-            t->set_block_size(block_size);
         }
 
-        containers(std::shared_ptr<scmd::session> session, id_t initial_id, scylla_blas::index_t block_size) {
-            init(session, initial_id, block_size);
+        containers(std::shared_ptr<scmd::session> session, id_t initial_id) {
+            init(session, initial_id);
         }
 
         containers(std::shared_ptr<scmd::session> session, id_t initial_id, scylla_blas::index_t m, scylla_blas::index_t n, scylla_blas::index_t block_size) {
             int64_t initial_id_bak = initial_id;
-            scylla_blas::matrix<T>::init(session, initial_id++, m, m);
-            scylla_blas::vector<T>::init(session, initial_id++, m);
-            scylla_blas::matrix<T>::init(session, initial_id++, n + 1, n);
-            scylla_blas::matrix<T>::init(session, initial_id++, m, n + 1);
-            scylla_blas::vector<T>::init(session, initial_id++, m);
-            scylla_blas::vector<T>::init(session, initial_id++, m);
-            scylla_blas::vector<T>::init(session, initial_id++, m);
-            init(session, initial_id_bak, block_size);
+            scylla_blas::matrix<T>::init(session, initial_id++, m, m, true, block_size);
+            scylla_blas::vector<T>::init(session, initial_id++, m, true, block_size);
+            scylla_blas::matrix<T>::init(session, initial_id++, n + 1, n, true, block_size);
+            scylla_blas::matrix<T>::init(session, initial_id++, m, n + 1, true, block_size);
+            scylla_blas::vector<T>::init(session, initial_id++, m, true, block_size);
+            scylla_blas::vector<T>::init(session, initial_id++, m, true, block_size);
+            scylla_blas::vector<T>::init(session, initial_id++, m, true, block_size);
+            init(session, initial_id_bak);
         }
     };
 };

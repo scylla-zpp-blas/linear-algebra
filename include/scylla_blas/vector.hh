@@ -32,7 +32,6 @@ protected:
     scmd::prepared_query _resize_prepared;
     scmd::prepared_query _set_block_size_prepared;
 
-    // Should we make these private, with accessors?
     id_t id;
     index_t length;
     index_t block_size;
@@ -40,7 +39,7 @@ protected:
     inline static constexpr index_t ceil_div (index_t a, index_t b) { return 1 + (a - 1) / b; }
     index_t get_segment_index(index_t i) const { return ceil_div(i, block_size); }
 
-    void update_meta();
+    void get_meta_from_database();
 
 public:
     static void clear(const std::shared_ptr<scmd::session> &session, id_t id);
