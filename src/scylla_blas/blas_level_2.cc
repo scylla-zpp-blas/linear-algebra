@@ -312,3 +312,20 @@ scylla_blas::routine_scheduler::dtbsv(const enum UPLO Uplo, const enum TRANSPOSE
     } while (error / sum > EPSILON);
     return X;
 }
+
+/* TODO: move to generic / delete */
+scylla_blas::matrix<float>&
+scylla_blas::routine_scheduler::srmgen(float alpha, scylla_blas::matrix<float> &A) {
+    add_blocks_as_queue_tasks(this->_subtask_queue, A);
+
+    produce_mixed_tasks<float>(proto::SRMGEN, NONE, NONE, Lower, NonUnit, A.get_id(), NoTrans, alpha, NONE, NONE, NONE);
+    return A;
+}
+
+scylla_blas::matrix<double>&
+scylla_blas::routine_scheduler::drmgen(double alpha, scylla_blas::matrix<double> &A) {
+    add_blocks_as_queue_tasks(this->_subtask_queue, A);
+
+    produce_mixed_tasks<double>(proto::DRMGEN, NONE, NONE, Lower, NonUnit, A.get_id(), NoTrans, alpha, NONE, NONE, NONE);
+    return A;
+}

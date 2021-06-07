@@ -308,6 +308,11 @@ public:
     matrix<double> &dtrsm(const enum SIDE Side, const enum UPLO Uplo,
                           const enum TRANSPOSE TransA, const enum DIAG Diag,
                           const double alpha, const matrix<double> &A, matrix<double> &B);
+
+    /* MISC */
+    /* alpha denotes the suggested proportion of non-zero values */
+    matrix<float> &srmgen(float alpha, matrix<float> &A);
+    matrix<double> &drmgen(double alpha, matrix<double> &A);
 };
 
 }

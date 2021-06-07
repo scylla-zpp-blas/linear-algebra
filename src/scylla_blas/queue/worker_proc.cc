@@ -1,5 +1,8 @@
 #include "scylla_blas/queue/worker_proc.hh"
 
+#include "random_value_factory.hh"
+#include "sparse_matrix_value_generator.hh"
+
 namespace {
 
 void consume_tasks(scylla_blas::scylla_queue &task_queue,
@@ -385,6 +388,35 @@ void syr2k(const std::shared_ptr<scmd::session> &session, auto &task_details) {
     syrk_generic<T>(session, A, B, C, 1, task_details);
 }
 
+/* MISC */
+template<class T>
+void rmgen(const std::shared_ptr<scmd::session> &session, auto &task_details) {
+    using namespace scylla_blas;
+
+    matrix<T> A(session, task_details.A_id);
+    scylla_queue task_queue = scylla_queue(session, task_details.task_queue_id);
+
+    auto generate_block = [&A, &task_details] (proto::task &subtask) {
+        auto [row, column] = subtask.coord;
+        index_t length = A.get_block_size();
+
+        std::shared_ptr<value_factory<T>> f = std::make_shared<random_value_factory<T>>(0, 9, row * A.get_column_count() + column);
+        size_t suggested_load = length * length * task_details.alpha + 1;
+        sparse_matrix_value_generator<T> gen = sparse_matrix_value_generator<T>(length, length, suggested_load, A.get_id(), f);
+
+        std::vector<matrix_value<T>> values;
+
+        while(gen.has_next()) {
+            values.emplace_back(gen.next());
+        }
+
+        matrix_block<T> block(values);
+        A.insert_block(row, column, block);
+    };
+
+    consume_tasks(task_queue, generate_block);
+}
+
 }
 
 #define DEFINE_WORKER_FUNCTION(function_name, function_body) \
@@ -562,4 +594,17 @@ DEFINE_WORKER_FUNCTION(dsyr2k, {
     syr2k<double>(session, task.matrix_task_double);
     return std::nullopt;
 })
+
+/* MISC */
+
+DEFINE_WORKER_FUNCTION(srmgen, {
+    rmgen<float>(session, task.mixed_task_float);
+    return std::nullopt;
+})
+
+DEFINE_WORKER_FUNCTION(drmgen, {
+    rmgen<double>(session, task.mixed_task_double);
+    return std::nullopt;
+})
+
 #undef DEFINE_WORKER_FUNCTION

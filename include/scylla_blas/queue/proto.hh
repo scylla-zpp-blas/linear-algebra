@@ -18,6 +18,10 @@ namespace scylla_blas::proto {
 enum task_type {
     NONE,
 
+    /* MISC */
+    SRMGEN,
+    DRMGEN,
+
     /* LEVEL 1 */
     SROTG,
     SROTMG,

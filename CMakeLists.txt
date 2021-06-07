@@ -73,7 +73,7 @@ set(BLAS_INCLUDE
         ${INCLUDE_DIR}/utils/utils.hh)
 
 add_library(scylla_blas SHARED "${BLAS_SRC}" "${BLAS_INCLUDE}")
-target_include_directories(scylla_blas PUBLIC ${CMAKE_SOURCE_DIR}/include)
+target_include_directories(scylla_blas PUBLIC ${CMAKE_SOURCE_DIR}/include ${CMAKE_SOURCE_DIR}/matrix_generators)
 target_link_libraries(scylla_blas PUBLIC scylla_modern_cpp_driver fmt::fmt)
 target_compile_features(scylla_blas PUBLIC cxx_std_20)
 target_compile_definitions(scylla_blas PUBLIC SCYLLA_BLAS_LOGLEVEL=${SCYLLA_BLAS_LOGLEVEL})
