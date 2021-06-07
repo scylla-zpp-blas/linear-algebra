@@ -29,41 +29,6 @@ void assert_width_length_equal(const scylla_blas::matrix<T> &A,
     }
 }
 
-template<class T>
-void add_segments_as_queue_tasks(scylla_blas::scylla_queue &queue,
-                                 const scylla_blas::vector<T> &X) {
-    LogInfo("Scheduling subtasks...");
-    std::vector<scylla_blas::scylla_queue::task> tasks;
-    tasks.reserve(X.get_segment_count());
-    for (scylla_blas::index_t i = 1; i <= X.get_segment_count(); i++) {
-        tasks.push_back({
-            .type = scylla_blas::proto::NONE,
-            .index = i
-        });
-    }
-    queue.produce(tasks);
-}
-
-template<class T>
-void add_blocks_as_queue_tasks(scylla_blas::scylla_queue &queue,
-                               const scylla_blas::matrix<T> &C) {
-    LogInfo("Preparing multiplication task...");
-    std::vector<scylla_blas::scylla_queue::task> tasks;
-    tasks.reserve(C.get_blocks_height() * C.get_blocks_width());
-    for (scylla_blas::index_t i = 1; i <= C.get_blocks_height(); i++) {
-        for (scylla_blas::index_t j = 1; j <= C.get_blocks_width(); j++) {
-            LogTrace("Scheduling block {} {} for matrix {}", i, j, C.get_id());
-            tasks.push_back({
-              .type = scylla_blas::proto::NONE,
-              .coord {
-                      .block_row = i,
-                      .block_column = j
-              }});
-        }
-    }
-    queue.produce(tasks);
-}
-
 }
 
 template<>
@@ -77,21 +42,26 @@ float scylla_blas::routine_scheduler::produce_mixed_tasks(const proto::task_type
                                                           const float beta,
                                                           const int64_t Y_id,
                                                           float acc, updater<float> update) {
-    return produce_and_wait(this->_main_worker_queue, proto::task{
+    std::vector<proto::task> tasks;
+
+    for (const auto &q : this->_subtask_queues) {
+        tasks.push_back({
             .type = type,
             .mixed_task_float = {
-                    .task_queue_id = this->_subtask_queue.get_id(),
-                    .KL = KL,
-                    .KU = KU,
-                    .Uplo = Uplo,
-                    .Diag = Diag,
-                    .A_id = A_id,
-                    .TransA = TransA,
-                    .alpha = alpha,
-                    .X_id = X_id,
-                    .beta = beta,
-                    .Y_id = Y_id
-            }}, _current_worker_count, _scheduler_sleep_time, acc, update);
+                .task_queue_id = q.get_id(),
+                .KL = KL,
+                .KU = KU,
+                .A_id = A_id,
+                .TransA = TransA,
+                .alpha = alpha,
+                .X_id = X_id,
+                .beta = beta,
+                .Y_id = Y_id
+            }
+        });
+    }
+
+    return produce_and_wait(tasks, acc, update);
 }
 
 template<>
@@ -105,19 +75,26 @@ double scylla_blas::routine_scheduler::produce_mixed_tasks(const proto::task_typ
                                                            const double beta,
                                                            const int64_t Y_id,
                                                            double acc, updater<double> update) {
-    return produce_and_wait(this->_main_worker_queue, proto::task{
+    std::vector<proto::task> tasks;
+
+    for (const auto &q : this->_subtask_queues) {
+        tasks.push_back({
             .type = type,
             .mixed_task_double = {
-                    .task_queue_id = this->_subtask_queue.get_id(),
-                    .KL = KL,
-                    .KU = KU,
-                    .A_id = A_id,
-                    .TransA = TransA,
-                    .alpha = alpha,
-                    .X_id = X_id,
-                    .beta = beta,
-                    .Y_id = Y_id
-            }}, _current_worker_count, _scheduler_sleep_time, acc, update);
+                .task_queue_id = q.get_id(),
+                .KL = KL,
+                .KU = KU,
+                .A_id = A_id,
+                .TransA = TransA,
+                .alpha = alpha,
+                .X_id = X_id,
+                .beta = beta,
+                .Y_id = Y_id
+            }
+        });
+    }
+
+    return produce_and_wait(tasks, acc, update);
 }
 
 #define NONE 0
@@ -134,7 +111,7 @@ scylla_blas::routine_scheduler::sgemv(const enum TRANSPOSE TransA,
     assert_width_length_equal(A, X, TransA);
     assert_height_length_equal(A, Y, TransA);
 
-    add_segments_as_queue_tasks(this->_subtask_queue, Y);
+    add_segments_as_queue_tasks(Y);
 
     produce_mixed_tasks<float>(proto::SGEMV, NONE, NONE, Upper, NonUnit, A.get_id(), TransA, alpha, X.get_id(), beta, Y.get_id());
     return Y;
@@ -151,7 +128,7 @@ scylla_blas::routine_scheduler::dgemv(const enum TRANSPOSE TransA,
 
     assert_width_length_equal(A, X, TransA);
     assert_height_length_equal(A, Y, TransA);
-    add_segments_as_queue_tasks(this->_subtask_queue, Y);
+    add_segments_as_queue_tasks(Y);
 
     produce_mixed_tasks<double>(proto::DGEMV, NONE, NONE, Upper, NonUnit, A.get_id(), TransA, alpha, X.get_id(), beta, Y.get_id());
     return Y;
@@ -169,7 +146,7 @@ scylla_blas::routine_scheduler::sgbmv(const enum TRANSPOSE TransA,
 
     assert_width_length_equal(A, X, TransA);
     assert_height_length_equal(A, Y, TransA);
-    add_segments_as_queue_tasks(this->_subtask_queue, Y);
+    add_segments_as_queue_tasks(Y);
 
     produce_mixed_tasks<float>(proto::SGBMV, KL, KU, Upper, NonUnit, A.get_id(), TransA, alpha, X.get_id(), beta, Y.get_id());
     return Y;
@@ -187,7 +164,7 @@ scylla_blas::routine_scheduler::dgbmv(const enum TRANSPOSE TransA,
 
     assert_width_length_equal(A, X, TransA);
     assert_height_length_equal(A, Y, TransA);
-    add_segments_as_queue_tasks(this->_subtask_queue, Y);
+    add_segments_as_queue_tasks(Y);
 
     produce_mixed_tasks<double>(proto::DGBMV, KL, KU, Upper, NonUnit, A.get_id(), TransA, alpha, X.get_id(), beta, Y.get_id());
     return Y;
@@ -199,7 +176,7 @@ scylla_blas::routine_scheduler::sger(const float alpha, const vector<float> &X,
     /* Leave handling X == Y to a worker */
     assert_height_length_equal(A, X);
     assert_width_length_equal(A, Y);
-    add_blocks_as_queue_tasks(this->_subtask_queue, A);
+    add_blocks_as_queue_tasks(A);
 
     produce_mixed_tasks<float>(proto::SGER, NONE, NONE, Upper, NonUnit, A.get_id(), NoTrans, alpha, X.get_id(), NONE, Y.get_id());
     return A;
@@ -211,7 +188,7 @@ scylla_blas::routine_scheduler::dger(const double alpha, const vector<double> &X
     /* Leave handling X == Y to a worker */
     assert_height_length_equal(A, X);
     assert_width_length_equal(A, Y);
-    add_blocks_as_queue_tasks(this->_subtask_queue, A);
+    add_blocks_as_queue_tasks(A);
 
     produce_mixed_tasks<double>(proto::DGER, NONE, NONE, Upper, NonUnit, A.get_id(), NoTrans, alpha, X.get_id(), NONE, Y.get_id());
     return A;
@@ -225,14 +202,14 @@ scylla_blas::routine_scheduler::strsv(const enum UPLO Uplo, const enum TRANSPOSE
     assert_width_length_equal(A, X);
     scylla_blas::vector<float>::clear(this->_session, HELPER_FLOAT_VECTOR_ID);
 
-    add_segments_as_queue_tasks(this->_subtask_queue, X);
+    add_segments_as_queue_tasks(X);
     produce_vector_tasks<float>(proto::SCOPY, 1, X.get_id(), HELPER_FLOAT_VECTOR_ID);
 
     float error, sum;
     do {
         sum = 0;
 
-        add_segments_as_queue_tasks(this->_subtask_queue, X);
+        add_segments_as_queue_tasks(X);
         error = produce_mixed_tasks<float>(proto::STRSV, NONE, NONE, Uplo, Diag, A.get_id(), TransA, NONE, HELPER_FLOAT_VECTOR_ID, NONE, X.get_id(),
                                            0, [&sum](float &result, const proto::response &r) {
                                                 result += r.result_float_pair.first;
@@ -250,14 +227,14 @@ scylla_blas::routine_scheduler::dtrsv(const enum UPLO Uplo, const enum TRANSPOSE
     assert_width_length_equal(A, X);
     scylla_blas::vector<double>::clear(this->_session, HELPER_DOUBLE_VECTOR_ID);
 
-    add_segments_as_queue_tasks(this->_subtask_queue, X);
+    add_segments_as_queue_tasks(X);
     produce_vector_tasks<float>(proto::DCOPY, 1, X.get_id(), HELPER_DOUBLE_VECTOR_ID);
 
     double error, sum;
     do {
         sum = 0;
 
-        add_segments_as_queue_tasks(this->_subtask_queue, X);
+        add_segments_as_queue_tasks(X);
         error = produce_mixed_tasks<double>(proto::DTRSV, NONE, NONE, Uplo, Diag, A.get_id(), TransA, NONE, HELPER_DOUBLE_VECTOR_ID, NONE, X.get_id(),
                                            0, [&sum](double &result, const proto::response &r) {
                                                 result += r.result_double_pair.first;
@@ -274,14 +251,14 @@ scylla_blas::routine_scheduler::stbsv(const enum UPLO Uplo, const enum TRANSPOSE
     assert_width_length_equal(A, X, TransA);
     scylla_blas::vector<float>::clear(this->_session, HELPER_FLOAT_VECTOR_ID);
 
-    add_segments_as_queue_tasks(this->_subtask_queue, X);
+    add_segments_as_queue_tasks(X);
     produce_vector_tasks<float>(proto::SCOPY, 1, X.get_id(), HELPER_FLOAT_VECTOR_ID);
 
     float error, sum;
     do {
         sum = 0;
 
-        add_segments_as_queue_tasks(this->_subtask_queue, X);
+        add_segments_as_queue_tasks(X);
         error = produce_mixed_tasks<float>(proto::STBSV, K, K, Uplo, Diag, A.get_id(), TransA, NONE, HELPER_FLOAT_VECTOR_ID, NONE, X.get_id(),
                                            0, [&sum](float &result, const proto::response &r) {
                                                 result += r.result_float_pair.first;
@@ -297,14 +274,14 @@ scylla_blas::routine_scheduler::dtbsv(const enum UPLO Uplo, const enum TRANSPOSE
     assert_width_length_equal(A, X, TransA);
     scylla_blas::vector<double>::clear(this->_session, HELPER_DOUBLE_VECTOR_ID);
 
-    add_segments_as_queue_tasks(this->_subtask_queue, X);
+    add_segments_as_queue_tasks(X);
     produce_vector_tasks<float>(proto::DCOPY, 1, X.get_id(), HELPER_DOUBLE_VECTOR_ID);
 
     double error, sum;
     do {
         sum = 0;
 
-        add_segments_as_queue_tasks(this->_subtask_queue, X);
+        add_segments_as_queue_tasks(X);
         error = produce_mixed_tasks<double>(proto::DTBSV, K, K, Uplo, Diag, A.get_id(), TransA, NONE, HELPER_DOUBLE_VECTOR_ID, NONE, X.get_id(),
                                            0, [&sum](double &result, const proto::response &r) {
                                                 result += r.result_double_pair.first;
@@ -317,7 +294,7 @@ scylla_blas::routine_scheduler::dtbsv(const enum UPLO Uplo, const enum TRANSPOSE
 /* TODO: move to generic / delete */
 scylla_blas::matrix<float>&
 scylla_blas::routine_scheduler::srmgen(float alpha, scylla_blas::matrix<float> &A) {
-    add_blocks_as_queue_tasks(this->_subtask_queue, A);
+    add_blocks_as_queue_tasks(A);
 
     produce_mixed_tasks<float>(proto::SRMGEN, NONE, NONE, Lower, NonUnit, A.get_id(), NoTrans, alpha, NONE, NONE, NONE);
     return A;
@@ -325,7 +302,7 @@ scylla_blas::routine_scheduler::srmgen(float alpha, scylla_blas::matrix<float> &
 
 scylla_blas::matrix<double>&
 scylla_blas::routine_scheduler::drmgen(double alpha, scylla_blas::matrix<double> &A) {
-    add_blocks_as_queue_tasks(this->_subtask_queue, A);
+    add_blocks_as_queue_tasks(A);
 
     produce_mixed_tasks<double>(proto::DRMGEN, NONE, NONE, Lower, NonUnit, A.get_id(), NoTrans, alpha, NONE, NONE, NONE);
     return A;

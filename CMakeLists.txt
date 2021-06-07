@@ -42,7 +42,6 @@ message("CMAKE_POSITION_INDEPENDENT_CODE ${CMAKE_POSITION_INDEPENDENT_CODE}")
 
 set(SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src/scylla_blas)
 set(BLAS_SRC
-        ${SRC_DIR}/blas_generic.cc
         ${SRC_DIR}/blas_level_1.cc
         ${SRC_DIR}/blas_level_2.cc
         ${SRC_DIR}/blas_level_3.cc

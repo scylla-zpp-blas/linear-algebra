@@ -2,7 +2,6 @@
 
 /* BASED ON cblas.h */
 
-#include <complex>
 #include <scmd.hh>
 
 #include "queue/scylla_queue.hh"
@@ -27,7 +26,7 @@ class routine_scheduler {
 
     std::shared_ptr <scmd::session> _session;
 
-    scylla_queue _subtask_queue;
+    std::vector<scylla_queue> _subtask_queues;
     scylla_queue _main_worker_queue;
 
     int64_t _current_worker_count;
@@ -41,10 +40,27 @@ class routine_scheduler {
      * Otherwise, accumulation errors will be reported if `update` is not a valid function.
      */
     template<class T>
-    T produce_and_wait(scylla_blas::scylla_queue &queue,
-                       const scylla_blas::proto::task &task,
-                       scylla_blas::index_t cnt, int64_t sleep_time,
-                       T acc, updater<T> update);
+    T produce_and_wait(const std::vector<proto::task> &tasks, T acc, updater<T> update) {
+        id_t task_id = _main_worker_queue.produce(tasks);
+        LogInfo("Scheduled tasks {}-{} to queue {}", task_id, task_id + tasks.size() - 1, _main_worker_queue.get_id());
+        for (id_t id = task_id; id < task_id + tasks.size(); id++) {
+            while (!_main_worker_queue.is_finished(id)) {
+                scylla_blas::wait_microseconds(_scheduler_sleep_time);
+            }
+
+            auto response = _main_worker_queue.get_response(id);
+
+            if (response.value().type == proto::R_NONE) continue;
+
+            try {
+                update(acc, response.value());
+            } catch(std::exception &e) {
+                LogError("Result update failed: {}", e.what());
+            }
+        }
+
+        return acc;
+    }
 
     /* Produces a number of vector-only primary tasks for workers, waits
      * until they are reported to be complete, accumulating result using
@@ -77,19 +93,72 @@ class routine_scheduler {
                            const int64_t B_id, const enum TRANSPOSE TransB, const T beta,
                            const int64_t C_id, T acc = 0, updater<T> update = nullptr);
 
-    scylla_queue prepare_queue() const {
-        scylla_queue::create_queue(_session, _subtask_queue.get_id(), false, true);
-        return scylla_queue(_session, _subtask_queue.get_id());
+    void produce_tasks_in_queues(std::vector<scylla_queue::task> &tasks) {
+        std::vector<std::vector<scylla_queue::task>> split(_current_worker_count);
+
+        for (size_t i = 0; i < tasks.size(); i++)
+            split[i % _current_worker_count].emplace_back(tasks[i]);
+
+        for (size_t i = 0; i < tasks.size(); i++)
+            _subtask_queues[i].produce(split[i]);
+    }
+
+    template<class T>
+    void add_segments_as_queue_tasks(const vector<T> &X) {
+        LogInfo("Scheduling subtasks...");
+        std::vector<scylla_queue::task> tasks;
+        tasks.reserve(X.get_segment_count());
+        for (scylla_blas::index_t i = 1; i <= X.get_segment_count(); i++) {
+            tasks.push_back({
+                    .type = scylla_blas::proto::NONE,
+                    .index = i
+            });
+        }
+
+        produce_tasks_in_queues(tasks);
+    }
+
+    template<class T>
+    void add_blocks_as_queue_tasks(const matrix<T> &C) {
+        LogDebug("Creating block-based subtasks");
+        std::vector<scylla_blas::scylla_queue::task> tasks;
+        tasks.reserve(C.get_blocks_height() * C.get_blocks_width());
+        for (scylla_blas::index_t i = 1; i <= C.get_blocks_height(); i++) {
+            for (scylla_blas::index_t j = 1; j <= C.get_blocks_width(); j++) {
+                tasks.push_back({
+                    .type = scylla_blas::proto::NONE,
+                    .coord {
+                            .block_row = i,
+                            .block_column = j
+                    }});
+            }
+        }
+        produce_tasks_in_queues(tasks);
+    }
+
+    void prepare_queues(size_t queue_count) {
+        if (_subtask_queues.size() > queue_count) {
+            _subtask_queues.erase(_subtask_queues.begin() + queue_count, _subtask_queues.end());
+            return;
+        }
+
+        while (_subtask_queues.size() < queue_count) {
+            id_t queue_id = get_timestamp();
+            scylla_queue::create_queue(_session, queue_id, false, false);
+            _subtask_queues.emplace_back(_session, queue_id);
+        }
     }
 public:
     /* The queue used for subroutines requested in methods */
     routine_scheduler(const std::shared_ptr <scmd::session> &session) :
             _session(session),
-            _subtask_queue(prepare_queue()),
+            _subtask_queues(),
             _main_worker_queue(_session, DEFAULT_WORKER_QUEUE_ID),
             _current_worker_count(DEFAULT_WORKER_COUNT),
             _scheduler_sleep_time(DEFAULT_SCHEDULER_SLEEP_TIME_MICROSECONDS)
-    {}
+    {
+        prepare_queues(_current_worker_count);
+    }
 
     int64_t get_max_used_workers() {
         return this->_current_worker_count;
@@ -97,6 +166,7 @@ public:
 
     void set_max_used_workers(int64_t new_max_used_workers) {
         this->_current_worker_count = new_max_used_workers;
+        prepare_queues(new_max_used_workers);
     }
 
     int64_t get_scheduler_sleep_time() {

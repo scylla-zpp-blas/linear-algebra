@@ -37,25 +37,6 @@ void assert_multiplication_compatible(const enum scylla_blas::TRANSPOSE TransA, 
     }
 }
 
-template<class T>
-void add_blocks_as_queue_tasks(scylla_blas::scylla_queue &queue,
-                               const scylla_blas::matrix<T> &C) {
-    LogDebug("Creating block-based subtasks");
-    std::vector<scylla_blas::scylla_queue::task> tasks;
-    tasks.reserve(C.get_blocks_height() * C.get_blocks_width());
-    for (scylla_blas::index_t i = 1; i <= C.get_blocks_height(); i++) {
-        for (scylla_blas::index_t j = 1; j <= C.get_blocks_width(); j++) {
-            tasks.push_back({
-                 .type = scylla_blas::proto::NONE,
-                 .coord {
-                     .block_row = i,
-                     .block_column = j
-                 }});
-        }
-    }
-    queue.produce(tasks);
-}
-
 }
 
 template<>
@@ -63,21 +44,28 @@ float scylla_blas::routine_scheduler::produce_matrix_tasks(const proto::task_typ
                                                            const int64_t A_id, const enum TRANSPOSE TransA, const float alpha,
                                                            const int64_t B_id, const enum TRANSPOSE TransB, const float beta,
                                                            const int64_t C_id, float acc, updater<float> update) {
-    return produce_and_wait(this->_main_worker_queue, proto::task {
-        .type = type,
-        .matrix_task_float = {
-            .task_queue_id = this->_subtask_queue.get_id(),
+    std::vector<proto::task> tasks;
 
-            .A_id = A_id,
-            .TransA = TransA,
-            .alpha = alpha,
+    for (const auto &q : this->_subtask_queues) {
+        tasks.push_back({
+            .type = type,
+            .matrix_task_float = {
+                .task_queue_id = q.get_id(),
 
-            .B_id = B_id,
-            .TransB = TransB,
-            .beta = beta,
+                .A_id = A_id,
+                .TransA = TransA,
+                .alpha = alpha,
 
-            .C_id = C_id
-        }}, _current_worker_count, _scheduler_sleep_time, acc, update);
+                .B_id = B_id,
+                .TransB = TransB,
+                .beta = beta,
+
+                .C_id = C_id
+            }
+        });
+    }
+
+    return produce_and_wait(tasks, acc, update);
 }
 
 template<>
@@ -85,21 +73,28 @@ double scylla_blas::routine_scheduler::produce_matrix_tasks(const proto::task_ty
                                                             const int64_t A_id, const enum TRANSPOSE TransA, const double alpha,
                                                             const int64_t B_id, const enum TRANSPOSE TransB, const double beta,
                                                             const int64_t C_id, double acc, updater<double> update) {
-    return produce_and_wait(this->_main_worker_queue, proto::task{
-        .type = type,
-        .matrix_task_double = {
-            .task_queue_id = this->_subtask_queue.get_id(),
+    std::vector<proto::task> tasks;
 
-            .A_id = A_id,
-            .TransA = TransA,
-            .alpha = alpha,
+    for (const auto &q : this->_subtask_queues) {
+        tasks.push_back({
+            .type = type,
+            .matrix_task_double = {
+                .task_queue_id = q.get_id(),
 
-            .B_id = B_id,
-            .TransB = TransB,
-            .beta = beta,
+                .A_id = A_id,
+                .TransA = TransA,
+                .alpha = alpha,
 
-            .C_id = C_id
-        }}, _current_worker_count, _scheduler_sleep_time, acc, update);
+                .B_id = B_id,
+                .TransB = TransB,
+                .beta = beta,
+
+                .C_id = C_id
+            }
+        });
+    }
+
+    return produce_and_wait(tasks, acc, update);
 }
 
 #define NONE 0
@@ -110,7 +105,7 @@ scylla_blas::routine_scheduler::sgemm(const enum TRANSPOSE TransA, const enum TR
                                       const matrix<float> &B,
                                       const float beta, scylla_blas::matrix<float> &C) {
     assert_multiplication_compatible(TransA, A, B, TransB, C);
-    add_blocks_as_queue_tasks(this->_subtask_queue, C);
+    add_blocks_as_queue_tasks(C);
 
     produce_matrix_tasks<float>(proto::SGEMM, A.get_id(), TransA, alpha, B.get_id(), TransB, beta, C.get_id());
 
@@ -122,7 +117,7 @@ scylla_blas::routine_scheduler::dgemm(const enum TRANSPOSE TransA, const enum TR
                                       const double alpha, const matrix<double> &A,
                                       const matrix<double> &B, const double beta, scylla_blas::matrix<double> &C) {
     assert_multiplication_compatible(TransA, A, B, TransB, C);
-    add_blocks_as_queue_tasks(this->_subtask_queue, C);
+    add_blocks_as_queue_tasks(C);
 
     produce_matrix_tasks<double>(proto::DGEMM, A.get_id(), TransA, alpha, B.get_id(), TransB, beta, C.get_id());
 
@@ -134,7 +129,7 @@ scylla_blas::routine_scheduler::ssyrk(__attribute__((unused)) const enum UPLO Up
                                       const enum TRANSPOSE TransA, const float alpha, const matrix<float> &A,
                                       const float beta, matrix<float> &C) {
     assert_multiplication_compatible(TransA, A, A, anti_trans(TransA), C);
-    add_blocks_as_queue_tasks(this->_subtask_queue, C);
+    add_blocks_as_queue_tasks(C);
 
     produce_matrix_tasks<float>(proto::SSYRK, A.get_id(), TransA, alpha, NONE, NoTrans, beta, C.get_id());
 
@@ -146,7 +141,7 @@ scylla_blas::routine_scheduler::dsyrk(__attribute__((unused)) const enum UPLO Up
                                       const enum TRANSPOSE TransA, const double alpha, const matrix<double> &A,
                                       const double beta, matrix<double> &C) {
     assert_multiplication_compatible(TransA, A, A, anti_trans(TransA), C);
-    add_blocks_as_queue_tasks(this->_subtask_queue, C);
+    add_blocks_as_queue_tasks(C);
 
     produce_matrix_tasks<float>(proto::DSYRK, A.get_id(), TransA, alpha, NONE, NoTrans, beta, C.get_id());
 
@@ -159,7 +154,7 @@ scylla_blas::routine_scheduler::ssyr2k(__attribute__((unused)) const enum UPLO U
                                       const float beta, const matrix<float> &B, matrix<float> &C) {
     assert_multiplication_compatible(Trans, A, B, anti_trans(Trans), C);
     assert_multiplication_compatible(anti_trans(Trans), A, B, Trans, C);
-    add_blocks_as_queue_tasks(this->_subtask_queue, C);
+    add_blocks_as_queue_tasks(C);
 
     produce_matrix_tasks<float>(proto::SSYR2K, A.get_id(), Trans, alpha, B.get_id(), NoTrans, beta, C.get_id());
 
@@ -172,7 +167,7 @@ scylla_blas::routine_scheduler::dsyr2k(__attribute__((unused)) const enum UPLO U
                                       const double beta, const matrix<double> &B, matrix<double> &C) {
     assert_multiplication_compatible(Trans, A, B, anti_trans(Trans), C);
     assert_multiplication_compatible(anti_trans(Trans), A, B, Trans, C);
-    add_blocks_as_queue_tasks(this->_subtask_queue, C);
+    add_blocks_as_queue_tasks(C);
 
     produce_matrix_tasks<float>(proto::DSYR2K, A.get_id(), Trans, alpha, B.get_id(), NoTrans, beta, C.get_id());
 
