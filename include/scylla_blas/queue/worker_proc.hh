@@ -68,7 +68,7 @@ constexpr std::array<std::pair<proto::task_type, const procedure_t &>, 34> task_
          {proto::DSYR2K, dsyr2k}
  }};
 
-constexpr procedure_t& get_procedure_for_task(const proto::task &t) {
+inline procedure_t& get_procedure_for_task(const proto::task &t) {
     auto pred = [=](auto &val){ return val.first == t.type; };
 
     auto it = std::find_if(task_to_procedure.begin(), task_to_procedure.end(), pred);
