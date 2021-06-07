@@ -78,6 +78,6 @@ done
 screen -dmS workers bash
 echo "Starting commands instances"
 for i in $(seq 1 $instances); do
-  screen -S workers -X screen -t "worker_$i" -- bash -c "$@; bash"
+  screen -S workers -X screen -t "worker_$i" -- bash -c "$@"
   sleep $sleep_time
 done
