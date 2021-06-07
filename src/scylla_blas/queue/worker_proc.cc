@@ -399,17 +399,17 @@ void rmgen(const std::shared_ptr<scmd::session> &session, auto &task_details) {
     auto generate_block = [&A, &task_details] (proto::task &subtask) {
         auto [row, column] = subtask.coord;
         index_t length = A.get_block_size();
-
-        std::shared_ptr<value_factory<T>> f = std::make_shared<random_value_factory<T>>(0, 9, row * A.get_column_count() + column);
+        LogTrace("(rmgen) length: {}. Matrix id: {} (details id: {})", length, A.get_id(), task_details.A_id);
+        std::shared_ptr<value_factory<T>> f = std::make_shared<random_value_factory<T>>(0, 9, A.get_id() * (row * A.get_column_count() + column));
         size_t suggested_load = length * length * task_details.alpha + 1;
-        sparse_matrix_value_generator<T> gen = sparse_matrix_value_generator<T>(length, length, suggested_load, A.get_id(), f);
-
+        sparse_matrix_value_generator<T> gen = sparse_matrix_value_generator<T>(length, length, suggested_load, A.get_id() * (row * A.get_column_count() + column), f);
+        LogTrace("(rmgen) suggested load: {}", suggested_load);
         std::vector<matrix_value<T>> values;
 
         while(gen.has_next()) {
             values.emplace_back(gen.next());
         }
-
+        LogTrace("(rmgen) generated {} values", values.size());
         matrix_block<T> block(values);
         A.insert_block(row, column, block);
     };

@@ -6,11 +6,6 @@
 #include "const.hh"
 #include "benchmark.hh"
 
-size_t suggest_number_of_values(scylla_blas::index_t w, scylla_blas::index_t h) {
-    size_t ret = w * h / 5; // 20% load
-    return (ret > 0 ? ret : 1);
-}
-
 // Matrix * Matrix
 
 void benchmark_mm::init() {
@@ -32,8 +27,8 @@ void benchmark_mm::setup(int64_t block_size, int64_t length) {
     rm->set_block_size(block_size);
     wm->set_block_size(block_size);
 
-    fill_matrix(*lm, length);
-    fill_matrix(*rm, length);
+    scheduler.srmgen(matrix_load, *rm);
+    scheduler.srmgen(matrix_load, *lm);
 }
 
 void benchmark_mm::proc() {
@@ -74,8 +69,7 @@ void benchmark_mv::setup(int64_t block_size, int64_t length) {
     rv->set_block_size(block_size);
     wv->set_block_size(block_size);
 
-    fill_matrix(*lm, length);
-    fill_vector(*rv, length);
+    scheduler.srmgen(matrix_load, *lm);
 }
 
 void benchmark_mv::proc() {

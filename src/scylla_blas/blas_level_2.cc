@@ -52,6 +52,7 @@ void add_blocks_as_queue_tasks(scylla_blas::scylla_queue &queue,
     tasks.reserve(C.get_blocks_height() * C.get_blocks_width());
     for (scylla_blas::index_t i = 1; i <= C.get_blocks_height(); i++) {
         for (scylla_blas::index_t j = 1; j <= C.get_blocks_width(); j++) {
+            LogTrace("Scheduling block {} {} for matrix {}", i, j, C.get_id());
             tasks.push_back({
               .type = scylla_blas::proto::NONE,
               .coord {

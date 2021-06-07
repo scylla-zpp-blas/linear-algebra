@@ -19,6 +19,7 @@ struct options {
     std::vector<int64_t> block_sizes;
     std::vector<int64_t> problem_sizes;
     int workers;
+    double matrix_load;
 };
 
 template<typename ...T>
@@ -43,6 +44,7 @@ void parse_arguments(int ac, char *av[], options &options) {
             ("block_sizes", po::value<std::vector<int64_t>>(&options.block_sizes)->required()->multitoken(), "Block sizes to benchmark")
             ("problem_sizes", po::value<std::vector<int64_t>>(&options.problem_sizes)->required()->multitoken(), "Problem sizes to benchmark (vector length / matrix side length)")
             ("workers", po::value<int>(&options.workers)->required())
+            ("matrix_load", po::value<double>(&options.matrix_load)->default_value(0.2), "% of non-zerio matrix element")
             ("host,H", po::value<std::string>(&options.host)->required(), "Address on which Scylla can be reached")
             ("port,P", po::value<uint16_t>(&options.port)->default_value(SCYLLA_DEFAULT_PORT), "port number on which Scylla can be reached");
     desc.add(opt);
@@ -91,6 +93,7 @@ int main(int argc, char **argv) {
         test_name = "vvmul";
     }
     tester->set_max_workers(op.workers);
+    tester->set_matrix_load(op.matrix_load);
     benchmark_result result = perform_benchmark(std::move(tester), op.block_sizes, op.problem_sizes);
     LogInfo("Benchmark results (type={}, workers={})", test_name, op.workers);
     for (auto &[bs, ps, r] : result.tests) {
