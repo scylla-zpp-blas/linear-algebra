@@ -6,6 +6,7 @@ add_subdirectory(lib/driver EXCLUDE_FROM_ALL)
 # Required to correctly link with fmt
 set(CMAKE_POSITION_INDEPENDENT_CODE TRUE)
 add_subdirectory(lib/fmt EXCLUDE_FROM_ALL)
+set(Boost_USE_STATIC_LIBS   ON)
 find_package(Boost 1.60.0 COMPONENTS system filesystem unit_test_framework program_options REQUIRED )
 
 enable_testing()
@@ -78,12 +79,18 @@ target_link_libraries(scylla_blas PUBLIC scylla_modern_cpp_driver fmt::fmt)
 target_compile_features(scylla_blas PUBLIC cxx_std_20)
 target_compile_definitions(scylla_blas PUBLIC SCYLLA_BLAS_LOGLEVEL=${SCYLLA_BLAS_LOGLEVEL})
 
+add_library(scylla_blas_static STATIC "${BLAS_SRC}" "${BLAS_INCLUDE}")
+target_include_directories(scylla_blas_static PUBLIC ${CMAKE_SOURCE_DIR}/include)
+target_link_libraries(scylla_blas_static PUBLIC scylla_modern_cpp_driver_static fmt::fmt)
+target_compile_features(scylla_blas_static PUBLIC cxx_std_20)
+target_compile_definitions(scylla_blas_static PUBLIC SCYLLA_BLAS_LOGLEVEL=${SCYLLA_BLAS_LOGLEVEL})
+
 set(EXEC_SRC
         src/main.cc)
 
 add_executable(scylla_blas_worker "${EXEC_SRC}")
 target_include_directories(scylla_blas_worker PUBLIC "${Boost_INCLUDE_DIRS}")
-target_link_libraries(scylla_blas_worker PUBLIC scylla_blas "${Boost_LIBRARIES}")
+target_link_libraries(scylla_blas_worker PUBLIC scylla_blas_static "${Boost_LIBRARIES}")
 
 # We are building as standalone project - build tests
 if (BUILD_TESTS)
