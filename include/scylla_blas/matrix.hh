@@ -105,7 +105,7 @@ public:
     }
 
     /* Height/width measured in blocks is equal to the block index of terminal blocks.
-     * E.g. in a matrix that is 2 blocks wide the rightmost column belongs to the block number 2.
+     * E.g. in a matrix that is 2 blocks wide the rightmost block is located in the column number 2.
      */
     index_t get_blocks_width(TRANSPOSE trans = NoTrans) const {
         if (trans != NoTrans) return get_blocks_height();

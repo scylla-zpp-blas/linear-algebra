@@ -48,9 +48,9 @@ void parse_arguments(int ac, char *av[], options &options) {
             ("worker", "Connect to Scylla and process incoming requests")
             ("host,H", po::value<std::string>(&options.host)->required(), "Address on which Scylla can be reached")
             ("port,P", po::value<uint16_t>(&options.port)->default_value(SCYLLA_DEFAULT_PORT), "port number on which Scylla can be reached")
-            ("worker_sleep,s", po::value<int64_t>(&options.worker_sleep_time)->default_value(DEFAULT_WORKER_SLEEP_TIME_MICROSECONDS),
+            ("sleep,s", po::value<int64_t>(&options.worker_sleep_time)->default_value(DEFAULT_WORKER_SLEEP_TIME_MICROSECONDS),
                     "Worker sleep time after queue is empty, in microseconds")
-            ("worker_retries,r", po::value<int64_t>(&options.worker_retries)->default_value(DEFAULT_MAX_WORKER_RETRIES),
+            ("retries,r", po::value<int64_t>(&options.worker_retries)->default_value(DEFAULT_MAX_WORKER_RETRIES),
                     "How many time worker should attempt to do a task");
     desc.add(opt);
     try {
