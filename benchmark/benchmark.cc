@@ -36,15 +36,15 @@ void benchmark_mm::proc() {
 }
 
 void benchmark_mm::teardown() {
-    lm->clear_all();
-    rm->clear_all();
-    wm->clear_all();
+    //lm->clear_all();
+    //rm->clear_all();
+    //wm->clear_all();
 }
 
 void benchmark_mm::destroy() {
-    scylla_blas::matrix<float>::drop(session, l_matrix_id);
-    scylla_blas::matrix<float>::drop(session, r_matrix_id);
-    scylla_blas::matrix<float>::drop(session, w_matrix_id);
+    //scylla_blas::matrix<float>::drop(session, l_matrix_id);
+    //scylla_blas::matrix<float>::drop(session, r_matrix_id);
+    //scylla_blas::matrix<float>::drop(session, w_matrix_id);
 }
 
 // Matrix * Vector
@@ -115,13 +115,13 @@ void benchmark_vv::proc() {
 }
 
 void benchmark_vv::teardown() {
-    lv->clear_all();
-    rv->clear_all();
+    //lv->clear_all();
+    //rv->clear_all();
 }
 
 void benchmark_vv::destroy() {
-    scylla_blas::vector<float>::drop(session, l_vector_id);
-    scylla_blas::vector<float>::drop(session, r_vector_id);
+    //scylla_blas::vector<float>::drop(session, l_vector_id);
+    //scylla_blas::vector<float>::drop(session, r_vector_id);
 }
 
 template<typename F, typename... Args>
