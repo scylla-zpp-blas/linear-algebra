@@ -13,7 +13,7 @@ void consume_tasks(scylla_blas::scylla_queue &task_queue,
             break;
         }
 
-        LogDebug("New subtask task obtained; id = {}", opt.value().first);
+        LogInfo("New subtask task obtained; id = {}", opt.value().first);
         consume(opt.value().second);
     }
 }

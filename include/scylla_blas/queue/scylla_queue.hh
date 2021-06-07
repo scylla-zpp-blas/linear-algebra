@@ -104,6 +104,8 @@ public:
 
     std::optional<response> get_response(int64_t id);
 
+    int64_t get_id() const { return queue_id; }
+
 private:
     void prepare_statements();
 

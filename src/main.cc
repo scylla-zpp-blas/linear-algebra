@@ -102,7 +102,7 @@ void init(const struct options& op) {
     scylla_blas::vector<double>::init(session, HELPER_DOUBLE_VECTOR_ID, 0);
 
     LogInfo("Creating main task queue...");
-    scylla_blas::scylla_queue::create_queue(session, DEFAULT_WORKER_QUEUE_ID, true, true);
+    scylla_blas::scylla_queue::create_queue(session, DEFAULT_WORKER_QUEUE_ID, false, true);
 
     LogInfo("Database initialized succesfully!");
 }

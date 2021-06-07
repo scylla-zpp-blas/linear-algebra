@@ -6,7 +6,7 @@ float scylla_blas::routine_scheduler::produce_and_wait(scylla_queue &queue, cons
                                                        float acc, updater<float> update) {
     std::vector<scylla_blas::scylla_queue::task> tasks(cnt, task);
     int64_t task_id = queue.produce(tasks);
-    LogDebug("Scheduled tasks {}-{}", task_id, task_id + cnt - 1);
+    LogInfo("Scheduled tasks {}-{} to queue {}", task_id, task_id + cnt - 1, queue.get_id());
     for (int64_t id = task_id; id < task_id + cnt; id++) {
         while (!queue.is_finished(id)) {
             scylla_blas::wait_microseconds(sleep_time);
@@ -32,7 +32,7 @@ double scylla_blas::routine_scheduler::produce_and_wait(scylla_queue &queue, con
                                                         double acc, updater<double> update) {
     std::vector<scylla_blas::scylla_queue::task> tasks(cnt, task);
     int64_t task_id = queue.produce(tasks);
-    LogDebug("Scheduled tasks {}-{}", task_id, task_id + cnt - 1);
+    LogInfo("Scheduled tasks {}-{} to queue {}", task_id, task_id + cnt - 1, queue.get_id());
     for (int64_t id = task_id; id < task_id + cnt; id++) {
         while (!queue.is_finished(id)) {
             scylla_blas::wait_microseconds(sleep_time);
