@@ -70,6 +70,7 @@ void benchmark_mv::setup(int64_t block_size, int64_t length) {
     wv->set_block_size(block_size);
 
     scheduler.srmgen(matrix_load, *lm);
+    fill_vector(*rv, length);
 }
 
 void benchmark_mv::proc() {
@@ -77,15 +78,15 @@ void benchmark_mv::proc() {
 }
 
 void benchmark_mv::teardown() {
-    lm->clear_all();
-    rv->clear_all();
-    wv->clear_all();
+    //lm->clear_all();
+    //rv->clear_all();
+    //wv->clear_all();
 }
 
 void benchmark_mv::destroy() {
-    scylla_blas::matrix<float>::drop(session, l_matrix_id);
-    scylla_blas::vector<float>::drop(session, r_vector_id);
-    scylla_blas::vector<float>::drop(session, w_vector_id);
+    //scylla_blas::matrix<float>::drop(session, l_matrix_id);
+    //scylla_blas::vector<float>::drop(session, r_vector_id);
+    //scylla_blas::vector<float>::drop(session, w_vector_id);
 }
 
 // Vector * Vector
