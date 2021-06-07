@@ -257,7 +257,6 @@ public:
     }
 
     void insert_values(const std::vector<matrix_value<T>> &values) {
-        std::vector<scmd::future> futures;
         size_t idx = 0;
         while(idx < values.size()) {
             scmd::batch_query batch(CASS_BATCH_TYPE_UNLOGGED);
@@ -274,10 +273,7 @@ public:
                 batch.add_statement(stmt);
                 current_batch_size++;
             }
-            futures.push_back(_session->execute_async(batch));
-        }
-        for (auto &future : futures) {
-            future.wait();
+            _session->execute(batch);
         }
     }
 
