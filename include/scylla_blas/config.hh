@@ -14,6 +14,8 @@ constexpr id_t HELPER_FLOAT_VECTOR_ID = 0;
 constexpr id_t HELPER_DOUBLE_VECTOR_ID = 1;
 constexpr id_t DEFAULT_WORKER_QUEUE_ID = 0;
 
+constexpr int64_t MATRIX_MAX_BATCH_SIZE = 512;
+
 
 /* Entries below this value preferably won't be stored in our structures */
 #define EPSILON (1e-7)
