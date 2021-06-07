@@ -20,8 +20,6 @@ namespace scylla_blas {
  * the number of arguments and returning results the C++ way.
  */
 class routine_scheduler {
-    using cfloat = std::complex<float>;
-    using zdouble = std::complex<double>;
     using none_type = void*;
 
     template<class T>
@@ -29,11 +27,10 @@ class routine_scheduler {
 
     std::shared_ptr <scmd::session> _session;
 
-    const int64_t _subtask_queue_id;
     scylla_queue _subtask_queue;
     scylla_queue _main_worker_queue;
 
-    int64_t _max_used_workers;
+    int64_t _current_worker_count;
     int64_t _scheduler_sleep_time;
 
     /* Produces `cnt` copies of `task`, waits until all of them are completed.
@@ -81,26 +78,25 @@ class routine_scheduler {
                            const int64_t C_id, T acc = 0, updater<T> update = nullptr);
 
     scylla_queue prepare_queue() const {
-        scylla_queue::create_queue(_session, _subtask_queue_id, false, true);
-        return scylla_queue(_session, _subtask_queue_id);
+        scylla_queue::create_queue(_session, _subtask_queue.get_id(), false, true);
+        return scylla_queue(_session, _subtask_queue.get_id());
     }
 public:
     /* The queue used for subroutines requested in methods */
     routine_scheduler(const std::shared_ptr <scmd::session> &session) :
-        _session(session),
-        _subtask_queue_id(get_timestamp()),
-        _subtask_queue(prepare_queue()),
-        _main_worker_queue(_session, DEFAULT_WORKER_QUEUE_ID),
-        _max_used_workers(DEFAULT_LIMIT_WORKER_CONCURRENCY),
-        _scheduler_sleep_time(DEFAULT_SCHEDULER_SLEEP_TIME_MICROSECONDS)
+            _session(session),
+            _subtask_queue(prepare_queue()),
+            _main_worker_queue(_session, DEFAULT_WORKER_QUEUE_ID),
+            _current_worker_count(DEFAULT_WORKER_COUNT),
+            _scheduler_sleep_time(DEFAULT_SCHEDULER_SLEEP_TIME_MICROSECONDS)
     {}
 
     int64_t get_max_used_workers() {
-        return this->_max_used_workers;
+        return this->_current_worker_count;
     }
 
     void set_max_used_workers(int64_t new_max_used_workers) {
-        this->_max_used_workers = new_max_used_workers;
+        this->_current_worker_count = new_max_used_workers;
     }
 
     int64_t get_scheduler_sleep_time() {

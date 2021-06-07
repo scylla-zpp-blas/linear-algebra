@@ -35,7 +35,7 @@ void parse_arguments(int ac, char *av[], options &options) {
     opt.add_options()
             ("help", "Show program help")
             ("block_size,B", po::value<scylla_blas::index_t>(&options.block_size)->default_value(DEFAULT_BLOCK_SIZE), "Block size to use")
-            ("workers,W", po::value<int64_t>(&options.workers)->default_value(DEFAULT_LIMIT_WORKER_CONCURRENCY), "How many workers can we use")
+            ("workers,W", po::value<int64_t>(&options.workers)->default_value(DEFAULT_WORKER_COUNT), "How many workers can we use")
             ("sleep_time,S", po::value<int64_t>(&options.scheduler_sleep_time)->default_value(DEFAULT_SCHEDULER_SLEEP_TIME_MICROSECONDS), "How long should scheduler sleep waiting for task")
             ("print", "Print matrices")
             (",n", po::value<scylla_blas::index_t>(&options.n)->required(), "How many iterations of algorithm should be performed")

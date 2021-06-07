@@ -44,11 +44,11 @@ float scylla_blas::routine_scheduler::produce_vector_tasks(const proto::task_typ
     return produce_and_wait(this->_main_worker_queue, proto::task {
         .type = type,
         .vector_task_float = {
-            .task_queue_id = this->_subtask_queue_id,
+            .task_queue_id = this->_subtask_queue.get_id(),
             .alpha = alpha,
             .X_id = X_id,
             .Y_id = Y_id
-        }}, _max_used_workers, _scheduler_sleep_time, acc, update);
+        }}, _current_worker_count, _scheduler_sleep_time, acc, update);
 }
 
 template<>
@@ -60,11 +60,11 @@ double scylla_blas::routine_scheduler::produce_vector_tasks(const proto::task_ty
     return produce_and_wait(this->_main_worker_queue, proto::task {
         .type = type,
         .vector_task_double = {
-            .task_queue_id = this->_subtask_queue_id,
+            .task_queue_id = this->_subtask_queue.get_id(),
             .alpha = alpha,
             .X_id = X_id,
             .Y_id = Y_id
-        }}, _max_used_workers, _scheduler_sleep_time, acc, update);
+        }}, _current_worker_count, _scheduler_sleep_time, acc, update);
 }
 
 #define NONE 0

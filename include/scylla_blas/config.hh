@@ -3,7 +3,7 @@
 #include "utils/scylla_types.hh"
 
 constexpr scylla_blas::index_t DEFAULT_BLOCK_SIZE = (1 << 2);
-constexpr int64_t DEFAULT_LIMIT_WORKER_CONCURRENCY = 4;
+constexpr int64_t DEFAULT_WORKER_COUNT = 4;
 constexpr int64_t DEFAULT_SCHEDULER_SLEEP_TIME_MICROSECONDS = 20000;
 
 constexpr int64_t DEFAULT_WORKER_SLEEP_TIME_MICROSECONDS = 20000;

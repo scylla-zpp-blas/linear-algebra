@@ -80,7 +80,7 @@ float scylla_blas::routine_scheduler::produce_mixed_tasks(const proto::task_type
     return produce_and_wait(this->_main_worker_queue, proto::task{
             .type = type,
             .mixed_task_float = {
-                    .task_queue_id = this->_subtask_queue_id,
+                    .task_queue_id = this->_subtask_queue.get_id(),
                     .KL = KL,
                     .KU = KU,
                     .Uplo = Uplo,
@@ -91,7 +91,7 @@ float scylla_blas::routine_scheduler::produce_mixed_tasks(const proto::task_type
                     .X_id = X_id,
                     .beta = beta,
                     .Y_id = Y_id
-            }}, _max_used_workers, _scheduler_sleep_time, acc, update);
+            }}, _current_worker_count, _scheduler_sleep_time, acc, update);
 }
 
 template<>
@@ -108,7 +108,7 @@ double scylla_blas::routine_scheduler::produce_mixed_tasks(const proto::task_typ
     return produce_and_wait(this->_main_worker_queue, proto::task{
             .type = type,
             .mixed_task_double = {
-                    .task_queue_id = this->_subtask_queue_id,
+                    .task_queue_id = this->_subtask_queue.get_id(),
                     .KL = KL,
                     .KU = KU,
                     .A_id = A_id,
@@ -117,7 +117,7 @@ double scylla_blas::routine_scheduler::produce_mixed_tasks(const proto::task_typ
                     .X_id = X_id,
                     .beta = beta,
                     .Y_id = Y_id
-            }}, _max_used_workers, _scheduler_sleep_time, acc, update);
+            }}, _current_worker_count, _scheduler_sleep_time, acc, update);
 }
 
 #define NONE 0

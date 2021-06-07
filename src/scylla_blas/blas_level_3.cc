@@ -66,7 +66,7 @@ float scylla_blas::routine_scheduler::produce_matrix_tasks(const proto::task_typ
     return produce_and_wait(this->_main_worker_queue, proto::task {
         .type = type,
         .matrix_task_float = {
-            .task_queue_id = this->_subtask_queue_id,
+            .task_queue_id = this->_subtask_queue.get_id(),
 
             .A_id = A_id,
             .TransA = TransA,
@@ -77,7 +77,7 @@ float scylla_blas::routine_scheduler::produce_matrix_tasks(const proto::task_typ
             .beta = beta,
 
             .C_id = C_id
-        }}, _max_used_workers, _scheduler_sleep_time, acc, update);
+        }}, _current_worker_count, _scheduler_sleep_time, acc, update);
 }
 
 template<>
@@ -88,7 +88,7 @@ double scylla_blas::routine_scheduler::produce_matrix_tasks(const proto::task_ty
     return produce_and_wait(this->_main_worker_queue, proto::task{
         .type = type,
         .matrix_task_double = {
-            .task_queue_id = this->_subtask_queue_id,
+            .task_queue_id = this->_subtask_queue.get_id(),
 
             .A_id = A_id,
             .TransA = TransA,
@@ -99,7 +99,7 @@ double scylla_blas::routine_scheduler::produce_matrix_tasks(const proto::task_ty
             .beta = beta,
 
             .C_id = C_id
-        }}, _max_used_workers, _scheduler_sleep_time, acc, update);
+        }}, _current_worker_count, _scheduler_sleep_time, acc, update);
 }
 
 #define NONE 0
