@@ -72,6 +72,11 @@ public:
     // using "create_queue" method.
     scylla_queue(const std::shared_ptr<scmd::session> &session, int64_t id);
 
+    scylla_queue(const scylla_queue &other) = delete;
+    scylla_queue& operator=(const scylla_queue &other) = delete;
+    scylla_queue(scylla_queue &&other) noexcept;
+    scylla_queue& operator=(scylla_queue &&other) noexcept;
+
     ~scylla_queue();
 
     // Serializes given task (by casting to char array), and pushes it to queue.

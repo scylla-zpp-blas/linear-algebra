@@ -87,8 +87,58 @@ scylla_blas::scylla_queue::scylla_queue(const std::shared_ptr<scmd::session> &se
     cnt_used = result.get_column<int64_t>("cnt_used");
 }
 
+scylla_blas::scylla_queue::scylla_queue(scylla_queue &&other) noexcept :
+    queue_id(std::exchange(other.queue_id, -1)),
+    _session(std::move(other._session)),
+    multi_producer(other.multi_producer),
+    multi_consumer(other.multi_consumer),
+    cnt_new(other.cnt_new),
+    cnt_used(other.cnt_used)
+{
+    copy_statements_from(&other);
+    auto session_ptr = _session.get();
+    if (session_ptr == nullptr) return;
+    auto iter = session_map.find(session_ptr);
+    iter->second.erase(&other);
+    iter->second.insert(this);
+}
+
+scylla_blas::scylla_queue& scylla_blas::scylla_queue::operator=(scylla_queue &&other) noexcept {
+    {
+        auto session_ptr = _session.get();
+        if (session_ptr != nullptr) {
+            auto iter = session_map.find(session_ptr);
+            if (iter->second.size() == 1) {
+                session_map.erase(iter);
+            } else {
+                iter->second.erase(this);
+            }
+        }
+    }
+    queue_id = std::exchange(other.queue_id, -1);
+    _session = std::move(other._session);
+    multi_producer = other.multi_producer;
+    multi_consumer = other.multi_consumer;
+    cnt_new = other.cnt_new;
+    cnt_used = other.cnt_used;
+    copy_statements_from(&other);
+    {
+        auto session_ptr = _session.get();
+        if (session_ptr != nullptr) {
+            auto iter = session_map.find(session_ptr);
+            iter->second.erase(&other);
+            iter->second.insert(this);
+        }
+    }
+
+    return *this;
+}
+
+
 scylla_blas::scylla_queue::~scylla_queue() {
-    auto iter = session_map.find(_session.get());
+    auto session_ptr = _session.get();
+    if (session_ptr == nullptr) return;
+    auto iter = session_map.find(session_ptr);
     if (iter->second.size() == 1) {
         session_map.erase(iter);
     } else {

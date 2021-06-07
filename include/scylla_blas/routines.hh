@@ -99,7 +99,7 @@ class routine_scheduler {
         for (size_t i = 0; i < tasks.size(); i++)
             split[i % _current_worker_count].emplace_back(tasks[i]);
 
-        for (size_t i = 0; i < tasks.size(); i++)
+        for (size_t i = 0; i < _current_worker_count; i++)
             _subtask_queues[i].produce(split[i]);
     }
 
