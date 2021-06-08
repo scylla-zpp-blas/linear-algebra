@@ -31,7 +31,7 @@ protected:
     scmd::prepared_query _get_block_prepared;
     scmd::prepared_query _insert_value_prepared;
     scmd::prepared_query _clear_all_prepared;
-    scmd::prepared_query _clear_row_prepared;
+    scmd::prepared_query _clear_block_row_prepared;
     scmd::prepared_query _resize_prepared;
     scmd::prepared_query _set_block_size_prepared;
 
@@ -165,7 +165,7 @@ public:
                 id_x    BIGINT,
                 id_y    BIGINT,
                 value   {1},
-                PRIMARY KEY (block_x, id_x, id_y));
+                PRIMARY KEY ((block_x, block_y), id_x, id_y));
         )", id, get_type_name<T>()));
 
         session->execute(create_table.set_timeout(0));
