@@ -1,5 +1,6 @@
 #include <iostream>
 #include <string>
+#include <chrono>
 
 #include <boost/program_options.hpp>
 
@@ -77,6 +78,7 @@ void parse_arguments(int ac, char *av[], options &options) {
 
 /* Use this program once to initialize the database */
 int main(int argc, char **argv) {
+    auto start_time = std::chrono::system_clock::now();
     struct options op;
     parse_arguments(argc, argv, op);
     auto session = std::make_shared<scmd::session>(op.host, std::to_string(op.port));
@@ -99,6 +101,11 @@ int main(int argc, char **argv) {
     for (auto &[bs, ps, r] : result.tests) {
         std::cout << bs << " " << ps << " " << r.setup_time << " " << r.proc_time << " " << r.teardown_time << "\n";
     }
+    auto end_time = std::chrono::system_clock::now();
+    std::time_t start_time_t = std::chrono::system_clock::to_time_t(start_time);
+    std::time_t end_time_t = std::chrono::system_clock::to_time_t(end_time);
+    std::cout << "Start time: " << std::ctime(&start_time_t);
+    std::cout << "End time: " << std::ctime(&end_time_t);
     return 0;
 }
 
