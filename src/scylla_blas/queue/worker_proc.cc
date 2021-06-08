@@ -173,28 +173,23 @@ void gemv(const std::shared_ptr<scmd::session> &session, auto &task_details) {
     scylla_queue task_queue = scylla_queue(session, task_details.task_queue_id);
 
     auto compute_result_segment = [&A, &X, &Y, &task_details] (proto::task &subtask) {
-        LogTrace("(gemv) Performing subtask {}", subtask.index);
         index_t prod_segments = A.get_blocks_width(task_details.TransA);
         vector_segment result = Y.get_segment(subtask.index) * task_details.beta;
 
-        LogTrace("(gemv) Fetching vector");
-        std::vector<vector_segment<T>> segments(Y.get_block_size());
-        size_t segment_idx = (subtask.index) % (Y.get_block_size());
-        while(segment_idx != subtask.index - 1) {
+        scylla_blas::index_t segment_count = Y.get_segment_count();
+        std::vector<vector_segment<T>> segments(segment_count);
+        size_t segment_idx = subtask.index;
+        do {
+            segment_idx %= (segment_count);
             segments[segment_idx] = X.get_segment(segment_idx + 1);
-            segment_idx = (segment_idx + 1) % Y.get_block_size();
-            LogTrace("(gemv) Fetched segment {}", segment_idx + 1);
-        }
-        LogTrace("(gemv) Finished fetching vector, performing multiply");
+            segment_idx = (segment_idx + 1);
+        } while(segment_idx != subtask.index );
 
         for (index_t i = 1; i <= prod_segments; i++) {
-            LogTrace("(gemv) {} / {} fetching block", i, prod_segments);
             matrix_block<T> block_A = A.get_block(subtask.index, i, task_details.TransA);
             vector_segment<T> &segment_X = segments[i - 1];
 
-            LogTrace("(gemv) {} / {} multiplying", i, prod_segments);
             result += block_A.mult_vect(segment_X) * task_details.alpha;
-            LogTrace("(gemv) {} / {} done", i, prod_segments);
         }
 
         Y.update_segment(subtask.index, result);
