@@ -257,6 +257,7 @@ public:
     }
 
     void insert_values(const std::vector<matrix_value<T>> &values) {
+        std::vector<scmd::future> futures;
         size_t idx = 0;
         scylla_blas::index_t prev_block = -1;
         while(idx < values.size()) {
@@ -278,7 +279,10 @@ public:
                 current_batch_size++;
                 prev_block = get_block_col(val.col_index);
             }
-            _session->execute(batch);
+            futures.push_back(_session->execute_async(batch));
+        }
+        for (auto &future : futures) {
+            future.wait();
         }
     }
 
