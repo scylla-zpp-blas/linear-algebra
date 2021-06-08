@@ -164,6 +164,7 @@ std::pair<scylla_blas::index_t, T> iamax(const std::shared_ptr<scmd::session> &s
 /* LEVEL 2 */
 template<class T>
 void gemv(const std::shared_ptr<scmd::session> &session, auto &task_details) {
+    LogInfo("Performing gemv");
     using namespace scylla_blas;
 
     matrix<T> A(session, task_details.A_id);
