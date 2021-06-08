@@ -30,7 +30,7 @@ void consume_tasks(scylla_blas::scylla_queue &task_queue,
                 break;
             } catch (const std::exception &e) {
                 LogWarn("Error while fetching subtask, retrying, {} / {}",
-                        opt.value().first, e.what(), attempts, scylla_blas::worker::max_worker_retries);
+                        attempts, scylla_blas::worker::max_worker_retries);
             }
         }
         if (attempts > scylla_blas::worker::max_worker_retries) {
