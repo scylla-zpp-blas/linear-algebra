@@ -400,15 +400,22 @@ std::optional<std::pair<int64_t, task>> scylla_blas::scylla_queue::consume_multi
             return std::nullopt;
         }
 
-        auto result = _session->execute(*update_used_counter_trans_prepared, cnt_used + 1, queue_id, cnt_used, cnt_new);
+        bool is_applied;
+        try {
+            auto result = _session->execute(*update_used_counter_trans_prepared, cnt_used + 1, queue_id, cnt_used, cnt_new);
 
-        if (!result.next_row()) {
-            throw std::runtime_error("Queue deleted while working?");
+            if (!result.next_row()) {
+                throw std::runtime_error("Queue deleted while working?");
+            }
+            cnt_new = result.get_column<int64_t>("cnt_new");
+            cnt_used = result.get_column<int64_t>("cnt_used");
+            is_applied = result.get_column<bool>("[applied]");
+        } catch (const scmd::exception &e) {
+            LogWarn("Exception while tryig to consume from queue {}", get_id());
+            return std::nullopt;
         }
-        cnt_new = result.get_column<int64_t>("cnt_new");
-        cnt_used = result.get_column<int64_t>("cnt_used");
 
-        if (result.get_column<bool>("[applied]")) {
+        if (is_applied) {
             // We claimed a task
             cnt_used++;
             return std::make_pair(cnt_used - 1, fetch_task_loop(cnt_used - 1));
