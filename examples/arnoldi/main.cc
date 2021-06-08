@@ -72,19 +72,9 @@ void parse_arguments(int ac, char *av[], options &options) {
 template<class T>
 void print_matrix_octave(const scylla_blas::matrix<T> &matrix);
 
-
-template <class T>
-void load_matrix_from_generator(const std::shared_ptr<scmd::session> &session,
-                                matrix_value_generator<T> &gen,
-                                scylla_blas::matrix<T> &matrix);
-
 template<class T>
-void init_matrix(std::shared_ptr<scmd::session> session,
-                 std::shared_ptr<scylla_blas::matrix<T>>& matrix_ptr,
-                 scylla_blas::index_t w,
-                 scylla_blas::index_t h,
-                 id_t id,
-                 std::shared_ptr<value_factory<T>> value_factory = nullptr);
+void init_matrix(scylla_blas::routine_scheduler &scheduler,
+                 std::shared_ptr<scylla_blas::matrix<T>>& matrix_ptr);
 
 const id_t INITIAL_MATRIX_ID = 123456;
 
@@ -100,15 +90,17 @@ int main(int argc, char **argv) {
 
     arnoldi::containers c = arnoldi::containers<float>(session, INITIAL_MATRIX_ID, op.m, op.n, op.block_size);
 
+    auto arnoldi_iteration = arnoldi(session, op.workers, op.scheduler_sleep_time);
+
     // Initialize matrix A with random values.
     std::shared_ptr<value_factory<float>> f =
             std::make_shared<random_value_factory<float>>(0, 9, 142);
-    init_matrix<float>(session, c.A, op.m, op.m, c.A_id, f);
+    init_matrix<float>(arnoldi_iteration.get_scheduler(), c.A);
 
     // Set vector to (1, 0, 0 ... 0).
     c.b->update_value(1, 1.0f);
 
-    auto arnoldi_iteration = arnoldi(session, op.workers, op.scheduler_sleep_time);
+
     if(op.print_matrices) print_matrix_octave(*c.A);
     arnoldi_iteration.compute(c.A, c.b, op.n, c.h, c.Q, c.v, c.q, c.t);
     if(op.print_matrices) print_matrix_octave(*c.Q);
@@ -167,23 +159,11 @@ void load_matrix_from_generator(const std::shared_ptr<scmd::session> &session, m
     LogInfo("Loaded a matrix {} from a generator", matrix.get_id());
 }
 
-size_t suggest_number_of_values(scylla_blas::index_t w, scylla_blas::index_t h) {
-    size_t ret = w * h / 5; // 20% load
-    return (ret > 0 ? ret : 1);
-}
-
 template<class T>
-void init_matrix(std::shared_ptr<scmd::session> session,
-                 std::shared_ptr<scylla_blas::matrix<T>> &matrix_ptr,
-                 scylla_blas::index_t w,
-                 scylla_blas::index_t h,
-                 id_t id,
-                 std::shared_ptr<value_factory <T>> value_factory) {
+void init_matrix(scylla_blas::routine_scheduler &scheduler,
+                 std::shared_ptr<scylla_blas::matrix<T>> &matrix_ptr) {
     //    matrix_ptr = std::make_shared<scylla_blas::matrix<T>>(session, id);
     matrix_ptr->clear_all();
-
-    if (value_factory != nullptr) {
-        sparse_matrix_value_generator<T> gen = sparse_matrix_value_generator<T>(w, h, suggest_number_of_values(w, h), id, value_factory);
-        load_matrix_from_generator(session, gen, *matrix_ptr);
-    }
+    double load = 0.2;
+    scheduler.srmgen(load, *matrix_ptr);
 }

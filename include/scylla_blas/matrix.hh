@@ -258,20 +258,25 @@ public:
 
     void insert_values(const std::vector<matrix_value<T>> &values) {
         size_t idx = 0;
+        scylla_blas::index_t prev_block = -1;
         while(idx < values.size()) {
             scmd::batch_query batch(CASS_BATCH_TYPE_UNLOGGED);
             size_t current_batch_size = 0;
             for(; idx < values.size(); idx++) {
-                if (current_batch_size == MATRIX_MAX_BATCH_SIZE) {
+                auto &val = values[idx];
+                if (current_batch_size == MATRIX_MAX_BATCH_SIZE ||
+                        (prev_block != -1 && get_block_col(val.col_index) != prev_block)) {
+                    prev_block = get_block_col(val.col_index);
                     break;
                 }
-                auto &val = values[idx];
+
                 if (std::abs(val.value) < EPSILON) continue;
                 auto stmt = _insert_value_prepared.get_statement();
                 stmt.bind(get_block_row(val.row_index), get_block_col(val.col_index),
                           val.row_index, val.col_index, val.value);
                 batch.add_statement(stmt);
                 current_batch_size++;
+                prev_block = get_block_col(val.col_index);
             }
             _session->execute(batch);
         }
