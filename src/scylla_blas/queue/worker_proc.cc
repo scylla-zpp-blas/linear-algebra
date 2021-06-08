@@ -183,9 +183,11 @@ void gemv(const std::shared_ptr<scmd::session> &session, auto &task_details) {
         }
         LogInfo("(gemv) Finished fetching vector");
         for (index_t i = 1; i <= prod_segments; i++) {
+            LogInfo("(gemv) {} / {} fetching block", i, prod_segments);
             matrix_block<T> block_A = A.get_block(subtask.index, i, task_details.TransA);
             vector_segment<T> &segment_X = segments[i - 1];
 
+            LogInfo("(gemv) {} / {} multiplying", i, prod_segments);
             result += block_A.mult_vect(segment_X) * task_details.alpha;
             LogInfo("(gemv) {} / {} done", i, prod_segments);
         }
