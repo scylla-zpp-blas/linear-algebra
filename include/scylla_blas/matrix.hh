@@ -315,9 +315,7 @@ public:
 private:
     template<class... Args>
     std::vector<matrix_value<T>> get_vals_for_query(const scmd::prepared_query &query, Args... args) const {
-        auto stmt = query.get_statement();
-        cass_statement_set_consistency(stmt.get_statement(), CASS_CONSISTENCY_LOCAL_ONE);
-        scmd::query_result result = _session->execute(stmt, args...);
+        scmd::query_result result = _session->execute(query, args...);
 
         std::vector<matrix_value<T>> result_vector;
         result_vector.reserve(result.row_count());
