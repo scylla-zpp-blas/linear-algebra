@@ -164,7 +164,7 @@ std::pair<scylla_blas::index_t, T> iamax(const std::shared_ptr<scmd::session> &s
 /* LEVEL 2 */
 template<class T>
 void gemv(const std::shared_ptr<scmd::session> &session, auto &task_details) {
-    LogInfo("Performing gemv");
+    LogInfo("(gemv) Start");
     using namespace scylla_blas;
 
     matrix<T> A(session, task_details.A_id);
@@ -173,16 +173,20 @@ void gemv(const std::shared_ptr<scmd::session> &session, auto &task_details) {
     scylla_queue task_queue = scylla_queue(session, task_details.task_queue_id);
 
     auto compute_result_segment = [&A, &X, &Y, &task_details] (proto::task &subtask) {
+        LogInfo("(gemv) Performing subtask {}", subtask.index);
         index_t prod_segments = A.get_blocks_width(task_details.TransA);
         vector_segment result = Y.get_segment(subtask.index) * task_details.beta;
 
+        LogInfo("(gemv) Fetching vector");
         std::vector<vector_segment<T>> segments(Y.get_block_size());
         size_t segment_idx = (subtask.index) % (Y.get_block_size());
         while(segment_idx != subtask.index - 1) {
             segments[segment_idx] = X.get_segment(segment_idx + 1);
             segment_idx = (segment_idx + 1) % Y.get_block_size();
+            LogInfo("(gemv) Fetched segment {}", segment_idx + 1);
         }
-        LogInfo("(gemv) Finished fetching vector");
+        LogInfo("(gemv) Finished fetching vector, performing multiply");
+
         for (index_t i = 1; i <= prod_segments; i++) {
             LogInfo("(gemv) {} / {} fetching block", i, prod_segments);
             matrix_block<T> block_A = A.get_block(subtask.index, i, task_details.TransA);
