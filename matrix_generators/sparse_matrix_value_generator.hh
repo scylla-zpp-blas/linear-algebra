@@ -6,12 +6,6 @@
 #include "matrix_value_generator.hh"
 #include "value_factory.hh"
 
-class no_next_value_exception : public std::exception {
-    const char *what() const noexcept override {
-        return "no_next_value_exception";
-    }
-};
-
 template<class V>
 class sparse_matrix_value_generator : public matrix_value_generator<V> {
 private:

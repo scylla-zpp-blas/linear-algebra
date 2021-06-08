@@ -210,8 +210,19 @@ scylla_blas::routine_scheduler::strsv(const enum UPLO Uplo, const enum TRANSPOSE
         sum = 0;
 
         add_segments_as_queue_tasks(X);
-        error = produce_mixed_tasks<float>(proto::STRSV, NONE, NONE, Uplo, Diag, A.get_id(), TransA, NONE, HELPER_FLOAT_VECTOR_ID, NONE, X.get_id(),
-                                           0, [&sum](float &result, const proto::response &r) {
+        error = produce_mixed_tasks<float>(proto::STRSV,
+                                           NONE,
+                                           NONE,
+                                           Uplo,
+                                           Diag,
+                                           A.get_id(),
+                                           TransA,
+                                           NONE,
+                                           HELPER_FLOAT_VECTOR_ID,
+                                           NONE,
+                                           X.get_id(),
+                                           0,
+                                           [&sum](float &result, const proto::response &r) {
                                                 result += r.result_float_pair.first;
                                                 sum += r.result_float_pair.second;
                                             });
