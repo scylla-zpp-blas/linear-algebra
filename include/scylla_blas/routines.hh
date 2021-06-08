@@ -105,7 +105,6 @@ class routine_scheduler {
 
     template<class T>
     void add_segments_as_queue_tasks(const vector<T> &X) {
-        LogInfo("Scheduling subtasks...");
         std::vector<scylla_queue::task> tasks;
         tasks.reserve(X.get_segment_count());
         for (scylla_blas::index_t i = 1; i <= X.get_segment_count(); i++) {
@@ -114,7 +113,7 @@ class routine_scheduler {
                     .index = i
             });
         }
-
+        LogInfo("Scheduling {} subtasks (vector segments)", tasks.size());
         produce_tasks_in_queues(tasks);
     }
 

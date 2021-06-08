@@ -3,21 +3,55 @@
 #include "random_value_factory.hh"
 #include "sparse_matrix_value_generator.hh"
 
+namespace scylla_blas::worker {
+    int64_t max_worker_retries = DEFAULT_MAX_WORKER_RETRIES;
+    void set_worker_retries(int64_t retries) {
+        max_worker_retries = retries;
+    }
+}
+
 namespace {
 
 void consume_tasks(scylla_blas::scylla_queue &task_queue,
                    std::function<void(scylla_blas::proto::task&)> consume) {
+    LogDebug("Consuming subtasks from queue {}", task_queue.get_id());
     using namespace scylla_blas;
-
+    int64_t attempts;
     while (true) {
-        std::optional<std::pair<int64_t, proto::task>> opt = task_queue.consume();
-        if (!opt.has_value()) {
-            // The task queue is empty – nothing left to do.
-            break;
+        std::optional<std::pair<int64_t, proto::task>> opt;
+        for(attempts = 0; attempts <= scylla_blas::worker::max_worker_retries; attempts++) {
+            try {
+                opt = task_queue.consume();
+                if (!opt.has_value()) {
+                    LogDebug("No more subtasks in queue, finishing task");
+                    // The task queue is empty – nothing left to do.
+                    return;
+                }
+                break;
+            } catch (const std::exception &e) {
+                LogWarn("Error while fetching subtask, retrying, {} / {}",
+                        opt.value().first, e.what(), attempts, scylla_blas::worker::max_worker_retries);
+            }
+        }
+        if (attempts > scylla_blas::worker::max_worker_retries) {
+            LogError("Too many failed attempts to fetch subtask, giving up");
+            throw scylla_blas::worker::subtask_failed_exception();
         }
 
         LogInfo("New subtask task obtained; id = {}", opt.value().first);
-        consume(opt.value().second);
+        for(attempts = 0; attempts <= scylla_blas::worker::max_worker_retries; attempts++) {
+            try {
+                consume(opt.value().second);
+                break;
+            } catch (const std::exception &e) {
+                LogWarn("Subtask {} failed. Reason: {}. Retrying, {} / {}",
+                        opt.value().first, e.what(), attempts, scylla_blas::worker::max_worker_retries);
+            }
+        }
+        if (attempts > scylla_blas::worker::max_worker_retries) {
+            LogError("Too many ({}) failed attempts to perform subtask {}, giving up", attempts, opt.value().first);
+            throw scylla_blas::worker::subtask_failed_exception();
+        }
     }
 }
 

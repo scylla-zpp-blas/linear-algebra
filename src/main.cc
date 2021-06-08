@@ -120,6 +120,7 @@ void deinit(const struct options& op) {
 }
 
 void worker(const struct options& op) {
+    scylla_blas::worker::set_worker_retries(op.worker_retries);
     LogInfo("Worker connecting to {}:{}...", op.host, op.port);
     auto session = std::make_shared<scmd::session>(op.host, std::to_string(op.port));
 
@@ -128,7 +129,14 @@ void worker(const struct options& op) {
 
     LogInfo("Starting worker loop...");
     for (;;) {
-        auto opt = base_queue.consume();
+        std::optional<std::pair<int64_t, scylla_blas::proto::task>> opt;
+        try {
+            opt = base_queue.consume();
+        } catch (const std::exception &e) {
+            LogWarn("Exception while fetching main task: {}, retrying", e.what());
+            scylla_blas::wait_microseconds(op.worker_sleep_time);
+            continue;
+        }
         if (!opt.has_value()) {
             scylla_blas::wait_microseconds(op.worker_sleep_time);
             continue;
@@ -153,6 +161,10 @@ void worker(const struct options& op) {
                     base_queue.mark_as_finished(task_id);
                 }
 
+                break;
+            } catch (const scylla_blas::worker::subtask_failed_exception &e) {
+                LogError("Subtask of task {} failed. Abandoning task", task_id);
+                attempts = op.worker_retries + 1;
                 break;
             } catch (const std::exception &e) {
                 LogWarn("Task {} failed. Reason: {}. Retrying...", task_id, e.what());

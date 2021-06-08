@@ -13,6 +13,14 @@
 
 namespace scylla_blas::worker {
 
+void set_worker_retries(int64_t retries);
+
+class subtask_failed_exception : public std::runtime_error {
+
+public:
+    subtask_failed_exception(): std::runtime_error("") {};
+};
+
 using procedure_t = std::optional<proto::response>(const std::shared_ptr<scmd::session>&, const proto::task&);
 
 /* LEVEL 1 */

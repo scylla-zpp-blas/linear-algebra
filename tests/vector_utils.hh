@@ -41,7 +41,7 @@ inline std::optional<scylla_blas::vector_value<T>> cmp_vector(const scylla_blas:
     scylla_blas::vector_segment<T> whole = vec.get_whole();
 
     if (values.size() < whole.back().index) {
-        throw std::runtime_error("Not enough values in vector. Fill with zeroes.");
+        throw std::runtime_error(fmt::format("Not enough values in vector ({}/{}). Fill with zeroes.", values.size(), whole.back().index));
     }
 
     int last = -1;

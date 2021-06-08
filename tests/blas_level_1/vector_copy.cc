@@ -15,6 +15,10 @@ BOOST_FIXTURE_TEST_CASE(float_vector_copy, vector_fixture)
     scheduler->scopy(*vector1, *vector2);
 
     // Then the second vector has the values of first.
+    std::cout << vector1->get_length() << "\n";
+    std::cout << vector2->get_length() << "\n";
+    print_vector(*vector1);
+    print_vector(*vector2);
     std::optional<scylla_blas::vector_value<float>> difference = cmp_vector(*vector2, values);
     BOOST_CHECK(!difference.has_value());
     if (difference.has_value()) {
