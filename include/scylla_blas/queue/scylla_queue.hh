@@ -109,6 +109,10 @@ public:
 
     std::optional<response> get_response(int64_t id);
 
+    // Reset internal counters to 0. Deletes task data from database.
+    // Effectively resets queue to initial state.
+    void reset();
+
     int64_t get_id() const { return queue_id; }
 
 private:

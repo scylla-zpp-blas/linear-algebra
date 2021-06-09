@@ -137,6 +137,9 @@ class routine_scheduler {
 
     void prepare_queues(size_t queue_count) {
         if (_subtask_queues.size() > queue_count) {
+            for (size_t i = queue_count; i < _subtask_queues.size(); i++) {
+                scylla_queue::delete_queue(_session, _subtask_queues[i].get_id());
+            }
             _subtask_queues.erase(_subtask_queues.begin() + queue_count, _subtask_queues.end());
             return;
         }
@@ -157,6 +160,13 @@ public:
             _scheduler_sleep_time(DEFAULT_SCHEDULER_SLEEP_TIME_MICROSECONDS)
     {
         prepare_queues(_current_worker_count);
+    }
+
+    ~routine_scheduler() {
+        for (auto & _subtask_queue : _subtask_queues) {
+            scylla_queue::delete_queue(_session, _subtask_queue.get_id());
+        }
+        _main_worker_queue.reset();
     }
 
     int64_t get_max_used_workers() {
