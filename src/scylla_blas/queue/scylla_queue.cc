@@ -209,8 +209,8 @@ std::optional<response> scylla_blas::scylla_queue::get_response(int64_t id) {
 }
 
 void scylla_blas::scylla_queue::reset() {
-    auto future1 = _session->execute_async(*update_new_counter_prepared, 0, get_id());
-    auto future2 = _session->execute_async(*update_used_counter_prepared, 0, get_id());
+    auto future1 = _session->execute_async(*update_new_counter_prepared, (int64_t)0, get_id());
+    auto future2 = _session->execute_async(*update_used_counter_prepared, (int64_t)0, get_id());
     auto future3 = _session->execute_async("DELETE FROM blas.queue_data WHERE queue_id = ?", get_id());
 
     future1.wait();
