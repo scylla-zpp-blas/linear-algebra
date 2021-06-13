@@ -7,9 +7,9 @@
 #include "test_utils.hh"
 
 #include "config.hh"
-#include "generators/sparse_matrix_value_generator.hh"
-#include "generators/preset_value_factory.hh"
-#include "generators/random_value_factory.hh"
+#include "sparse_matrix_value_generator.hh"
+#include "preset_value_factory.hh"
+#include "random_value_factory.hh"
 
 class scylla_fixture {
 public:

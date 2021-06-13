@@ -7,6 +7,7 @@
 #include <fmt/format.h>
 #include <scmd.hh>
 
+#include "scylla_blas/logging/logging.hh"
 #include "scylla_blas/structure/vector_segment.hh"
 #include "scylla_blas/structure/vector_value.hh"
 #include "scylla_blas/utils/scylla_types.hh"
@@ -97,7 +98,7 @@ class vector : public basic_vector {
 
 public:
     vector(const std::shared_ptr<scmd::session> &session, int64_t id) : basic_vector(session, id)
-        { std::cerr << "A handle created to vector " << id << std::endl; }
+        { LogInfo("A handle created to vector {}", id); }
 
     vector(vector &&other) : basic_vector(other) {}
 
@@ -107,7 +108,7 @@ public:
      */
     static void init(const std::shared_ptr<scmd::session> &session,
                      int64_t id, index_type length, bool force_new = true) {
-        std::cerr << "initializing vector " << id << "..." << std::endl;
+        LogInfo("initializing vector {}...", id);
 
         scmd::statement create_table(fmt::format(R"(
             CREATE TABLE IF NOT EXISTS blas.vector_{0} (
@@ -125,7 +126,7 @@ public:
 
         resize(session, id, length);
 
-        std::cerr << "Initialized vector " << id << std::endl;
+        LogInfo("Initialized vector {}", id);
     }
 
     static vector init_and_return(const std::shared_ptr<scmd::session> &session,

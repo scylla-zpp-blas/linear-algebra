@@ -2,8 +2,8 @@
 
 #include <scmd.hh>
 
-#include "../generators/value_factory.hh"
-#include "../generators/sparse_matrix_value_generator.hh"
+#include "value_factory.hh"
+#include "sparse_matrix_value_generator.hh"
 #include "../test_utils.hh"
 #include "../fixture.hh"
 

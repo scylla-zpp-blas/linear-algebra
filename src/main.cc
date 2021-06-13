@@ -3,17 +3,19 @@
 
 #include <boost/program_options.hpp>
 
-namespace po = boost::program_options;
 #include <fmt/format.h>
 #include <scmd.hh>
 
 #include "scylla_blas/queue/worker_proc.hh"
 #include "scylla_blas/queue/scylla_queue.hh"
+#include "scylla_blas/logging/logging.hh"
 
 #include "scylla_blas/config.hh"
 #include "scylla_blas/matrix.hh"
 #include "scylla_blas/vector.hh"
 #include "scylla_blas/structure/matrix_block.hh"
+
+namespace po = boost::program_options;
 
 struct options {
     std::string host{};
@@ -63,44 +65,44 @@ void parse_arguments(int ac, char *av[], options &options) {
 
         po::notify(vm);
     } catch (std::exception &e) {
-        std::cerr << "error: " << e.what() << "\n";
+        LogCritical("error: {}", e.what());
         std::exit(1);
     } catch (...) {
-        std::cerr << "Exception of unknown type!\n";
+        LogCritical("Exception of unknown type!");
         std::exit(1);
     }
 }
 
 void init(const struct options& op) {
-    std::cerr << "Connecting to " << op.host << ":" << op.port << "..." << std::endl;
+    LogInfo("Connecting to {}:{}...", op.host, op.port);
     auto session = std::make_shared<scmd::session>(op.host, std::to_string(op.port));
 
-    std::cerr << "Initializing blas namespace..." << std::endl;
+    LogInfo("Initializing blas namespace...");
     std::string init_namespace = "CREATE KEYSPACE IF NOT EXISTS blas WITH REPLICATION = {"
                                  "  'class' : 'SimpleStrategy',"
                                  "  'replication_factor' : 1"
                                  "};";
     session->execute(init_namespace);
 
-    std::cerr << "Initializing meta-queue..." << std::endl;
+    LogInfo("Initializing meta-queue...");
     scylla_blas::scylla_queue::init_meta(session);
 
-    std::cerr << "Initializing matrix database..." << std::endl;
+    LogInfo("Initializing matrix database...");
     scylla_blas::basic_matrix::init_meta(session);
     
-    std::cerr << "Initializing vector database..." << std::endl;
+    LogInfo("Initializing vector database...");
     scylla_blas::basic_vector::init_meta(session);
     scylla_blas::vector<float>::init(session, HELPER_FLOAT_VECTOR_ID, 0);
     scylla_blas::vector<double>::init(session, HELPER_DOUBLE_VECTOR_ID, 0);
 
-    std::cerr << "Creating main task queue..." << std::endl;
+    LogInfo("Creating main task queue...");
     scylla_blas::scylla_queue::create_queue(session, DEFAULT_WORKER_QUEUE_ID, true, true);
 
-    std::cerr << "Database initialized succesfully!" << std::endl;
+    LogInfo("Database initialized succesfully!");
 }
 
 void deinit(const struct options& op) {
-    std::cerr << "Connecting to " << op.host << ":" << op.port << "..." << std::endl;
+    LogInfo("Connecting to {}:{}...", op.host, op.port);
 
     auto session = std::make_shared<scmd::session>(op.host, std::to_string(op.port));
 
@@ -108,17 +110,17 @@ void deinit(const struct options& op) {
     drop_all.set_timeout(0);
     session->execute(drop_all);
 
-    std::cerr << "Database deinitialized succesfully!" << std::endl;
+    LogInfo("Database deinitialized succesfully!");
 }
 
 void worker(const struct options& op) {
-    std::cerr << "Worker connecting to " << op.host << ":" << op.port << "..." << std::endl;
+    LogInfo("Worker connecting to {}:{}...", op.host, op.port);
     auto session = std::make_shared<scmd::session>(op.host, std::to_string(op.port));
 
-    std::cerr << "Accessing default task queue..." << std::endl;
+    LogInfo("Accessing default task queue...");
     auto base_queue = scylla_blas::scylla_queue(session, DEFAULT_WORKER_QUEUE_ID);
 
-    std::cerr << "Starting worker loop..." << std::endl;
+    LogInfo("Starting worker loop...");
     for (;;) {
         auto opt = base_queue.consume();
         if (!opt.has_value()) {
@@ -126,7 +128,7 @@ void worker(const struct options& op) {
             continue;
         }
         auto [task_id, task_data] = opt.value();
-        std::cerr << "A new task received! task_id: " << task_id  << std::endl;
+        LogInfo("A new task received! task_id: {}", task_id);
 
         int64_t attempts;
         for (attempts = 0; attempts <= MAX_WORKER_RETRIES; attempts++) {
@@ -147,15 +149,14 @@ void worker(const struct options& op) {
 
                 break;
             } catch (const std::exception &e) {
-                std::cerr << "Task " << task_id << " failed. Reason: " << e.what() << std::endl;
-                std::cerr << "Retrying..." << std::endl;
+                LogWarn("Task {} failed. Reason: {}. Retrying...", task_id, e.what());
             }
         }
 
         if (attempts <= MAX_WORKER_RETRIES) {
-            std::cerr << "Task " << task_id << " completed succesfully." << std::endl;
+            LogInfo("Task {} completed succesfully.", task_id);
         } else {
-            std::cerr << "Abandoned task " << task_id << " due to too many failures." << std::endl;
+            LogError("Abandoned task {} due to too many failures.", task_id);
         }
     }
 }

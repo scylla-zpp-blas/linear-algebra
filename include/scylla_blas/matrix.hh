@@ -8,6 +8,7 @@
 #include <fmt/format.h>
 #include <scmd.hh>
 
+#include "scylla_blas/logging/logging.hh"
 #include "scylla_blas/structure/matrix_block.hh"
 #include "scylla_blas/structure/matrix_value.hh"
 #include "scylla_blas/structure/vector_segment.hh"
@@ -147,7 +148,7 @@ class matrix : public basic_matrix {
     }
 public:
     matrix(const std::shared_ptr<scmd::session> &session, int64_t id) : basic_matrix(session, id)
-        { std::cerr << "A handle created to matrix " << id << std::endl; }
+        { LogInfo("A handle created to matrix {}", id); }
 
     matrix(matrix &&other) : basic_matrix(other) {}
 
@@ -157,7 +158,7 @@ public:
      */
     static void init(const std::shared_ptr<scmd::session> &session,
                      int64_t id, index_type row_count, index_type column_count, bool force_new = true) {
-        std::cerr << "initializing matrix " << id << "..." << std::endl;
+        LogInfo("initializing matrix {}...", id);
 
         scmd::statement create_table(fmt::format(R"(
             CREATE TABLE IF NOT EXISTS blas.matrix_{0} (
@@ -177,7 +178,7 @@ public:
 
         resize(session, id, row_count, column_count);
 
-        std::cerr << "Initialized matrix " << id << std::endl;
+        LogInfo("Initialized matrix {}", id);
     }
 
     static matrix init_and_return(const std::shared_ptr<scmd::session> &session,

@@ -6,8 +6,8 @@
 #include <iostream>
 #include <scylla_blas/matrix.hh>
 #include <scylla_blas/vector.hh>
-#include "generators/sparse_matrix_value_generator.hh"
-#include "generators/random_value_factory.hh"
+#include "sparse_matrix_value_generator.hh"
+#include "random_value_factory.hh"
 #include <iomanip>
 
 template<class T>

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="CMakeSharedSettings">
+    <configurations>
+      <configuration PROFILE_NAME="Debug" CONFIG_NAME="Debug" ENABLED="true" />
+      <configuration PROFILE_NAME="Release" CONFIG_NAME="Release" ENABLED="true" />
+      <configuration PROFILE_NAME="DebugWithTrace" CONFIG_NAME="Debug" GENERATION_OPTIONS="-DSCYLLA_BLAS_LOGLEVEL=TRACE" ENABLED="true" />
+    </configurations>
+  </component>
+</project>

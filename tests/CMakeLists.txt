@@ -15,15 +15,11 @@ set(TEST_SRC
         blas_level_2/multiplications.cc
         blas_level_2/solver.cc
 
-        generators/matrix_value_generator.hh
-        generators/sparse_matrix_value_generator.hh
-        generators/random_value_factory.hh
-        generators/value_factory.hh
-        generators/preset_value_factory.hh
-)
+        )
 
 add_executable(scylla_blas_tests main.cc "${TEST_SRC}")
 target_link_libraries(scylla_blas_tests scylla_blas ${Boost_THREAD_LIBRARY} ${Boost_UNIT_TEST_FRAMEWORK_LIBRARY})
+target_include_directories(scylla_blas_tests PRIVATE "${CMAKE_SOURCE_DIR}/matrix_generators")
 target_compile_definitions(scylla_blas_tests PUBLIC -DBOOST_TEST_DYN_LINK)
 add_test(scylla_blas_tests scylla_blas_tests)
 
