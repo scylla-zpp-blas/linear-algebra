@@ -113,4 +113,7 @@ public:
     void destroy() override;
 };
 
-benchmark_result perform_benchmark(std::unique_ptr<base_benchmark> tester, const std::vector<int64_t> &block_sizes, const std::vector<int64_t> &problem_sizes);
+benchmark_result perform_benchmark(std::unique_ptr<base_benchmark> tester,
+                                   const std::vector<int64_t> &block_sizes,
+                                   const std::vector<int64_t> &problem_sizes,
+                                   bool autoclean);

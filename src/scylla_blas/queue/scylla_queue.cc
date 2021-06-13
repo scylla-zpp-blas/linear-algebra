@@ -97,7 +97,10 @@ scylla_blas::scylla_queue::scylla_queue(scylla_queue &&other) noexcept :
 {
     copy_statements_from(&other);
     auto session_ptr = _session.get();
+
+    /* If the queue has been moved from, there is nothing left to do. */
     if (session_ptr == nullptr) return;
+
     auto iter = session_map.find(session_ptr);
     iter->second.erase(&other);
     iter->second.insert(this);

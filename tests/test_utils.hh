@@ -35,33 +35,6 @@ void load_matrix_from_generator(const std::shared_ptr<scmd::session> &session,
     std::cerr << "Loaded a matrix: " << matrix.get_id() << " from a generator" << std::endl;
 }
 
-template<class T>
-void print_matrix_octave(const scylla_blas::matrix<T> &matrix) {
-    auto default_precision = std::cout.precision();
-
-    std::cout << std::setprecision(4);
-    std::cout << "Matrix " << matrix.get_id() << ": " << std::endl;
-
-    std::cout << "[\n";
-
-    for (scylla_blas::index_t i = 1; i <= matrix.get_row_count(); i++) {
-        auto vec = matrix.get_row(i);
-        auto it = vec.begin();
-        for (scylla_blas::index_t j = 1; j <= matrix.get_column_count(); j++) {
-            if (it != vec.end() && it->index == j) {
-                std::cout << it->value << ", ";
-                it++;
-            } else {
-                std::cout << 0 << ", ";
-            }
-        }
-        std::cout << "\n";
-    }
-
-    std::cout << "]\n";
-    std::cout << std::setprecision(default_precision);
-}
-
 /** DEBUG **/
 template<class T>
 void print_matrix(const scylla_blas::matrix<T> &matrix) {

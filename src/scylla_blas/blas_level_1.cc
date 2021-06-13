@@ -23,8 +23,8 @@ void assert_length_equal(const scylla_blas::vector<T> &X,
 template<>
 float scylla_blas::routine_scheduler::produce_vector_tasks(const proto::task_type type,
                                                            const float alpha,
-                                                           const int64_t X_id,
-                                                           const int64_t Y_id,
+                                                           const id_t X_id,
+                                                           const id_t Y_id,
                                                            float acc, updater<float> update) {
     std::vector<proto::task> tasks;
 
@@ -46,8 +46,8 @@ float scylla_blas::routine_scheduler::produce_vector_tasks(const proto::task_typ
 template<>
 double scylla_blas::routine_scheduler::produce_vector_tasks(const proto::task_type type,
                                                             const double alpha,
-                                                            const int64_t X_id,
-                                                            const int64_t Y_id,
+                                                            const id_t X_id,
+                                                            const id_t Y_id,
                                                             double acc, updater<double> update) {
     std::vector<proto::task> tasks;
 

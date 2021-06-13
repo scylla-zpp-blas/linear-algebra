@@ -77,7 +77,7 @@ scylla_blas::basic_matrix::basic_matrix(const std::shared_ptr<scmd::session> &se
 }
 
 void scylla_blas::basic_matrix::clear_all() {
-    _session->execute(_clear_all_prepared.get_statement().set_timeout(0));
+    _session->execute(_clear_all_prepared.get_statement());
 }
 
 void scylla_blas::basic_matrix::clear_row(index_t row) {
@@ -85,7 +85,6 @@ void scylla_blas::basic_matrix::clear_row(index_t row) {
     scylla_blas::index_t blocks_count = get_blocks_width();
     for (scylla_blas::index_t block_idx = 1; block_idx <= blocks_count; block_idx++) {
         auto stmt = _clear_block_row_prepared.get_statement();
-        stmt.set_timeout(0);
         scheduled.push_back(_session->execute_async(stmt, get_block_row(row), block_idx, row));
     }
     for (auto &future : scheduled) {

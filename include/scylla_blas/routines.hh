@@ -68,7 +68,7 @@ class routine_scheduler {
      */
     template<class T>
     T produce_vector_tasks(const proto::task_type type, const T alpha,
-                           const int64_t X_id, const int64_t Y_id,
+                           const id_t X_id, const id_t Y_id,
                            T acc = 0, updater<T> update = nullptr);
 
     /* Produces a number of matrix-to-wektor primary tasks for workers, waits
@@ -79,9 +79,9 @@ class routine_scheduler {
     T produce_mixed_tasks(const proto::task_type type,
                           const index_t KL, const index_t KU,
                           const UPLO Uplo, const DIAG Diag,
-                          const int64_t A_id, const TRANSPOSE TransA, const T alpha,
-                          const int64_t X_id, const T beta,
-                          const int64_t Y_id, T acc = 0, updater<T> update = nullptr);
+                          const id_t A_id, const TRANSPOSE TransA, const T alpha,
+                          const id_t X_id, const T beta,
+                          const id_t Y_id, T acc = 0, updater<T> update = nullptr);
 
     /* Produces a number of matrix-only primary tasks for workers, waits
      * until they are reported to be complete, accumulating result using
@@ -89,11 +89,21 @@ class routine_scheduler {
      */
     template<class T>
     T produce_matrix_tasks(const proto::task_type type,
-                           const int64_t A_id, const enum TRANSPOSE TransA, const T alpha,
-                           const int64_t B_id, const enum TRANSPOSE TransB, const T beta,
-                           const int64_t C_id, T acc = 0, updater<T> update = nullptr);
+                           const id_t A_id, const enum TRANSPOSE TransA, const T alpha,
+                           const id_t B_id, const enum TRANSPOSE TransB, const T beta,
+                           const id_t C_id, T acc = 0, updater<T> update = nullptr);
+
+    template<class T>
+    T produce_generation_tasks(const proto::task_type type,
+                               const id_t structure_id, const double alpha,
+                               T acc = 0, updater<T> update = nullptr);
 
     void produce_tasks_in_queues(std::vector<scylla_queue::task> &tasks) {
+        /* TODO: consider limiting the number of queues used
+         * to such a value @q that q^2 <= tasks.size(),
+         * or 10 * q <= tasks.size() or any other value
+         * that would make the level of distribution sensible.
+         */
         std::vector<std::vector<scylla_queue::task>> split(_current_worker_count);
 
         for (size_t i = 0; i < tasks.size(); i++)
@@ -153,11 +163,11 @@ class routine_scheduler {
 public:
     /* The queue used for subroutines requested in methods */
     routine_scheduler(const std::shared_ptr <scmd::session> &session) :
-            _session(session),
-            _subtask_queues(),
-            _main_worker_queue(_session, DEFAULT_WORKER_QUEUE_ID),
-            _current_worker_count(DEFAULT_WORKER_COUNT),
-            _scheduler_sleep_time(DEFAULT_SCHEDULER_SLEEP_TIME_MICROSECONDS)
+        _session(session),
+        _subtask_queues(),
+        _main_worker_queue(_session, DEFAULT_WORKER_QUEUE_ID),
+        _current_worker_count(DEFAULT_WORKER_COUNT),
+        _scheduler_sleep_time(DEFAULT_SCHEDULER_SLEEP_TIME_MICROSECONDS)
     {
         prepare_queues(_current_worker_count);
     }
@@ -185,8 +195,6 @@ public:
     void set_scheduler_sleep_time(int64_t new_scheduler_sleep_time) {
         this->_scheduler_sleep_time = new_scheduler_sleep_time;
     }
-
-// TODO: shouldn't we ignore N, incX, incY? Maybe skip them altogether for the sake of simplification?
 
 /*
 * ===========================================================================
@@ -385,9 +393,16 @@ public:
                           const double alpha, const matrix<double> &A, matrix<double> &B);
 
     /* MISC */
-    /* alpha denotes the suggested proportion of non-zero values */
-    matrix<float> &srmgen(float alpha, matrix<float> &A);
-    matrix<double> &drmgen(double alpha, matrix<double> &A);
+
+    /* Generate dense vectors */
+    vector<float> &srvgen(vector<float> &X);
+    vector<double> &drvgen(vector<double> &X);
+
+    /* Generate sparse matrices.
+     * @matrix_load – suggested proportion of non-zero values
+     */
+    matrix<float> &srmgen(double matrix_load, matrix<float> &A);
+    matrix<double> &drmgen(double matrix_load, matrix<double> &A);
 };
 
 }

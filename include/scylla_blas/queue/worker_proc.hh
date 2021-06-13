@@ -36,10 +36,10 @@ procedure_t sgemm, ssyrk, ssyr2k;
 procedure_t dgemm, dsyrk, dsyr2k;
 
 /* MISC */
-procedure_t srmgen;
-procedure_t drmgen;
+procedure_t srvgen, srmgen;
+procedure_t drvgen, drmgen;
 
-constexpr std::array<std::pair<proto::task_type, const procedure_t &>, 36> task_to_procedure =
+constexpr std::array<std::pair<proto::task_type, const procedure_t &>, 38> task_to_procedure =
 {{
          {proto::SSWAP, sswap},
          {proto::SSCAL, sscal},
@@ -79,6 +79,8 @@ constexpr std::array<std::pair<proto::task_type, const procedure_t &>, 36> task_
          {proto::SSYR2K, ssyr2k},
          {proto::DSYR2K, dsyr2k},
 
+         {proto::SRVGEN, srvgen},
+         {proto::DRVGEN, drvgen},
          {proto::SRMGEN, srmgen},
          {proto::DRMGEN, drmgen}
  }};

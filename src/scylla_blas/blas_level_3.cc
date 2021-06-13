@@ -41,9 +41,9 @@ void assert_multiplication_compatible(const enum scylla_blas::TRANSPOSE TransA, 
 
 template<>
 float scylla_blas::routine_scheduler::produce_matrix_tasks(const proto::task_type type,
-                                                           const int64_t A_id, const enum TRANSPOSE TransA, const float alpha,
-                                                           const int64_t B_id, const enum TRANSPOSE TransB, const float beta,
-                                                           const int64_t C_id, float acc, updater<float> update) {
+                                                           const id_t A_id, const enum TRANSPOSE TransA, const float alpha,
+                                                           const id_t B_id, const enum TRANSPOSE TransB, const float beta,
+                                                           const id_t C_id, float acc, updater<float> update) {
     std::vector<proto::task> tasks;
 
     for (const auto &q : this->_subtask_queues) {
@@ -70,9 +70,9 @@ float scylla_blas::routine_scheduler::produce_matrix_tasks(const proto::task_typ
 
 template<>
 double scylla_blas::routine_scheduler::produce_matrix_tasks(const proto::task_type type,
-                                                            const int64_t A_id, const enum TRANSPOSE TransA, const double alpha,
-                                                            const int64_t B_id, const enum TRANSPOSE TransB, const double beta,
-                                                            const int64_t C_id, double acc, updater<double> update) {
+                                                            const id_t A_id, const enum TRANSPOSE TransA, const double alpha,
+                                                            const id_t B_id, const enum TRANSPOSE TransB, const double beta,
+                                                            const id_t C_id, double acc, updater<double> update) {
     std::vector<proto::task> tasks;
 
     for (const auto &q : this->_subtask_queues) {

@@ -210,6 +210,16 @@ void gemv(const std::shared_ptr<scmd::session> &session, auto &task_details) {
         index_t prod_segments = A.get_blocks_width(task_details.TransA);
         vector_segment result = Y.get_segment(subtask.index) * task_details.beta;
 
+        /* Prefetch the entire vector trying to minimize the number
+         * of read conflicts with the other workers.
+         *
+         * TODO: perhaps controlling the order of iteration like this:
+         *
+         * for(index_t i : iteration(subtask.index, segment_count))
+         *
+         * ...and interleaving it with vector reads would be
+         * preferable to trying to fetch the entire vector at once.
+         */
         scylla_blas::index_t segment_count = Y.get_segment_count();
         std::vector<vector_segment<T>> segments(segment_count);
         size_t segment_idx = subtask.index;
@@ -434,26 +444,68 @@ void syr2k(const std::shared_ptr<scmd::session> &session, auto &task_details) {
 
 /* MISC */
 template<class T>
+void rvgen(const std::shared_ptr<scmd::session> &session, auto &task_details) {
+    /* TOOD: unify with rmgen? */
+    using namespace scylla_blas;
+
+    vector<T> X(session, task_details.structure_id);
+    scylla_queue task_queue = scylla_queue(session, task_details.task_queue_id);
+
+    auto generate_block = [&X, &task_details] (proto::task &subtask) {
+        index_t segment_id = subtask.index;
+        index_t length = X.get_block_size();
+
+        LogTrace("(rvgen) length: {}. Vector id: {} (details id: {})", length, X.get_id(), task_details.A_id);
+
+        /* Not a perfect seed but it's good enough */
+        int64_t seed = X.get_id() * X.get_length() + subtask.index;
+
+        LogTrace("(rvgen) seed: {}", seed);
+
+        std::shared_ptr<value_factory<T>> f = std::make_shared<random_value_factory<T>>(0, 9, seed);
+
+        vector_segment<T> values;
+        for (index_t i = 1; i <= length; i++) {
+            values.emplace_back(i, f->next());
+        }
+
+        X.insert_segment(segment_id, values);
+    };
+
+    consume_tasks(task_queue, generate_block);
+}
+
+template<class T>
 void rmgen(const std::shared_ptr<scmd::session> &session, auto &task_details) {
     using namespace scylla_blas;
 
-    matrix<T> A(session, task_details.A_id);
+    matrix<T> A(session, task_details.structure_id);
     scylla_queue task_queue = scylla_queue(session, task_details.task_queue_id);
 
     auto generate_block = [&A, &task_details] (proto::task &subtask) {
         auto [row, column] = subtask.coord;
         index_t length = A.get_block_size();
-        LogTrace("(rmgen) length: {}. Matrix id: {} (details id: {})", length, A.get_id(), task_details.A_id);
-        std::shared_ptr<value_factory<T>> f = std::make_shared<random_value_factory<T>>(0, 9, A.get_id() * (row * A.get_column_count() + column));
-        size_t suggested_load = length * length * task_details.alpha + 1;
-        sparse_matrix_value_generator<T> gen = sparse_matrix_value_generator<T>(length, length, suggested_load, A.get_id() * (row * A.get_column_count() + column), f);
-        LogTrace("(rmgen) suggested load: {}", suggested_load);
-        std::vector<matrix_value<T>> values;
 
+        LogTrace("(rmgen) length: {}. Matrix id: {} (details id: {})", length, A.get_id(), task_details.A_id);
+
+        /* Not a perfect seed but it's good enough */
+        int64_t seed = A.get_id() * (A.get_column_count() * A.get_row_count()) + (row * A.get_column_count() + column);
+
+        LogTrace("(rmgen) seed: {}", seed);
+
+        std::shared_ptr<value_factory<T>> f = std::make_shared<random_value_factory<T>>(0, 9, seed);
+        size_t suggested_load = length * length * task_details.alpha + 1;
+        sparse_matrix_value_generator<T> gen = sparse_matrix_value_generator<T>(length, length, suggested_load, seed, f);
+
+        LogTrace("(rmgen) suggested load: {}", suggested_load);
+
+        std::vector<matrix_value<T>> values;
         while(gen.has_next()) {
             values.emplace_back(gen.next());
         }
+
         LogTrace("(rmgen) generated {} values", values.size());
+
         matrix_block<T> block(values);
         A.insert_block(row, column, block);
     };
@@ -641,13 +693,23 @@ DEFINE_WORKER_FUNCTION(dsyr2k, {
 
 /* MISC */
 
+DEFINE_WORKER_FUNCTION(srvgen, {
+    rvgen<float>(session, task.generation_task);
+    return std::nullopt;
+})
+
+DEFINE_WORKER_FUNCTION(drvgen, {
+    rvgen<double>(session, task.generation_task);
+    return std::nullopt;
+})
+
 DEFINE_WORKER_FUNCTION(srmgen, {
-    rmgen<float>(session, task.mixed_task_float);
+    rmgen<float>(session, task.generation_task);
     return std::nullopt;
 })
 
 DEFINE_WORKER_FUNCTION(drmgen, {
-    rmgen<double>(session, task.mixed_task_double);
+    rmgen<double>(session, task.generation_task);
     return std::nullopt;
 })
 

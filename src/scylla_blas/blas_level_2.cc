@@ -35,12 +35,12 @@ template<>
 float scylla_blas::routine_scheduler::produce_mixed_tasks(const proto::task_type type,
                                                           const index_t KL, const index_t KU,
                                                           const UPLO Uplo, const DIAG Diag,
-                                                          const int64_t A_id,
+                                                          const id_t A_id,
                                                           const TRANSPOSE TransA,
                                                           const float alpha,
-                                                          const int64_t X_id,
+                                                          const id_t X_id,
                                                           const float beta,
-                                                          const int64_t Y_id,
+                                                          const id_t Y_id,
                                                           float acc, updater<float> update) {
     std::vector<proto::task> tasks;
 
@@ -68,12 +68,12 @@ template<>
 double scylla_blas::routine_scheduler::produce_mixed_tasks(const proto::task_type type,
                                                            const index_t KL, const index_t KU,
                                                            const UPLO Uplo, const DIAG Diag,
-                                                           const int64_t A_id,
+                                                           const id_t A_id,
                                                            const TRANSPOSE TransA,
                                                            const double alpha,
-                                                           const int64_t X_id,
+                                                           const id_t X_id,
                                                            const double beta,
-                                                           const int64_t Y_id,
+                                                           const id_t Y_id,
                                                            double acc, updater<double> update) {
     std::vector<proto::task> tasks;
 
@@ -210,19 +210,8 @@ scylla_blas::routine_scheduler::strsv(const enum UPLO Uplo, const enum TRANSPOSE
         sum = 0;
 
         add_segments_as_queue_tasks(X);
-        error = produce_mixed_tasks<float>(proto::STRSV,
-                                           NONE,
-                                           NONE,
-                                           Uplo,
-                                           Diag,
-                                           A.get_id(),
-                                           TransA,
-                                           NONE,
-                                           HELPER_FLOAT_VECTOR_ID,
-                                           NONE,
-                                           X.get_id(),
-                                           0,
-                                           [&sum](float &result, const proto::response &r) {
+        error = produce_mixed_tasks<float>(proto::STRSV, NONE, NONE, Uplo, Diag, A.get_id(), TransA, NONE, HELPER_FLOAT_VECTOR_ID, NONE, X.get_id(),
+                                           0, [&sum](float &result, const proto::response &r) {
                                                 result += r.result_float_pair.first;
                                                 sum += r.result_float_pair.second;
                                             });
@@ -300,21 +289,4 @@ scylla_blas::routine_scheduler::dtbsv(const enum UPLO Uplo, const enum TRANSPOSE
                                             });
     } while (error / sum > EPSILON);
     return X;
-}
-
-/* TODO: move to generic / delete */
-scylla_blas::matrix<float>&
-scylla_blas::routine_scheduler::srmgen(float alpha, scylla_blas::matrix<float> &A) {
-    add_blocks_as_queue_tasks(A);
-
-    produce_mixed_tasks<float>(proto::SRMGEN, NONE, NONE, Lower, NonUnit, A.get_id(), NoTrans, alpha, NONE, NONE, NONE);
-    return A;
-}
-
-scylla_blas::matrix<double>&
-scylla_blas::routine_scheduler::drmgen(double alpha, scylla_blas::matrix<double> &A) {
-    add_blocks_as_queue_tasks(A);
-
-    produce_mixed_tasks<double>(proto::DRMGEN, NONE, NONE, Lower, NonUnit, A.get_id(), NoTrans, alpha, NONE, NONE, NONE);
-    return A;
 }

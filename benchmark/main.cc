@@ -21,6 +21,7 @@ struct options {
     std::vector<int64_t> problem_sizes;
     int workers;
     double matrix_load;
+    bool autoclean;
 };
 
 template<typename ...T>
@@ -46,6 +47,7 @@ void parse_arguments(int ac, char *av[], options &options) {
             ("problem_sizes", po::value<std::vector<int64_t>>(&options.problem_sizes)->required()->multitoken(), "Problem sizes to benchmark (vector length / matrix side length)")
             ("workers", po::value<int>(&options.workers)->required())
             ("matrix_load", po::value<double>(&options.matrix_load)->default_value(0.2), "% of non-zerio matrix element")
+            ("autoclean", "Delete all structures after the benchmark")
             ("host,H", po::value<std::string>(&options.host)->required(), "Address on which Scylla can be reached")
             ("port,P", po::value<uint16_t>(&options.port)->default_value(SCYLLA_DEFAULT_PORT), "port number on which Scylla can be reached");
     desc.add(opt);
@@ -64,6 +66,7 @@ void parse_arguments(int ac, char *av[], options &options) {
         if (vm.count("mmmul")) options.mmmul = true;
         if (vm.count("mvmul")) options.mvmul = true;
         if (vm.count("vvmul")) options.vvmul = true;
+        if (vm.count("autoclean")) options.autoclean = true;
 
         po::notify(vm);
     } catch (std::exception &e) {
@@ -96,7 +99,7 @@ int main(int argc, char **argv) {
     }
     tester->set_max_workers(op.workers);
     tester->set_matrix_load(op.matrix_load);
-    benchmark_result result = perform_benchmark(std::move(tester), op.block_sizes, op.problem_sizes);
+    benchmark_result result = perform_benchmark(std::move(tester), op.block_sizes, op.problem_sizes, op.autoclean);
     LogInfo("Benchmark results (type={}, workers={})", test_name, op.workers);
     for (auto &[bs, ps, r] : result.tests) {
         std::cout << bs << " " << ps << " " << r.setup_time << " " << r.proc_time << " " << r.teardown_time << "\n";

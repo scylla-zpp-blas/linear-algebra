@@ -36,15 +36,15 @@ void benchmark_mm::proc() {
 }
 
 void benchmark_mm::teardown() {
-    //lm->clear_all();
-    //rm->clear_all();
-    //wm->clear_all();
+    lm->clear_all();
+    rm->clear_all();
+    wm->clear_all();
 }
 
 void benchmark_mm::destroy() {
-    //scylla_blas::matrix<float>::drop(session, l_matrix_id);
-    //scylla_blas::matrix<float>::drop(session, r_matrix_id);
-    //scylla_blas::matrix<float>::drop(session, w_matrix_id);
+    scylla_blas::matrix<float>::drop(session, l_matrix_id);
+    scylla_blas::matrix<float>::drop(session, r_matrix_id);
+    scylla_blas::matrix<float>::drop(session, w_matrix_id);
 }
 
 // Matrix * Vector
@@ -59,7 +59,6 @@ void benchmark_mv::setup(int64_t block_size, int64_t length) {
     lm = std::make_unique<scylla_blas::matrix<float>>(session, l_matrix_id);
     rv = std::make_unique<scylla_blas::vector<float>>(session, r_vector_id);
     wv = std::make_unique<scylla_blas::vector<float>>(session, w_vector_id);
-
 
     lm->resize(length, length);
     rv->resize(length);
@@ -78,15 +77,15 @@ void benchmark_mv::proc() {
 }
 
 void benchmark_mv::teardown() {
-    //lm->clear_all();
-    //rv->clear_all();
-    //wv->clear_all();
+    lm->clear_all();
+    rv->clear_all();
+    wv->clear_all();
 }
 
 void benchmark_mv::destroy() {
-    //scylla_blas::matrix<float>::drop(session, l_matrix_id);
-    //scylla_blas::vector<float>::drop(session, r_vector_id);
-    //scylla_blas::vector<float>::drop(session, w_vector_id);
+    scylla_blas::matrix<float>::drop(session, l_matrix_id);
+    scylla_blas::vector<float>::drop(session, r_vector_id);
+    scylla_blas::vector<float>::drop(session, w_vector_id);
 }
 
 // Vector * Vector
@@ -115,13 +114,13 @@ void benchmark_vv::proc() {
 }
 
 void benchmark_vv::teardown() {
-    //lv->clear_all();
-    //rv->clear_all();
+    lv->clear_all();
+    rv->clear_all();
 }
 
 void benchmark_vv::destroy() {
-    //scylla_blas::vector<float>::drop(session, l_vector_id);
-    //scylla_blas::vector<float>::drop(session, r_vector_id);
+    scylla_blas::vector<float>::drop(session, l_vector_id);
+    scylla_blas::vector<float>::drop(session, r_vector_id);
 }
 
 template<typename F, typename... Args>
@@ -133,7 +132,10 @@ double measure_time(F callable, Args... args) {
     return duration.count();
 }
 
-benchmark_result perform_benchmark(std::unique_ptr<base_benchmark> tester, const std::vector<int64_t> &block_sizes, const std::vector<int64_t> &problem_sizes) {
+benchmark_result perform_benchmark(std::unique_ptr<base_benchmark> tester,
+                                   const std::vector<int64_t> &block_sizes,
+                                   const std::vector<int64_t> &problem_sizes,
+                                   bool autoclean) {
     benchmark_result result{};
 
     LogInfo("Starting initialization...  ");
@@ -153,17 +155,25 @@ benchmark_result perform_benchmark(std::unique_ptr<base_benchmark> tester, const
             r.proc_time = measure_time([&](){tester->proc();});
             LogInfo("\tProcedure took {}ms", r.proc_time);
 
-            LogInfo("\tStarting teardown");
-            r.teardown_time = measure_time([&](){tester->teardown();});
-            LogInfo("\tTeardown took {}ms", r.teardown_time);
+            if (autoclean) {
+                LogInfo("\tStarting teardown");
+                r.teardown_time = measure_time([&](){tester->teardown();});
+                LogInfo("\tTeardown took {}ms", r.teardown_time);
+            } else {
+                LogDebug("\tAutoclean off: skipping teardown");
+            }
 
             result.tests.emplace_back(block_size, problem_size, r);
         }
     }
 
-    LogInfo("Starting destroy");
-    result.destroy_time = measure_time([&](){tester->destroy();});
-    LogInfo("Destroy took {}ms\n", result.destroy_time);
+    if (autoclean) {
+        LogInfo("Starting destroy");
+        result.destroy_time = measure_time([&](){tester->destroy();});
+        LogInfo("Destroy took {}ms\n", result.destroy_time);
+    } else {
+        LogDebug("\tAutoclean off: skipping destroy");
+    }
 
     return result;
 }

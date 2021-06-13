@@ -2,8 +2,6 @@
 
 #include <cstdint>
 
-//#include <boost/core/demangle.hpp>
-
 namespace scylla_blas {
 
 using index_t = int64_t;
