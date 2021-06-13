@@ -28,27 +28,14 @@ int main(int argc, char **argv) {
 
     /* An example diagonally dominant matrix */
     scylla_blas::matrix<double> m = scylla_blas::matrix<double>::init_and_return(session, 1, N, N);
-
-    std::vector<scylla_blas::matrix_value<double>> normal_values;
-    for (scylla_blas::index_t i = 1; i <= m.get_block_size(); i++) {
-        for (scylla_blas::index_t j = 1; j <= m.get_block_size(); j++) {
-            normal_values.emplace_back(i, j, 1);
-        }
-    }
-    scylla_blas::matrix_block<double> normal(normal_values);
-
-    std::vector<scylla_blas::matrix_value<double>> diagonal_values(normal_values);
-    for (scylla_blas::matrix_value<double> &value : diagonal_values) {
-        if (value.col_index == value.row_index) {
-            value.value = 4;
-        }
-    }
-    scylla_blas::matrix_block<double> diagonal(diagonal_values);
-
-    for (scylla_blas::index_t i = 1; i <= m.get_blocks_width(); i++) {
-        for (scylla_blas::index_t j = 1; j <= m.get_blocks_height(); j++) {
-            /* The block will be automatically truncated to the desired size */
-            m.insert_block(i, j, (i == j ? normal : diagonal));
+    for (scylla_blas::index_t i = 1; i <= N; i++) {
+        for (scylla_blas::index_t j = 1; j <= N; j++) {
+            if (i == j) {
+                m.insert_value(i, j, 4);
+            }
+            if (i == j + 1 || i == j - 1) {
+                m.insert_value(i, j, 1);
+            }
         }
     }
 

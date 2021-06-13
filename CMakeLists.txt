@@ -45,11 +45,12 @@ set(BLAS_SRC
         ${SRC_DIR}/blas_level_1.cc
         ${SRC_DIR}/blas_level_2.cc
         ${SRC_DIR}/blas_level_3.cc
+        ${SRC_DIR}/blaslike.cc
         ${SRC_DIR}/matrix.cc
         ${SRC_DIR}/vector.cc
         ${SRC_DIR}/queue/scylla_queue.cc
         ${SRC_DIR}/queue/worker_proc.cc
-        src/scylla_blas/blaslike.cc)
+)
 
 set(INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/include/scylla_blas)
 set(BLAS_INCLUDE

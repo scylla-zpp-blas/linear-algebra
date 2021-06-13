@@ -160,6 +160,7 @@ benchmark_result perform_benchmark(std::unique_ptr<base_benchmark> tester,
                 r.teardown_time = measure_time([&](){tester->teardown();});
                 LogInfo("\tTeardown took {}ms", r.teardown_time);
             } else {
+                r.teardown_time = 0;
                 LogDebug("\tAutoclean off: skipping teardown");
             }
 
@@ -172,6 +173,7 @@ benchmark_result perform_benchmark(std::unique_ptr<base_benchmark> tester,
         result.destroy_time = measure_time([&](){tester->destroy();});
         LogInfo("Destroy took {}ms\n", result.destroy_time);
     } else {
+        result.destroy_time = 0;
         LogDebug("\tAutoclean off: skipping destroy");
     }
 
