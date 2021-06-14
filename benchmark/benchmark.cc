@@ -6,11 +6,6 @@
 #include "const.hh"
 #include "benchmark.hh"
 
-size_t suggest_number_of_values(scylla_blas::index_t w, scylla_blas::index_t h) {
-    size_t ret = w * h / 5; // 20% load
-    return (ret > 0 ? ret : 1);
-}
-
 // Matrix * Matrix
 
 void benchmark_mm::init() {
@@ -20,30 +15,30 @@ void benchmark_mm::init() {
 }
 
 void benchmark_mm::setup(int64_t block_size, int64_t length) {
-    lm = std::make_unique<scylla_blas::matrix<float>>(session, l_matrix_id);
-    rm = std::make_unique<scylla_blas::matrix<float>>(session, r_matrix_id);
-    wm = std::make_unique<scylla_blas::matrix<float>>(session, w_matrix_id);
+    left_matrix = std::make_unique<scylla_blas::matrix<float>>(session, l_matrix_id);
+    right_matrix = std::make_unique<scylla_blas::matrix<float>>(session, r_matrix_id);
+    result_matrix = std::make_unique<scylla_blas::matrix<float>>(session, w_matrix_id);
 
-    lm->resize(length, length);
-    rm->resize(length, length);
-    wm->resize(length, length);
+    left_matrix->resize(length, length);
+    right_matrix->resize(length, length);
+    result_matrix->resize(length, length);
 
-    lm->set_block_size(block_size);
-    rm->set_block_size(block_size);
-    wm->set_block_size(block_size);
+    left_matrix->set_block_size(block_size);
+    right_matrix->set_block_size(block_size);
+    result_matrix->set_block_size(block_size);
 
-    fill_matrix(*lm, length);
-    fill_matrix(*rm, length);
+    scheduler.srmgen(matrix_load, *right_matrix);
+    scheduler.srmgen(matrix_load, *left_matrix);
 }
 
 void benchmark_mm::proc() {
-    scheduler.sgemm(scylla_blas::NoTrans, scylla_blas::NoTrans, 1.0, *lm, *rm, 0.0, *wm);
+    scheduler.sgemm(scylla_blas::NoTrans, scylla_blas::NoTrans, 1.0, *left_matrix, *right_matrix, 0.0, *result_matrix);
 }
 
 void benchmark_mm::teardown() {
-    lm->clear_all();
-    rm->clear_all();
-    wm->clear_all();
+    left_matrix->clear_all();
+    right_matrix->clear_all();
+    result_matrix->clear_all();
 }
 
 void benchmark_mm::destroy() {
@@ -61,31 +56,30 @@ void benchmark_mv::init() {
 }
 
 void benchmark_mv::setup(int64_t block_size, int64_t length) {
-    lm = std::make_unique<scylla_blas::matrix<float>>(session, l_matrix_id);
-    rv = std::make_unique<scylla_blas::vector<float>>(session, r_vector_id);
-    wv = std::make_unique<scylla_blas::vector<float>>(session, w_vector_id);
+    left_matrix = std::make_unique<scylla_blas::matrix<float>>(session, l_matrix_id);
+    right_vector = std::make_unique<scylla_blas::vector<float>>(session, r_vector_id);
+    result_vector = std::make_unique<scylla_blas::vector<float>>(session, w_vector_id);
 
+    left_matrix->resize(length, length);
+    right_vector->resize(length);
+    result_vector->resize(length);
 
-    lm->resize(length, length);
-    rv->resize(length);
-    wv->resize(length);
+    left_matrix->set_block_size(block_size);
+    right_vector->set_block_size(block_size);
+    result_vector->set_block_size(block_size);
 
-    lm->set_block_size(block_size);
-    rv->set_block_size(block_size);
-    wv->set_block_size(block_size);
-
-    fill_matrix(*lm, length);
-    fill_vector(*rv, length);
+    scheduler.srmgen(matrix_load, *left_matrix);
+    fill_vector(*right_vector, length);
 }
 
 void benchmark_mv::proc() {
-    scheduler.sgemv(scylla_blas::NoTrans, 1.0, *lm, *rv, 0.0, *wv);
+    scheduler.sgemv(scylla_blas::NoTrans, 1.0, *left_matrix, *right_vector, 0.0, *result_vector);
 }
 
 void benchmark_mv::teardown() {
-    lm->clear_all();
-    rv->clear_all();
-    wv->clear_all();
+    left_matrix->clear_all();
+    right_vector->clear_all();
+    result_vector->clear_all();
 }
 
 void benchmark_mv::destroy() {
@@ -102,26 +96,26 @@ void benchmark_vv::init() {
 }
 
 void benchmark_vv::setup(int64_t block_size, int64_t length) {
-    lv = std::make_unique<scylla_blas::vector<float>>(session, l_vector_id);
-    rv = std::make_unique<scylla_blas::vector<float>>(session, r_vector_id);
+    left_vector = std::make_unique<scylla_blas::vector<float>>(session, l_vector_id);
+    right_vector = std::make_unique<scylla_blas::vector<float>>(session, r_vector_id);
 
-    lv->resize(length);
-    rv->resize(length);
+    left_vector->resize(length);
+    right_vector->resize(length);
 
-    lv->set_block_size(block_size);
-    rv->set_block_size(block_size);
+    left_vector->set_block_size(block_size);
+    right_vector->set_block_size(block_size);
 
-    fill_vector(*lv, length);
-    fill_vector(*rv, length);
+    fill_vector(*left_vector, length);
+    fill_vector(*right_vector, length);
 }
 
 void benchmark_vv::proc() {
-    scheduler.sdot(*lv, *rv);
+    scheduler.sdot(*left_vector, *right_vector);
 }
 
 void benchmark_vv::teardown() {
-    lv->clear_all();
-    rv->clear_all();
+    left_vector->clear_all();
+    right_vector->clear_all();
 }
 
 void benchmark_vv::destroy() {
@@ -138,37 +132,50 @@ double measure_time(F callable, Args... args) {
     return duration.count();
 }
 
-benchmark_result perform_benchmark(std::unique_ptr<base_benchmark> tester, const std::vector<int64_t> &block_sizes, const std::vector<int64_t> &problem_sizes) {
-    benchmark_result result{};
+benchmark_result perform_benchmark(std::unique_ptr<base_benchmark> tester,
+                                   const std::vector<int64_t> &block_sizes,
+                                   const std::vector<int64_t> &problem_sizes,
+                                   bool autoclean) {
+    benchmark_result results{};
 
     LogInfo("Starting initialization...  ");
-    result.init_time = measure_time([&](){tester->init();});
-    LogInfo("Initialization took {}ms", result.init_time);
+    results.init_time = measure_time([&](){tester->init();});
+    LogInfo("Initialization took {}ms", results.init_time);
 
     for(int64_t block_size : block_sizes) {
         for(int64_t problem_size : problem_sizes) {
-            benchmark_result::result_t r{};
+            benchmark_result::result_t current_result{};
             LogInfo("Block size: {}, problem size: {}", block_size, problem_size);
 
             LogInfo("\tStarting setup");
-            r.setup_time = measure_time([&](int64_t b, int64_t l){tester->setup(b, l);}, block_size, problem_size);
-            LogInfo("\tSetup took {}ms", r.setup_time);
+            current_result.setup_time = measure_time([&](int64_t b, int64_t l){tester->setup(b, l);}, block_size, problem_size);
+            LogInfo("\tSetup took {}ms", current_result.setup_time);
 
             LogInfo("\tStarting procedure");
-            r.proc_time = measure_time([&](){tester->proc();});
-            LogInfo("\tProcedure took {}ms", r.proc_time);
+            current_result.proc_time = measure_time([&](){tester->proc();});
+            LogInfo("\tProcedure took {}ms", current_result.proc_time);
 
-            LogInfo("\tStarting teardown");
-            r.teardown_time = measure_time([&](){tester->teardown();});
-            LogInfo("\tTeardown took {}ms", r.teardown_time);
+            if (autoclean) {
+                LogInfo("\tStarting teardown");
+                current_result.teardown_time = measure_time([&](){tester->teardown();});
+                LogInfo("\tTeardown took {}ms", current_result.teardown_time);
+            } else {
+                current_result.teardown_time = 0;
+                LogDebug("\tAutoclean off: skipping teardown");
+            }
 
-            result.tests.emplace_back(block_size, problem_size, r);
+            results.tests.emplace_back(block_size, problem_size, current_result);
         }
     }
 
-    LogInfo("Starting destroy");
-    result.destroy_time = measure_time([&](){tester->destroy();});
-    LogInfo("Destroy took {}ms\n", result.destroy_time);
+    if (autoclean) {
+        LogInfo("Starting destroy");
+        results.destroy_time = measure_time([&](){tester->destroy();});
+        LogInfo("Destroy took {}ms\n", results.destroy_time);
+    } else {
+        results.destroy_time = 0;
+        LogDebug("\tAutoclean off: skipping destroy");
+    }
 
-    return result;
+    return results;
 }

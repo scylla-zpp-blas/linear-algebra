@@ -2,7 +2,6 @@
 
 /* BASED ON cblas.h */
 
-#include <complex>
 #include <scmd.hh>
 
 #include "queue/scylla_queue.hh"
@@ -20,8 +19,6 @@ namespace scylla_blas {
  * the number of arguments and returning results the C++ way.
  */
 class routine_scheduler {
-    using cfloat = std::complex<float>;
-    using zdouble = std::complex<double>;
     using none_type = void*;
 
     template<class T>
@@ -29,11 +26,10 @@ class routine_scheduler {
 
     std::shared_ptr <scmd::session> _session;
 
-    const int64_t _subtask_queue_id;
-    scylla_queue _subtask_queue;
+    std::vector<scylla_queue> _subtask_queues;
     scylla_queue _main_worker_queue;
 
-    int64_t _max_used_workers;
+    int64_t _current_worker_count;
     int64_t _scheduler_sleep_time;
 
     /* Produces `cnt` copies of `task`, waits until all of them are completed.
@@ -44,10 +40,27 @@ class routine_scheduler {
      * Otherwise, accumulation errors will be reported if `update` is not a valid function.
      */
     template<class T>
-    T produce_and_wait(scylla_blas::scylla_queue &queue,
-                       const scylla_blas::proto::task &task,
-                       scylla_blas::index_t cnt, int64_t sleep_time,
-                       T acc, updater<T> update);
+    T produce_and_wait(const std::vector<proto::task> &tasks, T acc, updater<T> update) {
+        id_t task_id = _main_worker_queue.produce(tasks);
+        LogInfo("Scheduled tasks {}-{} to queue {}", task_id, task_id + tasks.size() - 1, _main_worker_queue.get_id());
+        for (id_t id = task_id; id < task_id + tasks.size(); id++) {
+            while (!_main_worker_queue.is_finished(id)) {
+                scylla_blas::wait_microseconds(_scheduler_sleep_time);
+            }
+
+            auto response = _main_worker_queue.get_response(id);
+
+            if (response.value().type == proto::R_NONE) continue;
+
+            try {
+                update(acc, response.value());
+            } catch(std::exception &e) {
+                LogError("Result update failed: {}", e.what());
+            }
+        }
+
+        return acc;
+    }
 
     /* Produces a number of vector-only primary tasks for workers, waits
      * until they are reported to be complete, accumulating result using
@@ -55,7 +68,7 @@ class routine_scheduler {
      */
     template<class T>
     T produce_vector_tasks(const proto::task_type type, const T alpha,
-                           const int64_t X_id, const int64_t Y_id,
+                           const id_t X_id, const id_t Y_id,
                            T acc = 0, updater<T> update = nullptr);
 
     /* Produces a number of matrix-to-wektor primary tasks for workers, waits
@@ -66,9 +79,9 @@ class routine_scheduler {
     T produce_mixed_tasks(const proto::task_type type,
                           const index_t KL, const index_t KU,
                           const UPLO Uplo, const DIAG Diag,
-                          const int64_t A_id, const TRANSPOSE TransA, const T alpha,
-                          const int64_t X_id, const T beta,
-                          const int64_t Y_id, T acc = 0, updater<T> update = nullptr);
+                          const id_t A_id, const TRANSPOSE TransA, const T alpha,
+                          const id_t X_id, const T beta,
+                          const id_t Y_id, T acc = 0, updater<T> update = nullptr);
 
     /* Produces a number of matrix-only primary tasks for workers, waits
      * until they are reported to be complete, accumulating result using
@@ -76,31 +89,103 @@ class routine_scheduler {
      */
     template<class T>
     T produce_matrix_tasks(const proto::task_type type,
-                           const int64_t A_id, const enum TRANSPOSE TransA, const T alpha,
-                           const int64_t B_id, const enum TRANSPOSE TransB, const T beta,
-                           const int64_t C_id, T acc = 0, updater<T> update = nullptr);
+                           const id_t A_id, const enum TRANSPOSE TransA, const T alpha,
+                           const id_t B_id, const enum TRANSPOSE TransB, const T beta,
+                           const id_t C_id, T acc = 0, updater<T> update = nullptr);
 
-    scylla_queue prepare_queue() const {
-        scylla_queue::create_queue(_session, _subtask_queue_id, false, true);
-        return scylla_queue(_session, _subtask_queue_id);
+    template<class T>
+    T produce_generation_tasks(const proto::task_type type,
+                               const id_t structure_id, const double alpha,
+                               T acc = 0, updater<T> update = nullptr);
+
+    void produce_tasks_in_queues(std::vector<scylla_queue::task> &tasks) {
+        /* TODO: consider limiting the number of queues used
+         * to such a value @q that q^2 <= tasks.size(),
+         * or 10 * q <= tasks.size() or any other value
+         * that would make the level of distribution sensible.
+         */
+        std::vector<std::vector<scylla_queue::task>> split(_current_worker_count);
+
+        for (size_t i = 0; i < tasks.size(); i++)
+            split[i % _current_worker_count].emplace_back(tasks[i]);
+
+        for (size_t i = 0; i < _current_worker_count; i++)
+            _subtask_queues[i].produce(split[i]);
+    }
+
+    template<class T>
+    void add_segments_as_queue_tasks(const vector<T> &X) {
+        std::vector<scylla_queue::task> tasks;
+        tasks.reserve(X.get_segment_count());
+        for (scylla_blas::index_t i = 1; i <= X.get_segment_count(); i++) {
+            tasks.push_back({
+                    .type = scylla_blas::proto::NONE,
+                    .index = i
+            });
+        }
+        LogInfo("Scheduling {} subtasks (vector segments)", tasks.size());
+        produce_tasks_in_queues(tasks);
+    }
+
+    template<class T>
+    void add_blocks_as_queue_tasks(const matrix<T> &C) {
+        LogDebug("Creating block-based subtasks");
+        std::vector<scylla_blas::scylla_queue::task> tasks;
+        tasks.reserve(C.get_blocks_height() * C.get_blocks_width());
+        for (scylla_blas::index_t i = 1; i <= C.get_blocks_height(); i++) {
+            for (scylla_blas::index_t j = 1; j <= C.get_blocks_width(); j++) {
+                tasks.push_back({
+                    .type = scylla_blas::proto::NONE,
+                    .coord {
+                            .block_row = i,
+                            .block_column = j
+                    }});
+            }
+        }
+        produce_tasks_in_queues(tasks);
+    }
+
+    void prepare_queues(size_t queue_count) {
+        if (_subtask_queues.size() > queue_count) {
+            for (size_t i = queue_count; i < _subtask_queues.size(); i++) {
+                scylla_queue::delete_queue(_session, _subtask_queues[i].get_id());
+            }
+            _subtask_queues.erase(_subtask_queues.begin() + queue_count, _subtask_queues.end());
+            return;
+        }
+
+        while (_subtask_queues.size() < queue_count) {
+            id_t queue_id = get_timestamp();
+            scylla_queue::create_queue(_session, queue_id, false, false);
+            _subtask_queues.emplace_back(_session, queue_id);
+        }
     }
 public:
     /* The queue used for subroutines requested in methods */
     routine_scheduler(const std::shared_ptr <scmd::session> &session) :
         _session(session),
-        _subtask_queue_id(get_timestamp()),
-        _subtask_queue(prepare_queue()),
+        _subtask_queues(),
         _main_worker_queue(_session, DEFAULT_WORKER_QUEUE_ID),
-        _max_used_workers(DEFAULT_LIMIT_WORKER_CONCURRENCY),
+        _current_worker_count(DEFAULT_WORKER_COUNT),
         _scheduler_sleep_time(DEFAULT_SCHEDULER_SLEEP_TIME_MICROSECONDS)
-    {}
+    {
+        prepare_queues(_current_worker_count);
+    }
+
+    ~routine_scheduler() {
+        for (auto & _subtask_queue : _subtask_queues) {
+            scylla_queue::delete_queue(_session, _subtask_queue.get_id());
+        }
+        _main_worker_queue.reset();
+    }
 
     int64_t get_max_used_workers() {
-        return this->_max_used_workers;
+        return this->_current_worker_count;
     }
 
     void set_max_used_workers(int64_t new_max_used_workers) {
-        this->_max_used_workers = new_max_used_workers;
+        this->_current_worker_count = new_max_used_workers;
+        prepare_queues(new_max_used_workers);
     }
 
     int64_t get_scheduler_sleep_time() {
@@ -110,8 +195,6 @@ public:
     void set_scheduler_sleep_time(int64_t new_scheduler_sleep_time) {
         this->_scheduler_sleep_time = new_scheduler_sleep_time;
     }
-
-// TODO: shouldn't we ignore N, incX, incY? Maybe skip them altogether for the sake of simplification?
 
 /*
 * ===========================================================================
@@ -308,6 +391,18 @@ public:
     matrix<double> &dtrsm(const enum SIDE Side, const enum UPLO Uplo,
                           const enum TRANSPOSE TransA, const enum DIAG Diag,
                           const double alpha, const matrix<double> &A, matrix<double> &B);
+
+    /* MISC */
+
+    /* Generate dense vectors */
+    vector<float> &srvgen(vector<float> &X);
+    vector<double> &drvgen(vector<double> &X);
+
+    /* Generate sparse matrices.
+     * @matrix_load – suggested proportion of non-zero values
+     */
+    matrix<float> &srmgen(double matrix_load, matrix<float> &A);
+    matrix<double> &drmgen(double matrix_load, matrix<double> &A);
 };
 
 }

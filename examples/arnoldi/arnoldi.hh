@@ -20,6 +20,9 @@ private:
 public:
     explicit arnoldi(std::shared_ptr<scmd::session> session, int64_t workers, int64_t scheduler_sleep_time);
 
+    scylla_blas::routine_scheduler &get_scheduler() {
+        return this->_scheduler;
+    }
     /**
      *
      * @param A - m x m matrix

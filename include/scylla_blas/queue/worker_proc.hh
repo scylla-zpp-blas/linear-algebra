@@ -13,6 +13,14 @@
 
 namespace scylla_blas::worker {
 
+void set_worker_retries(int64_t retries);
+
+class subtask_failed_exception : public std::runtime_error {
+
+public:
+    subtask_failed_exception(): std::runtime_error("") {};
+};
+
 using procedure_t = std::optional<proto::response>(const std::shared_ptr<scmd::session>&, const proto::task&);
 
 /* LEVEL 1 */
@@ -27,7 +35,11 @@ procedure_t dgemv, dgbmv, dtrsv, dtbsv, dger;
 procedure_t sgemm, ssyrk, ssyr2k;
 procedure_t dgemm, dsyrk, dsyr2k;
 
-constexpr std::array<std::pair<proto::task_type, const procedure_t &>, 34> task_to_procedure =
+/* MISC */
+procedure_t srvgen, srmgen;
+procedure_t drvgen, drmgen;
+
+constexpr std::array<std::pair<proto::task_type, const procedure_t &>, 38> task_to_procedure =
 {{
          {proto::SSWAP, sswap},
          {proto::SSCAL, sscal},
@@ -65,10 +77,15 @@ constexpr std::array<std::pair<proto::task_type, const procedure_t &>, 34> task_
          {proto::SSYRK, ssyrk},
          {proto::DSYRK, dsyrk},
          {proto::SSYR2K, ssyr2k},
-         {proto::DSYR2K, dsyr2k}
+         {proto::DSYR2K, dsyr2k},
+
+         {proto::SRVGEN, srvgen},
+         {proto::DRVGEN, drvgen},
+         {proto::SRMGEN, srmgen},
+         {proto::DRMGEN, drmgen}
  }};
 
-constexpr procedure_t& get_procedure_for_task(const proto::task &t) {
+inline procedure_t& get_procedure_for_task(const proto::task &t) {
     auto pred = [=](auto &val){ return val.first == t.type; };
 
     auto it = std::find_if(task_to_procedure.begin(), task_to_procedure.end(), pred);

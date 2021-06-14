@@ -56,17 +56,17 @@ scylla_blas::basic_matrix::basic_matrix(const std::shared_ptr<scmd::session> &se
         PREPARE(_get_meta_prepared,
                 "SELECT row_count, column_count, block_size FROM blas.matrix_meta WHERE id = ?;"),
         PREPARE(_get_value_prepared,
-                "SELECT id_x, id_y, value FROM blas.matrix_{} WHERE block_x = ? AND block_y = ? AND id_x = ? AND id_y = ? ALLOW FILTERING;", id),
+                "SELECT id_x, id_y, value FROM blas.matrix_{} WHERE block_x = ? AND block_y = ? AND id_x = ? AND id_y = ?;", id),
         PREPARE(_get_row_prepared,
-                "SELECT id_x, id_y, value FROM blas.matrix_{} WHERE block_x = ? AND id_x = ?;", id),
+                "SELECT id_x, id_y, value FROM blas.matrix_{} WHERE block_x = ? AND id_x = ? ALLOW FILTERING;", id),
         PREPARE(_get_block_prepared,
-                "SELECT id_x, id_y, value FROM blas.matrix_{} WHERE block_x = ? AND block_y = ? ALLOW FILTERING;", id),
+                "SELECT id_x, id_y, value FROM blas.matrix_{} WHERE block_x = ? AND block_y = ?;", id),
         PREPARE(_insert_value_prepared,
                 "INSERT INTO blas.matrix_{} (block_x, block_y, id_x, id_y, value) VALUES (?, ?, ?, ?, ?);", id),
         PREPARE(_clear_all_prepared,
                 "TRUNCATE blas.matrix_{};", id),
-        PREPARE(_clear_row_prepared,
-                "DELETE FROM blas.matrix_{} WHERE block_x = ? AND id_x = ?;", id),
+        PREPARE(_clear_block_row_prepared,
+                "DELETE FROM blas.matrix_{} WHERE block_x = ? AND block_y = ? AND id_x = ?;", id),
         PREPARE(_resize_prepared,
                 "UPDATE blas.matrix_meta SET row_count = ?, column_count = ? WHERE id = ?;"),
         PREPARE(_set_block_size_prepared,
@@ -77,11 +77,19 @@ scylla_blas::basic_matrix::basic_matrix(const std::shared_ptr<scmd::session> &se
 }
 
 void scylla_blas::basic_matrix::clear_all() {
-    _session->execute(_clear_all_prepared.get_statement().set_timeout(0));
+    _session->execute(_clear_all_prepared.get_statement());
 }
 
 void scylla_blas::basic_matrix::clear_row(index_t row) {
-    _session->execute(_clear_row_prepared.get_statement().set_timeout(0), get_block_row(row), row);
+    std::vector<scmd::future> scheduled;
+    scylla_blas::index_t blocks_count = get_blocks_width();
+    for (scylla_blas::index_t block_idx = 1; block_idx <= blocks_count; block_idx++) {
+        auto stmt = _clear_block_row_prepared.get_statement();
+        scheduled.push_back(_session->execute_async(stmt, get_block_row(row), block_idx, row));
+    }
+    for (auto &future : scheduled) {
+        future.wait();
+    }
 }
 
 void scylla_blas::basic_matrix::resize(int64_t new_row_count, int64_t new_column_count) {

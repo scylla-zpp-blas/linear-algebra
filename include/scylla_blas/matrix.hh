@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstddef>
+#include <iomanip>
 #include <iostream>
 #include <memory>
 #include <utility>
@@ -31,7 +32,7 @@ protected:
     scmd::prepared_query _get_block_prepared;
     scmd::prepared_query _insert_value_prepared;
     scmd::prepared_query _clear_all_prepared;
-    scmd::prepared_query _clear_row_prepared;
+    scmd::prepared_query _clear_block_row_prepared;
     scmd::prepared_query _resize_prepared;
     scmd::prepared_query _set_block_size_prepared;
 
@@ -148,6 +149,52 @@ public:
 
 template<class T>
 class matrix : public basic_matrix {
+    template<class... Args>
+    std::vector<matrix_value<T>> get_vals_for_query(const scmd::prepared_query &query, Args... args) const {
+        scmd::query_result result = _session->execute(query, args...);
+
+        std::vector<matrix_value<T>> result_vector;
+        result_vector.reserve(result.row_count());
+        while (result.next_row()) {
+            result_vector.emplace_back(
+                    result.get_column<index_t>("id_x"),
+                    result.get_column<index_t>("id_y"),
+                    result.get_column<T>("value")
+            );
+        }
+
+        return result_vector;
+    }
+
+    void insert_values(const std::vector<matrix_value<T>> &values) {
+        std::vector<scmd::future> futures;
+        size_t idx = 0;
+        scylla_blas::index_t prev_block = -1;
+        while(idx < values.size()) {
+            scmd::batch_query batch(CASS_BATCH_TYPE_UNLOGGED);
+            size_t current_batch_size = 0;
+            for(; idx < values.size(); idx++) {
+                auto &val = values[idx];
+                if (current_batch_size == MATRIX_MAX_BATCH_SIZE ||
+                    (prev_block != -1 && get_block_col(val.col_index) != prev_block)) {
+                    prev_block = get_block_col(val.col_index);
+                    break;
+                }
+
+                if (std::abs(val.value) < EPSILON) continue;
+                auto stmt = _insert_value_prepared.get_statement();
+                stmt.bind(get_block_row(val.row_index), get_block_col(val.col_index),
+                          val.row_index, val.col_index, val.value);
+                batch.add_statement(stmt);
+                current_batch_size++;
+                prev_block = get_block_col(val.col_index);
+            }
+            futures.push_back(_session->execute_async(batch));
+        }
+        for (auto &future : futures) {
+            future.wait();
+        }
+    }
 public:
     /* We don't want to implicitly initialize a handle (somewhat costly) if it is discarded by the user.
      * Instead, let's have a version of init that does it explicitly, and a version that doesn't do it at all.
@@ -165,7 +212,7 @@ public:
                 id_x    BIGINT,
                 id_y    BIGINT,
                 value   {1},
-                PRIMARY KEY (block_x, id_x, id_y));
+                PRIMARY KEY ((block_x, block_y), id_x, id_y));
         )", id, get_type_name<T>()));
 
         session->execute(create_table.set_timeout(0));
@@ -256,21 +303,6 @@ public:
         _session->execute(_insert_value_prepared, block_x, block_y, x, y, value);
     }
 
-    void insert_values(const std::vector<matrix_value<T>> &values) {
-        scmd::batch_query batch(CASS_BATCH_TYPE_UNLOGGED);
-
-        for (auto &val: values) {
-            /* We do not want to store values equal or close to 0 */
-            if (std::abs(val.value) < EPSILON) continue;
-            auto stmt = _insert_value_prepared.get_statement();
-            stmt.bind(get_block_row(val.row_index), get_block_col(val.col_index),
-                      val.row_index, val.col_index, val.value);
-            batch.add_statement(stmt);
-        }
-
-        _session->execute(batch);
-    }
-
     /* Inserts a given block into the matrix. Old values will not be modified or deleted */
     void insert_row(index_t x, const vector_segment<T> &row_data) {
         std::vector<matrix_value<T>> values;
@@ -296,27 +328,50 @@ public:
         for (auto &val : values) {
             val.row_index += offset_row;
             val.col_index += offset_column;
+
+            /* Truncate those values that cannot be inserted */
+            bool ignore = false;
+
+            if (val.row_index > row_count)
+                ignore = true;
+
+            if (val.col_index > column_count)
+                ignore = true;
+
+            if (ignore) {
+                val.value = 0;
+                LogDebug("Matrix of size {}x{} too small for insertion at ({}, {}). Ignoring the insertion.",
+                         row_count, column_count, val.row_index, val.col_index);
+            }
         }
 
         insert_values(values);
     }
 
-private:
-    template<class... Args>
-    std::vector<matrix_value<T>> get_vals_for_query(const scmd::prepared_query &query, Args... args) const {
-        scmd::query_result result = _session->execute(query, args...);
+    void print_octave(std::ostream &os) {
+        auto original_precision = os.precision();
 
-        std::vector<matrix_value<T>> result_vector;
-        result_vector.reserve(result.row_count());
-        while (result.next_row()) {
-            result_vector.emplace_back(
-                    result.get_column<index_t>("id_x"),
-                    result.get_column<index_t>("id_y"),
-                    result.get_column<T>("value")
-            );
+        os << std::setprecision(4);
+        os << "Matrix " << this->get_id() << ": " << std::endl;
+
+        os << "[\n";
+
+        for (scylla_blas::index_t i = 1; i <= this->get_row_count(); i++) {
+            auto vec = this->get_row(i);
+            auto it = vec.begin();
+            for (scylla_blas::index_t j = 1; j <= this->get_column_count(); j++) {
+                if (it != vec.end() && it->index == j) {
+                    os << it->value << ", ";
+                    it++;
+                } else {
+                    os << 0 << ", ";
+                }
+            }
+            std::cout << "\n";
         }
 
-        return result_vector;
+        os << "]\n";
+        os << std::setprecision(original_precision);
     }
 };
 

@@ -87,8 +87,61 @@ scylla_blas::scylla_queue::scylla_queue(const std::shared_ptr<scmd::session> &se
     cnt_used = result.get_column<int64_t>("cnt_used");
 }
 
+scylla_blas::scylla_queue::scylla_queue(scylla_queue &&other) noexcept :
+    queue_id(std::exchange(other.queue_id, -1)),
+    _session(std::move(other._session)),
+    multi_producer(other.multi_producer),
+    multi_consumer(other.multi_consumer),
+    cnt_new(other.cnt_new),
+    cnt_used(other.cnt_used)
+{
+    copy_statements_from(&other);
+    auto session_ptr = _session.get();
+
+    /* If the queue has been moved from, there is nothing left to do. */
+    if (session_ptr == nullptr) return;
+
+    auto iter = session_map.find(session_ptr);
+    iter->second.erase(&other);
+    iter->second.insert(this);
+}
+
+scylla_blas::scylla_queue& scylla_blas::scylla_queue::operator=(scylla_queue &&other) noexcept {
+    {
+        auto session_ptr = _session.get();
+        if (session_ptr != nullptr) {
+            auto iter = session_map.find(session_ptr);
+            if (iter->second.size() == 1) {
+                session_map.erase(iter);
+            } else {
+                iter->second.erase(this);
+            }
+        }
+    }
+    queue_id = std::exchange(other.queue_id, -1);
+    _session = std::move(other._session);
+    multi_producer = other.multi_producer;
+    multi_consumer = other.multi_consumer;
+    cnt_new = other.cnt_new;
+    cnt_used = other.cnt_used;
+    copy_statements_from(&other);
+    {
+        auto session_ptr = _session.get();
+        if (session_ptr != nullptr) {
+            auto iter = session_map.find(session_ptr);
+            iter->second.erase(&other);
+            iter->second.insert(this);
+        }
+    }
+
+    return *this;
+}
+
+
 scylla_blas::scylla_queue::~scylla_queue() {
-    auto iter = session_map.find(_session.get());
+    auto session_ptr = _session.get();
+    if (session_ptr == nullptr) return;
+    auto iter = session_map.find(session_ptr);
     if (iter->second.size() == 1) {
         session_map.erase(iter);
     } else {
@@ -156,6 +209,16 @@ std::optional<response> scylla_blas::scylla_queue::get_response(int64_t id) {
     }
     const CassValue *v = result.get_column_raw("response");
     return response_from_value(v);
+}
+
+void scylla_blas::scylla_queue::reset() {
+    auto future1 = _session->execute_async(*update_new_counter_prepared, (int64_t)0, get_id());
+    auto future2 = _session->execute_async(*update_used_counter_prepared, (int64_t)0, get_id());
+    auto future3 = _session->execute_async("DELETE FROM blas.queue_data WHERE queue_id = ?", get_id());
+
+    future1.wait();
+    future2.wait();
+    future3.wait();
 }
 
 // =========== PRIVATE METHODS ===========
@@ -331,7 +394,6 @@ std::optional<std::pair<int64_t, task>> scylla_blas::scylla_queue::consume_simpl
     if (cnt_used >= cnt_new) {
         return std::nullopt;
     }
-
     // It is simple consume - so no other consumers, so we can automatically claim task.
     cnt_used++;
     auto future_2 = _session->execute_async(*update_used_counter_prepared, cnt_used, queue_id);
@@ -357,8 +419,9 @@ std::optional<std::pair<int64_t, task>> scylla_blas::scylla_queue::consume_multi
         }
         cnt_new = result.get_column<int64_t>("cnt_new");
         cnt_used = result.get_column<int64_t>("cnt_used");
+        bool is_applied = result.get_column<bool>("[applied]");
 
-        if (result.get_column<bool>("[applied]")) {
+        if (is_applied) {
             // We claimed a task
             cnt_used++;
             return std::make_pair(cnt_used - 1, fetch_task_loop(cnt_used - 1));

@@ -1,20 +1,57 @@
 #include "scylla_blas/queue/worker_proc.hh"
 
+#include "random_value_factory.hh"
+#include "sparse_matrix_value_generator.hh"
+
+namespace scylla_blas::worker {
+    int64_t max_worker_retries = DEFAULT_MAX_WORKER_RETRIES;
+    void set_worker_retries(int64_t retries) {
+        max_worker_retries = retries;
+    }
+}
+
 namespace {
 
 void consume_tasks(scylla_blas::scylla_queue &task_queue,
                    std::function<void(scylla_blas::proto::task&)> consume) {
+    LogDebug("Consuming subtasks from queue {}", task_queue.get_id());
     using namespace scylla_blas;
-
+    int64_t attempts;
     while (true) {
-        std::optional<std::pair<int64_t, proto::task>> opt = task_queue.consume();
-        if (!opt.has_value()) {
-            // The task queue is empty – nothing left to do.
-            break;
+        std::optional<std::pair<int64_t, proto::task>> opt;
+        for(attempts = 0; attempts <= scylla_blas::worker::max_worker_retries; attempts++) {
+            try {
+                opt = task_queue.consume();
+                if (!opt.has_value()) {
+                    LogDebug("No more subtasks in queue, finishing task");
+                    // The task queue is empty – nothing left to do.
+                    return;
+                }
+                break;
+            } catch (const std::exception &e) {
+                LogWarn("Error while fetching subtask, retrying, {} / {}",
+                        attempts, scylla_blas::worker::max_worker_retries);
+            }
+        }
+        if (attempts > scylla_blas::worker::max_worker_retries) {
+            LogError("Too many failed attempts to fetch subtask, giving up");
+            throw scylla_blas::worker::subtask_failed_exception();
         }
 
-        LogDebug("New subtask task obtained; id = {}", opt.value().first);
-        consume(opt.value().second);
+        LogInfo("New subtask task obtained; id = {}", opt.value().first);
+        for(attempts = 0; attempts <= scylla_blas::worker::max_worker_retries; attempts++) {
+            try {
+                consume(opt.value().second);
+                break;
+            } catch (const std::exception &e) {
+                LogWarn("Subtask {} failed. Reason: {}. Retrying, {} / {}",
+                        opt.value().first, e.what(), attempts, scylla_blas::worker::max_worker_retries);
+            }
+        }
+        if (attempts > scylla_blas::worker::max_worker_retries) {
+            LogError("Too many ({}) failed attempts to perform subtask {}, giving up", attempts, opt.value().first);
+            throw scylla_blas::worker::subtask_failed_exception();
+        }
     }
 }
 
@@ -161,6 +198,7 @@ std::pair<scylla_blas::index_t, T> iamax(const std::shared_ptr<scmd::session> &s
 /* LEVEL 2 */
 template<class T>
 void gemv(const std::shared_ptr<scmd::session> &session, auto &task_details) {
+    LogTrace("(gemv) Start");
     using namespace scylla_blas;
 
     matrix<T> A(session, task_details.A_id);
@@ -172,9 +210,28 @@ void gemv(const std::shared_ptr<scmd::session> &session, auto &task_details) {
         index_t prod_segments = A.get_blocks_width(task_details.TransA);
         vector_segment result = Y.get_segment(subtask.index) * task_details.beta;
 
+        /* Prefetch the entire vector trying to minimize the number
+         * of read conflicts with the other workers.
+         *
+         * TODO: perhaps controlling the order of iteration like this:
+         *
+         * for(index_t i : iteration(subtask.index, segment_count))
+         *
+         * ...and interleaving it with vector reads would be
+         * preferable to trying to fetch the entire vector at once.
+         */
+        scylla_blas::index_t segment_count = Y.get_segment_count();
+        std::vector<vector_segment<T>> segments(segment_count);
+        size_t segment_idx = subtask.index;
+        do {
+            segment_idx %= (segment_count);
+            segments[segment_idx] = X.get_segment(segment_idx + 1);
+            segment_idx = (segment_idx + 1);
+        } while(segment_idx != subtask.index );
+
         for (index_t i = 1; i <= prod_segments; i++) {
-            matrix_block block_A = A.get_block(subtask.index, i, task_details.TransA);
-            vector_segment segment_X = X.get_segment(i);
+            matrix_block<T> block_A = A.get_block(subtask.index, i, task_details.TransA);
+            vector_segment<T> &segment_X = segments[i - 1];
 
             result += block_A.mult_vect(segment_X) * task_details.alpha;
         }
@@ -385,6 +442,77 @@ void syr2k(const std::shared_ptr<scmd::session> &session, auto &task_details) {
     syrk_generic<T>(session, A, B, C, 1, task_details);
 }
 
+/* MISC */
+template<class T>
+void rvgen(const std::shared_ptr<scmd::session> &session, auto &task_details) {
+    /* TOOD: unify with rmgen? */
+    using namespace scylla_blas;
+
+    vector<T> X(session, task_details.structure_id);
+    scylla_queue task_queue = scylla_queue(session, task_details.task_queue_id);
+
+    auto generate_block = [&X, &task_details] (proto::task &subtask) {
+        index_t segment_id = subtask.index;
+        index_t length = X.get_block_size();
+
+        LogTrace("(rvgen) length: {}. Vector id: {}", length, X.get_id());
+
+        /* Not a perfect seed but it's good enough */
+        int64_t seed = X.get_id() * X.get_length() + subtask.index;
+
+        LogTrace("(rvgen) seed: {}", seed);
+
+        std::shared_ptr<value_factory<T>> f = std::make_shared<random_value_factory<T>>(0, 9, seed);
+
+        vector_segment<T> values;
+        for (index_t i = 1; i <= length; i++) {
+            values.emplace_back(i, f->next());
+        }
+
+        X.insert_segment(segment_id, values);
+    };
+
+    consume_tasks(task_queue, generate_block);
+}
+
+template<class T>
+void rmgen(const std::shared_ptr<scmd::session> &session, auto &task_details) {
+    using namespace scylla_blas;
+
+    matrix<T> A(session, task_details.structure_id);
+    scylla_queue task_queue = scylla_queue(session, task_details.task_queue_id);
+
+    auto generate_block = [&A, &task_details] (proto::task &subtask) {
+        auto [row, column] = subtask.coord;
+        index_t length = A.get_block_size();
+
+        LogTrace("(rmgen) length: {}. Matrix id: {}", length, A.get_id());
+
+        /* Not a perfect seed but it's good enough */
+        int64_t seed = A.get_id() * (A.get_column_count() * A.get_row_count()) + (row * A.get_column_count() + column);
+
+        LogTrace("(rmgen) seed: {}", seed);
+
+        std::shared_ptr<value_factory<T>> f = std::make_shared<random_value_factory<T>>(0, 9, seed);
+        size_t suggested_load = length * length * task_details.alpha + 1;
+        sparse_matrix_value_generator<T> gen = sparse_matrix_value_generator<T>(length, length, suggested_load, seed, f);
+
+        LogTrace("(rmgen) suggested load: {}", suggested_load);
+
+        std::vector<matrix_value<T>> values;
+        while(gen.has_next()) {
+            values.emplace_back(gen.next());
+        }
+
+        LogTrace("(rmgen) generated {} values", values.size());
+
+        matrix_block<T> block(values);
+        A.insert_block(row, column, block);
+    };
+
+    consume_tasks(task_queue, generate_block);
+}
+
 }
 
 #define DEFINE_WORKER_FUNCTION(function_name, function_body) \
@@ -562,4 +690,27 @@ DEFINE_WORKER_FUNCTION(dsyr2k, {
     syr2k<double>(session, task.matrix_task_double);
     return std::nullopt;
 })
+
+/* MISC */
+
+DEFINE_WORKER_FUNCTION(srvgen, {
+    rvgen<float>(session, task.generation_task);
+    return std::nullopt;
+})
+
+DEFINE_WORKER_FUNCTION(drvgen, {
+    rvgen<double>(session, task.generation_task);
+    return std::nullopt;
+})
+
+DEFINE_WORKER_FUNCTION(srmgen, {
+    rmgen<float>(session, task.generation_task);
+    return std::nullopt;
+})
+
+DEFINE_WORKER_FUNCTION(drmgen, {
+    rmgen<double>(session, task.generation_task);
+    return std::nullopt;
+})
+
 #undef DEFINE_WORKER_FUNCTION
