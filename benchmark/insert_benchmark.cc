@@ -25,11 +25,11 @@ void benchmark_sync(const std::shared_ptr<scmd::session> &session, int n) {
     auto prepared = session->prepare("INSERT INTO insert_benchmark.test_sync(a, b, c, d, e) VALUES (?, ?, ?, ?, ?);");
     srand(0x1337);
     double result = measure_time([&](){
-        int64_t pkey = 0;
+        int64_t partition = 0;
         for (int i = 0; i < n; i++) {
-            session->execute(prepared, pkey, (int64_t)rand(), (int64_t)rand(), (int64_t)rand(), (int64_t)rand());
+            session->execute(prepared, partition, (int64_t)rand(), (int64_t)rand(), (int64_t)rand(), (int64_t)rand());
             if ((i+1) % BATCH_SIZE == 0) {
-                pkey++;
+                partition++;
             }
         }
     });
@@ -44,17 +44,17 @@ void benchmark_batch(const std::shared_ptr<scmd::session> &session, int n) {
     srand(0x1337);
     double result = measure_time([&](){
         int rest = n;
-        int64_t pkey = 0;
+        int64_t partition = 0;
         while (rest) {
             int batch_size = std::min(rest, (int)BATCH_SIZE);
             scmd::batch_query batch(CASS_BATCH_TYPE_UNLOGGED);
             for(int i = 0; i < batch_size; i++) {
                 auto stmt = prepared.get_statement();
-                stmt.bind(pkey, (int64_t)rand(), (int64_t)rand(), (int64_t)rand(), (int64_t)rand());
+                stmt.bind(partition, (int64_t)rand(), (int64_t)rand(), (int64_t)rand(), (int64_t)rand());
                 batch.add_statement(stmt);
             }
             session->execute(batch);
-            pkey++;
+            partition++;
             rest -= batch_size;
         }
     });
@@ -69,16 +69,16 @@ void benchmark_batch_unprepared(const std::shared_ptr<scmd::session> &session, i
     srand(0x1337);
     double result = measure_time([&](){
         int rest = n;
-        int64_t pkey = 0;
+        int64_t partition = 0;
         while (rest) {
             int batch_size = std::min(rest, (int)BATCH_SIZE);
             std::string batch = "BEGIN BATCH ";
             for(int i = 0; i < batch_size; i++) {
-                batch += fmt::format(insert_query, pkey, (int64_t)rand(), (int64_t)rand(), (int64_t)rand(), (int64_t)rand());
+                batch += fmt::format(insert_query, partition, (int64_t)rand(), (int64_t)rand(), (int64_t)rand(), (int64_t)rand());
             }
             batch += "APPLY BATCH;";
             session->execute(batch);
-            pkey++;
+            partition++;
             rest -= batch_size;
         }
     });
@@ -95,40 +95,40 @@ void benchmark_async(const std::shared_ptr<scmd::session> &session, int n) {
         std::mutex m;
         std::condition_variable cv;
         std::condition_variable cv_free;
-        std::list<scmd::future> list;
+        std::list<scmd::future> in_flight_queries;
 
-        int64_t pkey = 0;
+        int64_t partition = 0;
         for (int i = 0; i < n; i++) {
-            if (list.size() >= MAX_QUEUE_SIZE) {
+            if (in_flight_queries.size() >= MAX_QUEUE_SIZE) {
                 std::unique_lock<std::mutex> lk(m);
-                cv_free.wait(lk, [&]{return list.size() < MAX_QUEUE_SIZE;});
+                cv_free.wait(lk, [&]{return in_flight_queries.size() < MAX_QUEUE_SIZE;});
             }
-            auto future = session->execute_async(prepared, pkey, (int64_t)rand(), (int64_t)rand(), (int64_t)rand(), (int64_t)rand());
+            auto future = session->execute_async(prepared, partition, (int64_t)rand(), (int64_t)rand(), (int64_t)rand(), (int64_t)rand());
             {
                 std::unique_lock<std::mutex> lk(m);
-                auto it = list.insert(list.end(), std::move(future));
+                auto it = in_flight_queries.insert(in_flight_queries.end(), std::move(future));
                 lk.unlock();
                 it->set_callback([&, it](scmd::future *f){
                     {
                         std::unique_lock<std::mutex> lk2(m);
-                        list.erase(it);
+                        in_flight_queries.erase(it);
                     }
-                    if (list.size() < MAX_QUEUE_SIZE) {
+                    if (in_flight_queries.size() < MAX_QUEUE_SIZE) {
                         cv_free.notify_all();
-                        if (list.empty()) {
+                        if (in_flight_queries.empty()) {
                             cv.notify_one();
                         }
                     }
                 });
             }
             if ((i+1) % BATCH_SIZE == 0) {
-                pkey++;
+                partition++;
             }
         }
 
         {
             std::unique_lock<std::mutex> lk(m);
-            cv.wait(lk, [&]{return list.empty();});
+            cv.wait(lk, [&]{return in_flight_queries.empty();});
         }
     });
     fmt::print("Async test: {}ms\n", result);
@@ -144,45 +144,45 @@ void benchmark_batch_async(const std::shared_ptr<scmd::session> &session, int n)
         std::mutex m;
         std::condition_variable cv;
         std::condition_variable cv_free;
-        std::list<scmd::future> list;
+        std::list<scmd::future> in_flight_queries;
 
         int rest = n;
-        int64_t pkey = 0;
+        int64_t partition = 0;
         while (rest) {
-            if (list.size() >= MAX_BATCH_QUEUE_SIZE) {
+            if (in_flight_queries.size() >= MAX_BATCH_QUEUE_SIZE) {
                 std::unique_lock<std::mutex> lk(m);
-                cv_free.wait(lk, [&]{return list.size() < MAX_BATCH_QUEUE_SIZE;});
+                cv_free.wait(lk, [&]{return in_flight_queries.size() < MAX_BATCH_QUEUE_SIZE;});
             }
             int batch_size = std::min(rest, (int)BATCH_SIZE);
             scmd::batch_query batch(CASS_BATCH_TYPE_UNLOGGED);
             for(int i = 0; i < batch_size; i++) {
                 auto stmt = prepared.get_statement();
-                stmt.bind(pkey, (int64_t)rand(), (int64_t)rand(), (int64_t)rand(), 1337.0f);
+                stmt.bind(partition, (int64_t)rand(), (int64_t)rand(), (int64_t)rand(), 1337.0f);
                 batch.add_statement(stmt);
             }
             auto future = session->execute_async(batch);
             std::unique_lock<std::mutex> lk(m);
-            auto it = list.insert(list.end(), std::move(future));
+            auto it = in_flight_queries.insert(in_flight_queries.end(), std::move(future));
             lk.unlock();
             it->set_callback([&, it](scmd::future *f){
                 {
                     std::unique_lock<std::mutex> lk2(m);
-                    list.erase(it);
+                    in_flight_queries.erase(it);
                 }
-                if (list.size() < MAX_BATCH_QUEUE_SIZE) {
+                if (in_flight_queries.size() < MAX_BATCH_QUEUE_SIZE) {
                     cv_free.notify_all();
-                    if (list.empty()) {
+                    if (in_flight_queries.empty()) {
                         cv.notify_one();
                     }
                 }
             });
-            pkey++;
+            partition++;
             rest -= batch_size;
         }
 
         {
             std::unique_lock<std::mutex> lk(m);
-            cv.wait(lk, [&]{return list.empty();});
+            cv.wait(lk, [&]{return in_flight_queries.empty();});
         }
     });
     fmt::print("Batch async test: {}ms\n", result);

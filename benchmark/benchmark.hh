@@ -76,9 +76,9 @@ public:
 };
 
 class benchmark_mm : public base_benchmark {
-    std::unique_ptr<scylla_blas::matrix<float>> lm;
-    std::unique_ptr<scylla_blas::matrix<float>> rm;
-    std::unique_ptr<scylla_blas::matrix<float>> wm;
+    std::unique_ptr<scylla_blas::matrix<float>> left_matrix;
+    std::unique_ptr<scylla_blas::matrix<float>> right_matrix;
+    std::unique_ptr<scylla_blas::matrix<float>> result_matrix;
 public:
     explicit benchmark_mm(const std::shared_ptr<scmd::session> &session) : base_benchmark(session) {}
     void init() override;
@@ -89,9 +89,9 @@ public:
 };
 
 class benchmark_mv : public base_benchmark {
-    std::unique_ptr<scylla_blas::matrix<float>> lm;
-    std::unique_ptr<scylla_blas::vector<float>> rv;
-    std::unique_ptr<scylla_blas::vector<float>> wv;
+    std::unique_ptr<scylla_blas::matrix<float>> left_matrix;
+    std::unique_ptr<scylla_blas::vector<float>> right_vector;
+    std::unique_ptr<scylla_blas::vector<float>> result_vector;
 public:
     explicit benchmark_mv(const std::shared_ptr<scmd::session> &session) : base_benchmark(session) {}
     void init() override;
@@ -102,8 +102,8 @@ public:
 };
 
 class benchmark_vv : public base_benchmark {
-    std::unique_ptr<scylla_blas::vector<float>> lv;
-    std::unique_ptr<scylla_blas::vector<float>> rv;
+    std::unique_ptr<scylla_blas::vector<float>> left_vector;
+    std::unique_ptr<scylla_blas::vector<float>> right_vector;
 public:
     explicit benchmark_vv(const std::shared_ptr<scmd::session> &session) : base_benchmark(session) {}
     void init() override;

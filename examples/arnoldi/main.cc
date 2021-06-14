@@ -16,8 +16,6 @@
 
 #include "arnoldi.hh"
 
-namespace po = boost::program_options;
-
 struct options {
     std::string host{};
     uint16_t port{};
@@ -29,8 +27,9 @@ struct options {
     bool print_matrices = false;
 };
 
-void parse_arguments(int ac, char *av[], options &options) {
-    po::options_description desc(fmt::format("Usage: {} [options]", av[0]));
+void parse_arguments(int argc, char *argv[], options &options) {
+    namespace po = boost::program_options;
+    po::options_description desc(fmt::format("Usage: {} [options]", argv[0]));
     po::options_description opt("Options");
     opt.add_options()
             ("help", "Show program help")
@@ -44,12 +43,12 @@ void parse_arguments(int ac, char *av[], options &options) {
             ("port,P", po::value<uint16_t>(&options.port)->default_value(SCYLLA_DEFAULT_PORT), "port number on which Scylla can be reached");
     desc.add(opt);
     try {
-        auto parsed = po::command_line_parser(ac, av)
+        auto parsed = po::command_line_parser(argc, argv)
                 .options(desc)
                 .run();
         po::variables_map vm;
         po::store(parsed, vm);
-        if (vm.count("help") || ac == 1) {
+        if (vm.count("help") || argc == 1) {
             std::cout << desc << "\n";
             std::exit(0);
         }

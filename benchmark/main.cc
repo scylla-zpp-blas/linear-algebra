@@ -4,7 +4,6 @@
 
 #include <boost/program_options.hpp>
 
-namespace po = boost::program_options;
 #include <fmt/format.h>
 #include <scmd.hh>
 
@@ -26,17 +25,18 @@ struct options {
 
 template<typename ...T>
 void exactly_one_of(const boost::program_options::variables_map & vm,
-                    const T &...op)
+                    const T &...options)
 {
-    const std::vector<std::string> args = { op... };
+    const std::vector<std::string> args = {options... };
     if (std::count_if(args.begin(), args.end(), [&](const std::string& s){ return vm.count(s); }) != 1)
     {
         throw std::logic_error(std::string("Need exactly one of mutually exclusive options"));
     }
 }
 
-void parse_arguments(int ac, char *av[], options &options) {
-    po::options_description desc(fmt::format("Usage: {} [--mmmul/--mvmul/--vvmul] [options]", av[0]));
+void parse_arguments(int argc, char *argv[], options &options) {
+    namespace po = boost::program_options;
+    po::options_description desc(fmt::format("Usage: {} [--mmmul/--mvmul/--vvmul] [options]", argv[0]));
     po::options_description opt("Options");
     opt.add_options()
             ("help", "Show program help")
@@ -52,12 +52,12 @@ void parse_arguments(int ac, char *av[], options &options) {
             ("port,P", po::value<uint16_t>(&options.port)->default_value(SCYLLA_DEFAULT_PORT), "port number on which Scylla can be reached");
     desc.add(opt);
     try {
-        auto parsed = po::command_line_parser(ac, av)
+        auto parsed = po::command_line_parser(argc, argv)
                 .options(desc)
                 .run();
         po::variables_map vm;
         po::store(parsed, vm);
-        if (vm.count("help") || ac == 1) {
+        if (vm.count("help") || argc == 1) {
             std::cout << desc << "\n";
             std::exit(0);
         }

@@ -90,7 +90,7 @@ BOOST_FIXTURE_TEST_CASE(triangular_solver_preset, mixed_fixture)
 
 //        trim_to_triangular<float>(float_BxB);
 
-        print_matrix_octave(*float_BxB);
+        print_matrix(*float_BxB);
         scheduler->strsv(Upper, NoTrans, NonUnit, *float_BxB, *float_B);
         scheduler->sgemv(NoTrans, 1,  *float_BxB, *float_B, 0, *float_B2);
 

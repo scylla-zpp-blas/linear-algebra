@@ -455,7 +455,7 @@ void rvgen(const std::shared_ptr<scmd::session> &session, auto &task_details) {
         index_t segment_id = subtask.index;
         index_t length = X.get_block_size();
 
-        LogTrace("(rvgen) length: {}. Vector id: {} (details id: {})", length, X.get_id(), task_details.A_id);
+        LogTrace("(rvgen) length: {}. Vector id: {}", length, X.get_id());
 
         /* Not a perfect seed but it's good enough */
         int64_t seed = X.get_id() * X.get_length() + subtask.index;
@@ -486,7 +486,7 @@ void rmgen(const std::shared_ptr<scmd::session> &session, auto &task_details) {
         auto [row, column] = subtask.coord;
         index_t length = A.get_block_size();
 
-        LogTrace("(rmgen) length: {}. Matrix id: {} (details id: {})", length, A.get_id(), task_details.A_id);
+        LogTrace("(rmgen) length: {}. Matrix id: {}", length, A.get_id());
 
         /* Not a perfect seed but it's good enough */
         int64_t seed = A.get_id() * (A.get_column_count() * A.get_row_count()) + (row * A.get_column_count() + column);
