@@ -2,14 +2,15 @@
 
 #include "../test_utils.hh"
 #include "../fixture.hh"
+#include "preset_matrix_value_generator.hh"
 
 namespace {
 
 template<class T>
-void trim_to_triangular(auto matrix, scylla_blas::index_type K = -1) {
+void trim_to_triangular(auto matrix, scylla_blas::index_t K = -1) {
     using namespace scylla_blas;
 
-    for (index_type i = 1; i <= matrix->row_count; i++) {
+    for (index_t i = 1; i <= matrix->get_row_count(); i++) {
         scylla_blas::vector_segment<T> old_row = matrix->get_row(i);
         scylla_blas::vector_segment<T> new_row;
         for (auto &val : old_row) {
@@ -25,11 +26,10 @@ void trim_to_triangular(auto matrix, scylla_blas::index_type K = -1) {
         matrix->update_row(i, new_row);
     }
 
-    for (index_type i = 1; i <= matrix->row_count; i++) {
+    for (index_t i = 1; i <= matrix->get_row_count(); i++) {
         matrix->insert_value(i, i, 10);
     }
 }
-
 }
 
 BOOST_FIXTURE_TEST_CASE(triangular_solver, mixed_fixture)
@@ -46,6 +46,7 @@ BOOST_FIXTURE_TEST_CASE(triangular_solver, mixed_fixture)
         scheduler->sgemv(NoTrans, 1,  *float_BxB, *float_B, 0, *float_B2);
 
         auto new_vec = float_B2->get_whole();
+        LogDebug("value {0}", (old_vec + new_vec * (-1)).nrminf() / new_vec.nrminf());
         BOOST_REQUIRE_LE((old_vec + new_vec * (-1)).nrminf() / new_vec.nrminf(), EPSILON);
     }
 
@@ -63,10 +64,46 @@ BOOST_FIXTURE_TEST_CASE(triangular_solver, mixed_fixture)
     }
 }
 
+
+BOOST_FIXTURE_TEST_CASE(triangular_solver_preset, mixed_fixture)
+{
+    using namespace scylla_blas;
+
+    {
+        auto B = test_const::matrix_B;
+        std::vector<float> values;
+        for (scylla_blas::index_t i = 1; i <= B; i++) {
+            values.emplace_back(1.0f);
+        }
+        auto float_B = getScyllaVectorOf(test_const::float_vector_3_id, values);
+        auto float_B2 = getScyllaVector(test_const::float_vector_4_id);
+        auto old_vec = float_B->get_whole();
+
+        // generate diagonal
+        float_BxB->clear_all();
+        std::vector<scylla_blas::matrix_value<float>> diag;
+        for (scylla_blas::index_t i = 1; i <= B; i++) {
+            diag.emplace_back(i, i, 1.0f);
+        }
+        preset_matrix_value_generator<float> gen(B, B, diag);
+        load_matrix_from_generator(session, gen, *float_BxB);
+
+//        trim_to_triangular<float>(float_BxB);
+
+        print_matrix(*float_BxB);
+        scheduler->strsv(Upper, NoTrans, NonUnit, *float_BxB, *float_B);
+        scheduler->sgemv(NoTrans, 1,  *float_BxB, *float_B, 0, *float_B2);
+
+        auto new_vec = float_B2->get_whole();
+        LogDebug("value {0}", (old_vec + new_vec * (-1)).nrminf() / new_vec.nrminf());
+        BOOST_REQUIRE_LE((old_vec + new_vec * (-1)).nrminf() / new_vec.nrminf(), EPSILON);
+    }
+}
+
 BOOST_FIXTURE_TEST_CASE(triangular_banded_solver, mixed_fixture)
 {
     using namespace scylla_blas;
-    index_type K = 2;
+    index_t K = 2;
 
     {
         auto float_B = getScyllaVector(test_const::float_vector_3_id);

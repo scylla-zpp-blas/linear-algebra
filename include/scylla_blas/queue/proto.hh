@@ -175,7 +175,13 @@ enum task_type {
     ZSYR2K,
     ZHER2K,
     ZTRMM,
-    ZTRSM
+    ZTRSM,
+
+    /* MISC */
+    SRVGEN,
+    DRVGEN,
+    SRMGEN,
+    DRMGEN,
 };
 
 /* This is the struct that will be sent trough the queue.
@@ -189,97 +195,104 @@ struct task {
     task_type type;
 
     union {
-        index_type index;
+        index_t index;
 
         struct {
             int64_t data;
         } basic;
 
         struct {
-            index_type block_row;
-            index_type block_column;
+            index_t block_row;
+            index_t block_column;
         } coord;
 
         struct {
-            int64_t task_queue_id;
-            int64_t X_id;
-            int64_t Y_id;
+            id_t task_queue_id;
+            id_t X_id;
+            id_t Y_id;
         } vector_task_simple;
 
         struct {
-            int64_t task_queue_id;
+            id_t task_queue_id;
             float alpha;
-            int64_t X_id;
-            int64_t Y_id;
+            id_t X_id;
+            id_t Y_id;
         } vector_task_float;
 
         struct {
-            int64_t task_queue_id;
+            id_t task_queue_id;
             double alpha;
-            int64_t X_id;
-            int64_t Y_id;
+            id_t X_id;
+            id_t Y_id;
         } vector_task_double;
 
         struct {
-            int64_t task_queue_id;
+            id_t task_queue_id;
 
-            index_type KL, KU;
+            index_t KL, KU;
 
             UPLO Uplo;
             DIAG Diag;
 
-            int64_t A_id;
+            id_t A_id;
             TRANSPOSE TransA;
             float alpha;
 
-            int64_t X_id;
+            id_t X_id;
             float beta;
 
-            int64_t Y_id;
+            id_t Y_id;
         } mixed_task_float;
 
         struct {
-            int64_t task_queue_id;
+            id_t task_queue_id;
 
-            index_type KL, KU;
+            index_t KL, KU;
 
-            int64_t A_id;
+            id_t A_id;
             TRANSPOSE TransA;
             double alpha;
 
-            int64_t X_id;
+            id_t X_id;
             double beta;
 
-            int64_t Y_id;
+            id_t Y_id;
         } mixed_task_double;
 
         struct {
-            int64_t task_queue_id;
+            id_t task_queue_id;
 
-            int64_t A_id;
+            id_t A_id;
             TRANSPOSE TransA;
             float alpha;
 
-            int64_t B_id;
+            id_t B_id;
             TRANSPOSE TransB;
             float beta;
 
-            int64_t C_id;
+            id_t C_id;
         } matrix_task_float;
 
         struct {
-            int64_t task_queue_id;
+            id_t task_queue_id;
 
-            int64_t A_id;
+            id_t A_id;
             TRANSPOSE TransA;
             double alpha;
 
-            int64_t B_id;
+            id_t B_id;
             TRANSPOSE TransB;
             double beta;
 
-            int64_t C_id;
+            id_t C_id;
         } matrix_task_double;
+
+        struct {
+            id_t task_queue_id;
+
+            id_t structure_id;
+            double alpha;
+        } generation_task;
     };
 
 };
@@ -298,7 +311,7 @@ struct response {
         double result_double;
 
         struct {
-            index_type index;
+            index_t index;
             float value;
         } result_max_float_index;
 
@@ -313,7 +326,7 @@ struct response {
         } result_double_pair;
 
         struct {
-            index_type index;
+            index_t index;
             double value;
         } result_max_double_index;
 

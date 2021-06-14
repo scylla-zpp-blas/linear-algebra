@@ -27,11 +27,11 @@ BOOST_AUTO_TEST_CASE(matrices)
     BOOST_REQUIRE_EQUAL(std::ceil(matrix.get_value(1, 0) * 10000), std::ceil(M_PI * 10000));
     BOOST_REQUIRE_EQUAL(matrix.get_value(1, 1), 100);
 
-    BOOST_REQUIRE_EQUAL(matrix.row_count, 5);
-    BOOST_REQUIRE_EQUAL(matrix.column_count, 4);
+    BOOST_REQUIRE_EQUAL(matrix.get_row_count(), 5);
+    BOOST_REQUIRE_EQUAL(matrix.get_column_count(), 4);
 
-    BOOST_REQUIRE_EQUAL(matrix.row_count, matrix_2.row_count);
-    BOOST_REQUIRE_EQUAL(matrix.column_count, matrix_2.column_count);
+    BOOST_REQUIRE_EQUAL(matrix.get_row_count(), matrix_2.get_row_count());
+    BOOST_REQUIRE_EQUAL(matrix.get_column_count(), matrix_2.get_column_count());
 }
 
 BOOST_AUTO_TEST_CASE(vector_segments)
@@ -80,30 +80,30 @@ BOOST_AUTO_TEST_CASE(vector_segments)
 BOOST_AUTO_TEST_CASE(vectors)
 {
     /* init */
-    auto vector_1 = scylla_blas::vector<float>::init_and_return(session, 0, 2*BLOCK_SIZE+1);
+    auto vector_1 = scylla_blas::vector<float>::init_and_return(session, 0, 2*DEFAULT_BLOCK_SIZE+1);
 
     BOOST_REQUIRE_EQUAL(vector_1.get_segment_count(), 3);
 
     /* update_values */
     std::vector<scylla_blas::vector_value<float>> values_1;
-    for (int i = 1; i <= 2*BLOCK_SIZE+1; i++) {
+    for (int i = 1; i <= vector_1.get_length(); i++) {
         values_1.emplace_back(i, M_PI);
     }
     vector_1.update_values(values_1);
 
     BOOST_REQUIRE_EQUAL(std::ceil(vector_1.get_value(1) * 10000), std::ceil(M_PI * 10000));
-    BOOST_REQUIRE_EQUAL(std::ceil(vector_1.get_value(2*BLOCK_SIZE+1) * 10000), std::ceil(M_PI * 10000));
+    BOOST_REQUIRE_EQUAL(std::ceil(vector_1.get_value(vector_1.get_length()) * 10000), std::ceil(M_PI * 10000));
 
     /* get_segment */
     auto seg_1 = vector_1.get_segment(2);
 
     BOOST_REQUIRE_EQUAL(std::ceil(seg_1[0].value * 10000), std::ceil(M_PI * 10000));
-    BOOST_REQUIRE_EQUAL(std::ceil(seg_1[BLOCK_SIZE-1].value * 10000), std::ceil(M_PI * 10000));
+    BOOST_REQUIRE_EQUAL(std::ceil(seg_1[vector_1.get_block_size()-1].value * 10000), std::ceil(M_PI * 10000));
 
     BOOST_REQUIRE_EQUAL(seg_1[0].index, 1);
-    BOOST_REQUIRE_EQUAL(seg_1[BLOCK_SIZE-1].index, BLOCK_SIZE);
+    BOOST_REQUIRE_EQUAL(seg_1[vector_1.get_block_size()-1].index, vector_1.get_block_size());
 
-    BOOST_REQUIRE_EQUAL(seg_1.size(), BLOCK_SIZE);
+    BOOST_REQUIRE_EQUAL(seg_1.size(), vector_1.get_block_size());
 
     /* get_segment last */
     auto seg_end = vector_1.get_segment(3);
@@ -123,9 +123,9 @@ BOOST_AUTO_TEST_CASE(vectors)
     seg_2.emplace_back(2, 0);
     vector_1.update_segment(2, seg_2);
 
-    BOOST_REQUIRE_EQUAL(std::ceil(vector_1.get_value(BLOCK_SIZE+1) * 10000), std::ceil(M_E * 10000));
-    BOOST_REQUIRE_EQUAL(vector_1.get_value(BLOCK_SIZE+2), 0);
-    BOOST_REQUIRE_EQUAL(vector_1.get_value(BLOCK_SIZE+3), 0);
+    BOOST_REQUIRE_EQUAL(std::ceil(vector_1.get_value(vector_1.get_block_size()+1) * 10000), std::ceil(M_E * 10000));
+    BOOST_REQUIRE_EQUAL(vector_1.get_value(vector_1.get_block_size()+2), 0);
+    BOOST_REQUIRE_EQUAL(vector_1.get_value(vector_1.get_block_size()+3), 0);
 
     /* get_segment with zeros */
     auto seg_3 = vector_1.get_segment(2);

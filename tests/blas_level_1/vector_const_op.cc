@@ -27,7 +27,7 @@ BOOST_FIXTURE_TEST_CASE(vector_dot_float, vector_fixture)
     std::cout << std::setprecision(20) << res << "=res\n";
 
     // Then the dot product is correctly calculated and equal to sum.
-    BOOST_CHECK(abs(sum - res) < scylla_blas::epsilon);
+    BOOST_CHECK(std::abs(sum - res) < scylla_blas::epsilon);
 }
 
 BOOST_FIXTURE_TEST_CASE(vector_dot_float_same_obj, vector_fixture)
@@ -47,7 +47,7 @@ BOOST_FIXTURE_TEST_CASE(vector_dot_float_same_obj, vector_fixture)
     std::cout << std::setprecision(20) << res << "=res\n";
 
     // Then the dot product is correctly calculated and equal to sum.
-    BOOST_CHECK(abs(sum - res) < scylla_blas::epsilon);
+    BOOST_CHECK(std::abs(sum - res) < scylla_blas::epsilon);
 }
 
 BOOST_FIXTURE_TEST_CASE(vector_sdsdot_float, vector_fixture)
@@ -70,7 +70,7 @@ BOOST_FIXTURE_TEST_CASE(vector_sdsdot_float, vector_fixture)
     std::cout << std::setprecision(20) << res << "=res\n";
 
     // Then the dot product is correctly calculated and equal to sum + value.
-    BOOST_CHECK(abs((float)sum - res) < scylla_blas::epsilon);
+    BOOST_CHECK(std::abs((float)sum - res) < scylla_blas::epsilon);
 }
 
 BOOST_FIXTURE_TEST_CASE(vector_dsdot_float, vector_fixture)
@@ -92,7 +92,7 @@ BOOST_FIXTURE_TEST_CASE(vector_dsdot_float, vector_fixture)
     std::cout << std::setprecision(20) << res << "=res\n";
 
     // Then the dot product is correctly calculated and equal to sum.
-    BOOST_CHECK(abs(sum - res) < scylla_blas::epsilon);
+    BOOST_CHECK(std::abs(sum - res) < scylla_blas::epsilon);
 }
 
 BOOST_FIXTURE_TEST_CASE(vector_dot_double, vector_fixture)
@@ -114,7 +114,7 @@ BOOST_FIXTURE_TEST_CASE(vector_dot_double, vector_fixture)
     std::cout << std::setprecision(20) << res << "=res\n";
 
     // Then the dot product is correctly calculated and equal to sum.
-    BOOST_CHECK(abs(sum - res) < scylla_blas::epsilon);
+    BOOST_CHECK(std::abs(sum - res) < scylla_blas::epsilon);
 }
 
 
@@ -136,7 +136,7 @@ BOOST_FIXTURE_TEST_CASE(vector_norm_float, vector_fixture)
     std::cout << std::setprecision(20) << res << "=res\n";
 
     // Then the norm is correctly calculated and equal to nrm.
-    BOOST_CHECK(abs(nrm - res) < scylla_blas::epsilon);
+    BOOST_CHECK(std::abs(nrm - res) < scylla_blas::epsilon);
 }
 
 BOOST_FIXTURE_TEST_CASE(vector_sasum_float, vector_fixture)
@@ -150,13 +150,13 @@ BOOST_FIXTURE_TEST_CASE(vector_sasum_float, vector_fixture)
 
     float abs_sum = 0;
     for (float v : values1) {
-        abs_sum += abs(v);
+        abs_sum += std::abs(v);
     }
     std::cout << std::setprecision(20) << abs_sum << "=sum\n";
     std::cout << std::setprecision(20) << res << "=res\n";
 
     // Then it is correctly calculated and equal to sum.
-    BOOST_CHECK(abs(abs_sum - res) < scylla_blas::epsilon);
+    BOOST_CHECK(std::abs(abs_sum - res) < scylla_blas::epsilon);
 }
 
 BOOST_FIXTURE_TEST_CASE(vector_isamax_float, vector_fixture)
@@ -166,11 +166,11 @@ BOOST_FIXTURE_TEST_CASE(vector_isamax_float, vector_fixture)
     auto vector1 = getScyllaVectorOf(test_const::float_vector_1_id, values1);
 
     // When performing max fetch on the abs values in this vector.
-    scylla_blas::index_type res = scheduler->isamax(*vector1);
+    scylla_blas::index_t res = scheduler->isamax(*vector1);
 
-    scylla_blas::index_type max_index = 0;
-    for (scylla_blas::index_type i = 1; i < values1.size(); i++) {
-        if (abs(values1[i]) > abs(values1[max_index])) {
+    scylla_blas::index_t max_index = 0;
+    for (scylla_blas::index_t i = 1; i < values1.size(); i++) {
+        if (std::abs(values1[i]) > std::abs(values1[max_index])) {
             max_index = i;
         }
     }
@@ -199,7 +199,7 @@ BOOST_FIXTURE_TEST_CASE(vector_norm_double, vector_fixture)
     std::cout << std::setprecision(20) << res << "=res\n";
 
     // Then the norm is correctly calculated and equal to nrm.
-    BOOST_CHECK(abs(nrm - res) < scylla_blas::epsilon);
+    BOOST_CHECK(std::abs(nrm - res) < scylla_blas::epsilon);
 }
 
 BOOST_FIXTURE_TEST_CASE(vector_dasum_double, vector_fixture)
@@ -213,13 +213,13 @@ BOOST_FIXTURE_TEST_CASE(vector_dasum_double, vector_fixture)
 
     double abs_sum = 0;
     for (double v : values1) {
-        abs_sum += abs(v);
+        abs_sum += std::abs(v);
     }
     std::cout << std::setprecision(20) << abs_sum << "=sum\n";
     std::cout << std::setprecision(20) << res << "=res\n";
 
     // Then it is correctly calculated and equal to sum.
-    BOOST_CHECK(abs(abs_sum - res) < scylla_blas::epsilon);
+    BOOST_CHECK(std::abs(abs_sum - res) < scylla_blas::epsilon);
 }
 
 BOOST_FIXTURE_TEST_CASE(vector_idamax_double, vector_fixture)
@@ -229,15 +229,16 @@ BOOST_FIXTURE_TEST_CASE(vector_idamax_double, vector_fixture)
     auto vector1 = getScyllaVectorOf(test_const::double_vector_1_id, values1);
 
     // When performing max fetch on the abs values in this vector.
-    scylla_blas::index_type res = scheduler->idamax(*vector1);
+    scylla_blas::index_t res = scheduler->idamax(*vector1);
 
-    scylla_blas::index_type max_index = 0;
-    for (scylla_blas::index_type i = 1; i < values1.size(); i++) {
-        if (abs(values1[i]) > abs(values1[max_index])) {
+    scylla_blas::index_t max_index = 0;
+    for (scylla_blas::index_t i = 1; i < values1.size(); i++) {
+        if (std::abs(values1[i]) > std::abs(values1[max_index])) {
             max_index = i;
         }
     }
     std::cout << std::setprecision(20) << values1[max_index] << "=sum\n";
+    std::cout << max_index << "=max_index\n";
     std::cout << res << "=res index\n";
 
     // Then the found index corresponds to the index of largest absolute value's index.

@@ -72,6 +72,11 @@ public:
     // using "create_queue" method.
     scylla_queue(const std::shared_ptr<scmd::session> &session, int64_t id);
 
+    scylla_queue(const scylla_queue &other) = delete;
+    scylla_queue& operator=(const scylla_queue &other) = delete;
+    scylla_queue(scylla_queue &&other) noexcept;
+    scylla_queue& operator=(scylla_queue &&other) noexcept;
+
     ~scylla_queue();
 
     // Serializes given task (by casting to char array), and pushes it to queue.
@@ -103,6 +108,12 @@ public:
     bool is_finished(int64_t id);
 
     std::optional<response> get_response(int64_t id);
+
+    // Reset internal counters to 0. Deletes task data from database.
+    // Effectively resets queue to initial state.
+    void reset();
+
+    int64_t get_id() const { return queue_id; }
 
 private:
     void prepare_statements();

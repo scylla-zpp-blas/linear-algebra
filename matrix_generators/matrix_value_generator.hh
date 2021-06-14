@@ -2,6 +2,12 @@
 
 #include "scylla_blas/structure/matrix_value.hh"
 
+class no_next_value_exception : public std::exception {
+    const char *what() const noexcept override {
+        return "no_next_value_exception";
+    }
+};
+
 template<class V>
 class matrix_value_generator {
 public:

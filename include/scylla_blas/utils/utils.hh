@@ -11,8 +11,8 @@ inline int64_t get_timestamp() {
     return std::chrono::high_resolution_clock::now().time_since_epoch().count();
 }
 
-inline void wait_seconds(int64_t count) {
-    std::this_thread::sleep_for(std::chrono::seconds(count));
+inline void wait_microseconds(int64_t count) {
+    std::this_thread::sleep_for(std::chrono::microseconds(count));
 }
 
 }

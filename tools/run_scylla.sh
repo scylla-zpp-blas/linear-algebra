@@ -150,7 +150,8 @@ for i in $(seq 1 $instances); do
         -d scylladb/scylla \
         ${seeds:+'--seeds' "$seeds"} \
         --smp "$smp" \
-        --developer-mode="$dev"
+        --developer-mode="$dev" \
+        --auto-snapshot false
 done
 
 echo "Scylla cluster started!"

@@ -9,8 +9,8 @@
 void init_matrices(const std::shared_ptr<scmd::session> &session) {
     std::cerr << "Initializing containers for test matrices..." << std::endl;
 
-    scylla_blas::index_type A = test_const::matrix_A;
-    scylla_blas::index_type B = test_const::matrix_B;
+    scylla_blas::index_t A = test_const::matrix_A;
+    scylla_blas::index_t B = test_const::matrix_B;
     
     scylla_blas::matrix<float>::init(session, test_const::float_matrix_AxB_id, A, B);
     scylla_blas::matrix<float>::init(session, test_const::float_matrix_BxA_id, B, A);

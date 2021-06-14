@@ -9,6 +9,8 @@
 #define SCYLLA_BLAS_LOGLEVEL TRACE
 #endif
 
+#define MAX_FUN_NAME_LEN_STR "10"
+
 namespace scylla_blas {
 namespace logging {
 enum class LoggingLevel {
@@ -22,12 +24,13 @@ enum class LoggingLevel {
 };
 
 static inline constexpr LoggingLevel LOGLEVEL = LoggingLevel::SCYLLA_BLAS_LOGLEVEL;
+static inline constexpr size_t MAX_FUN_NAME_LEN = 10;
 static inline const auto start_time = std::chrono::steady_clock::now();
 static inline auto fmt_fg_color = fmt::terminal_color::blue;
 static inline auto fmt_function_color = fmt::terminal_color::cyan;
 static inline const std::string log_format = fmt::format("{}{}{}{{:^8s}}{} ",
     fmt::format(fmt::fg(fmt_fg_color), "[{{:06f}}|"), // format begin, time, separator
-    fmt::format(fmt::fg(fmt_function_color), "{{:^10s}}"), // function name
+    fmt::format(fmt::fg(fmt_function_color), "{{:^" MAX_FUN_NAME_LEN_STR "s}}"), // function name
     fmt::format(fmt::fg(fmt_fg_color), "|"), // seperator
     fmt::format(fmt::fg(fmt_fg_color), "]") // format end
     );
@@ -45,7 +48,8 @@ static inline std::string levels_formats[] = {
 #define blas_internal_log(log_level, str_fmt, args...) do { \
     std::chrono::duration<float> duration = std::chrono::steady_clock::now() - scylla_blas::logging::start_time; \
     fmt::print(stderr, scylla_blas::logging::log_format, \
-        duration.count(), __func__, scylla_blas::logging::levels_formats[static_cast<int>(log_level)]); \
+        duration.count(), fmt::basic_string_view(__func__, std::min(sizeof(__func__)-1, scylla_blas::logging::MAX_FUN_NAME_LEN)), \
+        scylla_blas::logging::levels_formats[static_cast<int>(log_level)]); \
     fmt::print(str_fmt "\n", ## args); \
 } while(0)
 
